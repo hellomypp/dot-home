@@ -37,7 +37,7 @@ Phaser와 WorldCanvas를 게임 진입 때 지연 로딩한다. 현재 productio
 - `bash scripts/pnpm.sh test`: 프런트 24/24. 신규 스토리, 기존 집 복귀, 안전한 초대 이동, 스테퍼 최소값, 단계 이동 전 쓰기 없음, 이전/새로고침 draft, 외형·다중 반려동물 최종 body, 0마리, 중복 제출, 오류 보존, 로그아웃/캐시/draft 정리, 키보드 분류 이동, 구형 외형 호환을 포함한다. 기존 Google·초대 복귀·실시간·이동 검사도 유지했다.
 - `bash scripts/pnpm.sh build`: TypeScript/Vite 통과.
 - `bash scripts/server.sh test bootJar`: 서버 32/32 및 JAR 빌드 통과. Google OIDC/CSRF/세션/가구 권한/초대 동시성/WebSocket 회귀와 외형·반려동물 DB 저장, HTTP 생성·재조회·미인증 거부를 포함한다.
-- GitHub Actions의 web/server 작업은 push 후 실행된다. server 작업은 실제 MySQL mysqlTest도 포함한다. 로컬 Mac에서 Docker/MySQL 테스트를 실행한 것으로 보고하지 않는다.
+- 코드 커밋 `d9ef1d2`의 [GitHub Actions 41359992314](https://github.com/hellomypp/dot-home/actions/runs/41359992314): web/server 모두 success. server의 `test mysqlTest bootJar`가 통과해 실제 MySQL 8.4에서도 기존 초대 동시성과 새 외형·반려동물·HTTP 생성 검사를 유지했다. 로컬 Mac에서 Docker/MySQL 테스트를 실행한 것으로 보고하지 않는다.
 
 내장 브라우저에서 **실측 CSS 폭** 375·390·430·440·768·1280px의 A/B/C 18개 조합을 캡처했다. 모든 조합에서 scrollWidth=innerWidth이며 주요 CTA 높이 52px을 확인했다. [측정 원본](screenshots/onboarding/viewport-checks.json). 저장·이전/다음·네 가지 외형 변경·여러 반려동물 입력·새로고침 복원·완료 화면을 UI로 확인했고 개발 콘솔 오류는 없었다.
 
@@ -91,3 +91,5 @@ bash scripts/dev.sh
 | 입주 완료 | [이미지](screenshots/onboarding/390-complete.jpg) | [이미지](screenshots/onboarding/1280-complete.jpg) |
 
 [다중 반려동물·하단 버튼](screenshots/onboarding/390-pets-and-actions.jpg) · [짧은 뷰포트](screenshots/onboarding/390-short-viewport.jpg) · [네 항목을 변경한 외형](screenshots/onboarding/1280-customized.jpg)
+
+HTTPS 미리보기에서 /studio/onboarding 200, 최신 온보딩 소스 제공, googleEnabled=true/devEnabled=false를 확인했다. 저장되지 않는 시안에서 완료→Phaser 게임 진입도 확인했고 [게임 회귀 캡처](screenshots/onboarding/1280-game-regression.jpg)를 남겼다.

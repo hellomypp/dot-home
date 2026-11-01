@@ -101,3 +101,5 @@ HTTP smoke: 개발 로그인 A/B/C → 집 생성(계획 3명, 반려동물 0마
 프런트 24/24, 서버 32/32(WebSocket 포함), TypeScript/Vite 및 bootJar 통과. 새 외형과 여러 반려동물의 DB 저장·HTTP 생성→world 재조회·미인증 API 401을 검증했다. 기존 Google·가족 초대·동시성 테스트를 유지했다. 375·390·430·440·768·1280px의 A/B/C 캡처에서 가로 넘침 없음, 주요 CTA 높이 52px을 확인했다. [상세 검증·미검증 사항과 스크린샷](ONBOARDING.md).
 
 이번 UI의 실제 iPhone Safari, 실제 Google 계정으로 새 집 생성→게임→재로그인 E2E, Safari 소프트 키보드·주소창 검증은 아직 미수행이다. 내장 브라우저 캡처와 실기기를 혼동하지 않는다. MySQL 검사는 push 후 실제 GitHub Actions 결과와 구분해 기록한다.
+
+코드 커밋 d9ef1d2의 실제 [GitHub Actions 41359992314](https://github.com/hellomypp/dot-home/actions/runs/41359992314)에서 web/server 모두 success를 확인했다. server 명령 `test mysqlTest bootJar`가 성공했으며 MySQL 초대 동시성 테스트와 신규 외형·여러 반려동물·HTTP 생성 검사를 제외하지 않았다. HTTPS 미리보기에서 최신 온보딩 소스와 Google 활성/dev 비활성도 확인했다.
