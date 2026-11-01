@@ -1,6 +1,6 @@
 # 도트홈 구현 API 계약
 
-개발 기준: 2026-11-01. 서버는 `/api`, STOMP endpoint `/ws`. 동일 출처 쿠키 세션. 모든 ID는 JSON 문자열, 시각은 ISO UTC. 실제 OAuth는 `kakao` 프로필과 환경변수 설정 필요. `dev` 프로필만 개발 로그인을 제공하며 임의 accountKey로 로그인하므로 외부 공개 금지.
+개발 기준: 2026-11-01. 서버는 `/api`, STOMP endpoint `/ws`. 동일 출처 쿠키 세션. 모든 ID는 JSON 문자열, 시각은 ISO UTC. 공식 인증은 `google` 프로필의 Google OIDC. `dev`는 loopback 로컬 테스트에서만 허용하고 google/prod와 함께 시작할 수 없다.
 
 ## 인증
 
@@ -8,7 +8,12 @@
 - `POST /api/auth/dev` body `{accountKey:"alice",name:"다은"}` → `GET /api/me`와 같은 응답. 계정 키는 로컬 검증 전용이며 같은 키는 같은 계정으로 복구한다.
 - `GET /api/me` → `{user:{id,name},memberships:[{householdId,householdName,memberId,role:"OWNER"|"MEMBER"}]}`. 미인증 401.
 - `POST /api/logout` → 204. CSRF 필수.
-- 카카오 시작 `/oauth2/authorization/kakao`; 콜백 `/login/oauth2/code/kakao`.
+- Google 시작 `GET /oauth2/authorization/google`; 콜백 `/login/oauth2/code/google`. openid/profile/email만 요청한다.
+- `GET /api/auth/config` → `{googleEnabled,devEnabled}`. 공개 설정 조회이며 인증 정보·토큰을 포함하지 않는다. UI는 서버 설정과 loopback 여부가 모두 맞을 때만 개발 폼을 표시한다.
+- 초대 복귀: `/oauth2/authorization/google?next=/invite/{43자 URL-safe 토큰}`. 목적지는 OAuth state에 묶인 서버 세션에 저장하고 Google에 전달하지 않는다. 외부 URL·쿼리·fragment를 반환 경로로 허용하지 않는다.
+- 성공: 원래 초대 화면 → 사용자의 명시적 수락. 목적지가 없으면 기존 가구 또는 `/onboarding`. 실패/취소: `/login?error=google`와 검증된 재시도 목적지만 반환한다.
+- Google `(provider,sub)`로 내부 Account를 재사용하고 Principal.getName()은 내부 Account.id다. 이메일 기반 병합 없음. 세션/CSRF/STOMP 계약은 유지한다.
+- 프로필·외부 설정·Google 실제 인증 미검증 상태는 [Google 로그인](GOOGLE_LOGIN.md)을 따른다.
 
 ## 가구·초대
 

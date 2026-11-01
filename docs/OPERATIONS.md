@@ -14,20 +14,19 @@ DB 파일은 서버가 사용하는 동안 복사하지 않는다. 로컬 백업
 2. `docker compose up -d mysql`로 MySQL을 실행한다.
 3. 애플리케이션 환경변수 `DB_URL`, `DB_USER`, `DB_PASSWORD`를 설정한다. Spring은 루트 `.env`를 자동으로 읽지 않는다.
 4. 로컬 MySQL 검증은 `bash scripts/server.sh mysqlTest`로 별도 Testcontainers DB를 사용한다.
-5. 실제 앱에서 MySQL을 사용할 때는 기본 프로필 또는 `kakao` 프로필을 선택한다. 개발 인증으로 로컬 MySQL만 시험하려면 위 DB 환경변수를 지정한 뒤 `dev`로 실행한다.
+5. 실제 앱에서 MySQL을 사용할 때는 기본 프로필 또는 `google` 프로필을 선택한다. 개발 인증으로 로컬 MySQL만 시험하려면 위 DB 환경변수를 지정한 뒤 `dev`로 실행한다.
 
 Flyway V1은 도메인 스키마, V2는 Spring Session 테이블, V3는 MySQL용 명시적 외래키를 추가한다. JPA는 `ddl-auto=validate`이며 스키마를 임의 재생성하지 않는다. 이미 적용한 마이그레이션은 수정하지 않고 새 버전을 추가한다.
 
-## 카카오와 HTTPS
+## Google OIDC와 HTTPS
 
-- 카카오 개발자 앱의 웹 도메인과 `/login/oauth2/code/kakao` redirect URI를 설정한다.
-- `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `APP_ORIGIN=https://실제도메인`, DB 환경변수를 외부 비밀값 저장소 또는 서버 환경에 제공한다.
-- 서버: `java -jar apps/server/build/libs/dot-home-server-0.1.0.jar --spring.profiles.active=kakao`.
-- 프런트: 빌드 환경에 `VITE_KAKAO_ENABLED=true`를 설정한다. `VITE_DEV_AUTH`는 운영에서 설정하지 않는다.
-- `dev`와 `kakao`/`prod`를 같이 켜면 서버가 시작을 거부한다. 운영에서는 개발 인증 endpoint가 없다.
-- `infra/nginx.conf.example`에 도메인·TLS 경로·정적 빌드 경로를 적용한다. `/ws` Upgrade와 timeout을 함께 설정한다.
-- 쿠키는 기본 HttpOnly·Secure·SameSite=Lax다. CSRF와 WebSocket Origin 검사는 유지한다.
-- OAuth 복귀 후 초대 링크를 다시 열어 수락하는 흐름까지 검증해야 한다. 로그인 전 초대 URL의 자동 복귀 UX는 아직 완성되지 않았다.
+[Google 로그인 실행 지침](GOOGLE_LOGIN.md)에서 Cloud 프로젝트·Auth Platform Branding/Audience·Web Client·정확한 Redirect URI·테스트 사용자·환경변수 설정을 진행한다. `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`은 서버에만 저장한다. 프런트에 Client Secret 또는 Google 토큰을 저장하지 않는다.
+
+로컬 파일 DB는 `APP_ORIGIN=http://127.0.0.1:5173 bash scripts/server.sh google`로 실행한다. 실제 운영 MySQL은 DB 환경변수와 google 프로필로 JAR를 실행한다. 로컬 테스트의 dev와 google/prod는 동시에 활성화할 수 없다. 원격 preview는 local 또는 local,google만 사용하며 dev endpoint를 제공하지 않는다.
+
+Spring은 loopback 바인딩과 `forward-headers-strategy=none`으로 전달 헤더를 무조건 신뢰하지 않는다. 콜백은 APP_ORIGIN으로 고정하며 운영·HTTPS 테스트 모두 해당 값을 정확한 외부 origin으로 설정한다. Vite/Nginx는 원래 Host를 유지하고 /oauth2·/login/oauth2·/api·/ws를 전달한다. Nginx 예시는 `infra/nginx.conf.example`에 있다. HTTPS의 Secure·HttpOnly·SameSite=Lax 쿠키, CSRF, WebSocket Origin 검사를 유지한다.
+
+실제 Google Cloud 정보가 없어 아직 Google 계정으로 로그인하거나 실제 콜백을 검증하지 않았다. Mock 테스트와 실제 OAuth 성공은 별도로 기록한다. 초대 목적지 보존은 서버 세션·OAuth state와 함께 구현했으며, Google 로그인 뒤 원래 초대 화면에서 직접 입주를 수락해야 한다.
 
 ## 백업·복원과 오류 확인
 

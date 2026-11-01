@@ -1,0 +1,14 @@
+# Activate with local or MySQL settings. Credentials exist only on the server.
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            provider: google
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            scope: [openid, profile, email]
+            # Explicit origin avoids deriving the callback from untrusted proxy headers.
+            redirect-uri: '${APP_ORIGIN:http://127.0.0.1:5173}/login/oauth2/code/google'

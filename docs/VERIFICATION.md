@@ -46,7 +46,7 @@ HTTP smoke: 개발 로그인 A/B/C → 집 생성(계획 3명, 반려동물 0마
 | 단계 | 현재 구현 | 아직 남음 |
 | --- | --- | --- |
 | M0 | 두 색감, 원본 자산, 집 장면, 이동·가림·충돌·말풍선, 입력·반응형 기초 | 최종 스타일 검토, 전용 앉기 프레임, 실기기 터치·DPR·다중 말풍선 배치·성능 측정 |
-| M1 | 개발 인증, 세션, 가입·초대·권한·서버 저장, 재시작 복구 | 실제 카카오 OAuth, MySQL 통합 실행, 두 브라우저 전체 E2E |
+| M1 | 개발 인증, 세션, 가입·초대·권한·서버 저장, 재시작 복구 | 실제 Google OIDC, MySQL 통합 실행, 두 브라우저 전체 E2E |
 | M2 | 기본 4공간, 얼굴 관찰, 자율 걷기, STOMP 인가·복구·다중 탭·권한 회수 | 장면의 정확한 서버 시간 기반 행동 재구성, 이동 경로/속도 검증 강화, 자연 세션 만료 장기검사 |
 | M3 | 상태 공유·만료, 식료품·사용 이력, 수동 사건·웹 내 이력 | 실제 다중 기기 검증, 알림 읽음/설정, 정확한 개수 외 잔량 방식, HTTPS·운영 검증 |
 
@@ -63,3 +63,30 @@ HTTP smoke: 개발 로그인 A/B/C → 집 생성(계획 3명, 반려동물 0마
 - 운영 백업·복원 절차는 문서만 제공하며 실제 복원 연습을 통과하지 않았다.
 
 원본 자료는 그대로 남겼다. 새 구현과 검증 문서는 `README.md`, `API.md`, `ASSETS.md`, `VERSIONS.md`, `OPERATIONS.md`에서 이어간다.
+
+
+## Google 로그인 전환 검증 (2026-11-01)
+
+공식 정책은 Google 하나로 변경했다. 이전 기록의 6/14개는 첫 구현 기준이다. 이번 기준은 프런트 13개, 서버 30개다. `bash scripts/pnpm.sh test`, `bash scripts/pnpm.sh build`, `bash scripts/server.sh test bootJar`를 실행한다. 최종 결과는 실행 보고와 테스트 XML을 함께 확인한다.
+
+새 검사는 검증된 OIDC sub의 내부 계정 매핑, 같은 sub 재사용·서로 다른 sub 구분·이메일 비병합, 이름 기본값/길이, Principal.getName 내부 ID, JDBC 세션용 직렬화, 고정 callback·최소 scope·OAuth state, 초대 목적지의 세션 보존·외부 반환 URL 차단·수락 전 미표시, 신규 집 생성·재방문 캐릭터 복구, 실패·취소, 로그아웃, Google 운영의 dev 차단과 원격 호스트의 개발 로그인 거절을 포함한다.
+
+기존 프런트·H2·WebSocket 회귀 검사를 유지한다. MySQL의 기존 동시성 실패 두 건은 [DH-001](KNOWN_ISSUES.md)로 추적하며 이번 인증 검사 통과와 구분한다. 실제 Google Client ID/Secret이 없어 Google의 실제 토큰 교환과 Safari/Chrome 계정 E2E는 미검증이다.
+
+최종 실행 결과: 프런트 13/13, 서버 30/30(기존 WebSocket 4 포함), Vite/TypeScript 빌드와 bootJar 통과. HTTPS 미리보기에서 /studio 200, /api/me 401, /api/auth/config의 googleEnabled=false/devEnabled=false(외부 인증 정보 미설정), Secure·HttpOnly 쿠키와 개발 로그인 거절을 확인했다. 내장 Chromium에서도 Google 버튼 하나와 설정 대기 안내, 개발 폼 미표시를 확인했다. 이는 실제 Google 인증 성공 검증을 의미하지 않는다.
+
+
+### 실제 Google 인증 정보 적용 후 진행
+
+사용자가 제공한 인증 정보를 .tools/google.env(0600, Git ignore)에 저장하고 local,google 서버를 재시작했다. /api/auth/config에서 googleEnabled=true/devEnabled=false, 실제 Google authorization redirect에서 HTTPS callback·openid/profile/email·state·nonce를 확인했다. 브라우저에서 Google 계정 선택 화면까지 연결됐다. 사용자의 계정 선택·동의 및 실제 콜백 완료는 아직 대기 중이며, 실제 Google 로그인 성공으로 판정하지 않는다. 비밀값·일회성 인증 URL은 문서나 소스에 기록하지 않았다.
+
+### iPhone HTTPS 전용 오류 수정
+
+사용자 사진에서 로그인 후 HTTP 127.0.0.1로 이동하는 오류를 확인했다. 실제 HTTPS callback 오류 응답을 조회해 Location이 http://127.0.0.1:8080/login?error=google인 것을 재현했다. 상대 sendRedirect가 내부 요청의 scheme/host로 확장되던 문제여서 성공·실패·초대 복귀 모두 검증한 APP_ORIGIN 기반 절대 URL로 변경했다. 전달 헤더 전체 신뢰나 Safari HTTPS 전용 해제는 사용하지 않았다. 프록시의 HTTP loopback 요청과 위조 Host에도 HTTPS를 유지하는 회귀 검사 추가 후 서버 31개 통과 및 bootJar 빌드 성공. 서버 재시작 후 실제 실패 응답의 HTTPS Location도 확인했다. 사용자 계정으로 성공 콜백까지 완료하는 E2E는 재확인 대기 중이다.
+
+### 집 생성 전 로그아웃 누락 수정
+
+사용자 iPhone 사진에서 /onboarding에는 게임 화면의 계정 메뉴가 없어 로그아웃할 수 없음을 확인했다. 집 생성·초대 화면에 현재 계정과 명시적 로그아웃 버튼을 추가했다. CSRF가 있는 POST 로그아웃 후 쿼리를 취소·초기화하고 /login으로 복귀한다. 집을 만들지 않은 Google 사용자도 재로그인할 수 있도록 회귀 테스트를 추가했다. 프런트 14개 통과 및 TypeScript/Vite 빌드 통과.
+
+
+사용자의 iPhone 사진에서 Google 로그인 후 실제 프로필 이름이 표시된 집 생성 화면 진입을 확인했다. 사용자 보고 기반의 로그인·콜백 성공 확인이며, 초대 복귀·가구 생성·공유·재로그인의 실제 Google 계정 전체 E2E 완료와 구분한다.

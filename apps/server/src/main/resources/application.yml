@@ -22,8 +22,9 @@ spring:
     deserialization:
       fail-on-unknown-properties: true
 server:
+  address: 127.0.0.1
   port: 8080
-  forward-headers-strategy: framework
+  forward-headers-strategy: none
   servlet:
     session:
       cookie:

@@ -6,7 +6,8 @@ build/
 .gradle/
 .gradle-local/
 .env
-.env.local
+.env.*
+!.env.example
 *.log
 *.tsbuildinfo
 playwright-report/
@@ -15,3 +16,6 @@ coverage/
 .DS_Store
 data/
 !gradle/wrapper/gradle-wrapper.jar
+
+__pycache__/
+*.pyc

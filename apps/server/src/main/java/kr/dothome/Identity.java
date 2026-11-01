@@ -6,14 +6,11 @@ import jakarta.servlet.http.*;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.*;
 import org.springframework.core.env.Environment;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.client.userinfo.*;
-import org.springframework.security.oauth2.core.user.*;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.csrf.*;
@@ -40,11 +37,22 @@ class IdentityService {
 }
 @Configuration
 class SecurityConfiguration {
+    static boolean localRequest(HttpServletRequest request) {
+        String host=request.getServerName();
+        String forwarded=request.getHeader("X-Forwarded-Host");
+        return !request.isSecure() && java.util.Set.of("127.0.0.1","localhost","::1","[::1]").contains(host)
+            && (forwarded==null||forwarded.matches("(localhost|127\\.0\\.0\\.1)(:[0-9]+)?"))
+            && ("127.0.0.1".equals(request.getRemoteAddr())||"::1".equals(request.getRemoteAddr())||"0:0:0:0:0:0:0:1".equals(request.getRemoteAddr()));
+    }
+    static void validateProfiles(Environment environment) {
+        if(environment.matchesProfiles("kakao"))throw new IllegalStateException("The kakao authentication profile is retired; use google");
+        if(environment.matchesProfiles("dev")&&environment.matchesProfiles("prod","google"))throw new IllegalStateException("Development login cannot be combined with production/OAuth profiles");
+    }
     @Bean CsrfTokenRepository csrfRepository() { return new HttpSessionCsrfTokenRepository(); }
-    @Bean SecurityFilterChain security(HttpSecurity http,CsrfTokenRepository csrfRepository,ObjectProvider<ClientRegistrationRepository> clients,IdentityService identity,Environment environment,SocketRegistry sockets) throws Exception {
-        if (environment.matchesProfiles("dev") && environment.matchesProfiles("prod", "kakao")) throw new IllegalStateException("Development login cannot be combined with production/OAuth profiles");
-        http.authorizeHttpRequests(a -> a.requestMatchers("/api/auth/csrf","/api/invitations/*","/oauth2/**","/login/**","/error").permitAll()
-            .requestMatchers("/api/auth/dev").access((auth, context) -> new org.springframework.security.authorization.AuthorizationDecision(environment.matchesProfiles("dev")))
+    @Bean SecurityFilterChain security(HttpSecurity http,CsrfTokenRepository csrfRepository,ObjectProvider<ClientRegistrationRepository> clients,IdentityService identity,Environment environment,SocketRegistry sockets,GoogleIdentity google,@org.springframework.beans.factory.annotation.Value("${app.origin}") String appOrigin) throws Exception {
+        validateProfiles(environment);
+        http.authorizeHttpRequests(a -> a.requestMatchers("/api/auth/csrf","/api/auth/config","/api/invitations/*","/oauth2/**","/login/**","/error").permitAll()
+            .requestMatchers("/api/auth/dev").access((auth, context) -> new org.springframework.security.authorization.AuthorizationDecision(environment.matchesProfiles("dev") && localRequest(context.getRequest())))
             .anyRequest().authenticated());
         http.csrf(c -> c.csrfTokenRepository(csrfRepository).csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()));
         http.exceptionHandling(e -> e.authenticationEntryPoint((request,response,exception) -> {
@@ -56,25 +64,30 @@ class SecurityConfiguration {
             HttpSession session=request.getSession(false); if(session!=null) sockets.closeHttpSession(session.getId());
         }).logoutSuccessHandler((request,response,authentication) -> response.setStatus(204)));
         http.headers(h -> h.referrerPolicy(r -> r.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)));
-        if(clients.getIfAvailable()!=null) http.oauth2Login(o -> o.userInfoEndpoint(u -> u.userService(request -> {
-            OAuth2User external = new DefaultOAuth2UserService().loadUser(request);
-            String subject=external.getName();
-            Map<String,Object> properties=external.getAttribute("properties");
-            String name=properties!=null ? Objects.toString(properties.get("nickname"),"새 구성원") : "새 구성원";
-            Account account=identity.resolve("kakao",subject,name.substring(0,Math.min(name.length(),40)));
-            return new DefaultOAuth2User(List.of(new SimpleGrantedAuthority("ROLE_USER")),Map.of("accountId",account.id),"accountId");
-        })).defaultSuccessUrl("/",true));
+        if(clients.getIfAvailable()!=null) {
+            var flow=new GoogleLoginFlow(clients.getObject(),identity,appOrigin);
+            http.oauth2Login(o -> o.loginPage("/login")
+                .authorizationEndpoint(a -> a.authorizationRequestResolver(flow).authorizationRequestRepository(flow))
+                .userInfoEndpoint(u -> u.oidcUserService(google))
+                .successHandler(flow.success()).failureHandler(flow.failure()));
+        }
         return http.build();
     }
 }
 @RestController
 class IdentityController {
     private final IdentityService identity;
-    IdentityController(IdentityService identity) { this.identity=identity; }
+    private final Environment environment;
+    private final ObjectProvider<ClientRegistrationRepository> clients;
+    IdentityController(IdentityService identity,Environment environment,ObjectProvider<ClientRegistrationRepository> clients) { this.identity=identity;this.environment=environment;this.clients=clients; }
     @GetMapping("/api/auth/csrf") Map<String,String> csrf(CsrfToken token) { return Map.of("token",token.getToken(),"headerName",token.getHeaderName(),"parameterName",token.getParameterName()); }
+    @GetMapping("/api/auth/config") Map<String,Boolean> config(HttpServletRequest request) {
+        return Map.of("googleEnabled",clients.getIfAvailable()!=null&&clients.getObject().findByRegistrationId("google")!=null,
+            "devEnabled",environment.matchesProfiles("dev")&&SecurityConfiguration.localRequest(request));
+    }
     @GetMapping("/api/me") Api.Me me(Principal principal) { return identity.me(principal.getName()); }
 }
-@RestController @Profile("dev")
+@RestController @Profile("dev & !google & !prod")
 class DevelopmentLoginController {
     private final IdentityService identity;
     private final CsrfTokenRepository csrf;
