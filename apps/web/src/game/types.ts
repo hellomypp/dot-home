@@ -12,6 +12,7 @@ export interface WorldMember {
 }
 export interface WorldPet { id: string; name: string; kind?: string; color?: string }
 export interface WorldView {
+  objectNotes?: {id:string;objectId:string}[];
   place: Place;
   ownMemberId: string;
   observedMemberId?: string;

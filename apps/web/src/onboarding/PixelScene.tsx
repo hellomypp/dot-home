@@ -13,10 +13,12 @@ export function PixelScene({
   kind,
   appearance = "v1:0000",
   petKind = "cat",
+  showAvatar = true,
 }: {
   kind: "garden" | "cottage" | "room";
   appearance?: string;
   petKind?: "cat" | "dog";
+  showAvatar?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -36,7 +38,7 @@ export function PixelScene({
       ctx.ellipse(180, 259, 82, 26, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    if (kind !== "cottage") {
+    if (kind !== "cottage" && showAvatar) {
       const avatar = makeAvatar(
         {
           id: "preview",
@@ -63,7 +65,7 @@ export function PixelScene({
           42,
         );
     }
-  }, [kind, appearance, petKind]);
+  }, [kind, appearance, petKind, showAvatar]);
   return (
     <canvas
       className={`pixel-scene ${kind}`}
@@ -73,7 +75,9 @@ export function PixelScene({
       role="img"
       aria-label={
         kind === "room"
-          ? "집 안에서 바라본 내 캐릭터"
+          ? showAvatar
+            ? "집 안에서 바라본 내 캐릭터"
+            : "공개된 집 내부 풍경"
           : kind === "garden"
             ? "구름과 나무 사이, 작은 집 앞의 캐릭터와 반려동물 일러스트"
             : "우리 집 미리보기"

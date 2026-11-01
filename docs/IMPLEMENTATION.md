@@ -75,7 +75,7 @@ React↔Phaser는 타입이 정의된 이벤트·어댑터로 연결한다. 장�
 | 식료품 | /api/households/{id}/pantry-items | 가구 범위·버전 충돌 |
 | 사건·알림 | /api/households/{id}/events, /api/notifications | 저장·조회·확인; GET events는 REST 이력 조회 |
 
-검증 오류·미인증·권한 없음·만료·버전 충돌·중복 요청 응답을 명시한다. 카카오 앱 등록·redirect URI·비밀값 설정 전에는 개발용 인증을 별도 프로필로 제한하고 운영에서 활성화되지 않게 한다. 설정 없이 실제 OAuth 연결이 끝났다고 보고하지 않는다.
+검증 오류·미인증·권한 없음·만료·버전 충돌·중복 요청 응답을 명시한다. Google Cloud OAuth Client 등록·redirect URI·비밀값 설정 전에는 개발용 인증을 별도 프로필로 제한하고 운영에서 활성화되지 않게 한다. 설정 없이 실제 OAuth 연결이 끝났다고 보고하지 않는다.
 
 ## 7. WebSocket 계약과 복구
 
@@ -98,7 +98,7 @@ heartbeat·backoff 재연결·중복 eventId 무시·revision 검증을 구현�
 
 ## 8. 인증·인가·운영
 
-Spring Security OAuth2 Client로 카카오 웹 로그인 후 서비스 세션을 만든다. 동일 출처 HttpOnly·Secure 쿠키와 Spring Session JDBC를 기본 검토안으로 한다. OAuth state, CSRF, 허용 Origin 검증을 유지한다. REST뿐 아니라 STOMP CONNECT·SEND·SUBSCRIBE도 가구별로 인가한다. 인증됐다는 이유로 모든 가구 topic을 구독하게 하지 않는다.
+Spring Security OAuth2 Client로 Google OIDC 로그인 후 서비스 세션을 만든다. 동일 출처 HttpOnly·Secure 쿠키와 Spring Session JDBC를 기본 검토안으로 한다. OAuth state, CSRF, 허용 Origin 검증을 유지한다. REST뿐 아니라 STOMP CONNECT·SEND·SUBSCRIBE도 가구별로 인가한다. 인증됐다는 이유로 모든 가구 topic을 구독하게 하지 않는다.
 
 동일 HTTPS 출처에서 정적 웹 파일과 /api·인증·/ws를 연결한다. Nginx의 WebSocket Upgrade·timeout과 heartbeat를 맞춘다. 비밀값은 환경변수로 관리하고 로컬·검증·운영 설정을 분리한다. 초기에는 단일 Spring 서버와 MySQL로 시작하며, 서버 확장 시 공유 이벤트·연결 라우팅을 함께 설계한다.
 
@@ -149,3 +149,7 @@ v0.4에서 PWA/앱 확장 중심을 웹 브라우저로 변경하고 REST+WebSoc
 - [Spring STOMP](https://docs.spring.io/spring-framework/reference/web/websocket/stomp/overview.html)
 - [Spring WebSocket 보안](https://docs.spring.io/spring-security/reference/servlet/integrations/websocket.html)
 - [OpenAI 공식 AGENTS.md 문서](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
+
+## v0.6 증분 구현 결과
+
+[P1/P2/P3 구현 및 검증](V06.md). 기능별 ObjectNotes/FamilyCalendar/Housewarming 서버 파일과 React 컴포넌트로 분리했다. 기존 REST 식별자·가족 가입·LifeEvent NOTE는 유지했다. Flyway V4~V6 추가, 신규 DTO/인가/버전/공개 방문 컨텍스트를 도입했다. POST/수정 후 커밋 이벤트와 REST 재동기화를 연결했다. /visit/:token은 Google OAuth state에 묶인 내부 반환 경로이며 가족 가입이 아니다. 방문자는 별도 공개 실내 아트와 방명록만 사용한다.

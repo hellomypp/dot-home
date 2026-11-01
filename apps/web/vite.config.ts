@@ -1,7 +1,18 @@
+import {createLogger} from 'vite';
+import {redactTokenPaths} from './src/lib/privacy.ts';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
+const logger=createLogger();
+const originalError=logger.error.bind(logger),originalWarn=logger.warn.bind(logger),originalInfo=logger.info.bind(logger),originalWarnOnce=logger.warnOnce.bind(logger);
+logger.error=(message,options)=>originalError(redactTokenPaths(message),options);
+logger.warn=(message,options)=>originalWarn(redactTokenPaths(message),options);
+logger.info=(message,options)=>originalInfo(redactTokenPaths(message),options);
+logger.warnOnce=(message,options)=>originalWarnOnce(redactTokenPaths(message),options);
+const apiPort = Number(process.env.DOT_HOME_API_PORT || '8080');
+if (!Number.isInteger(apiPort) || apiPort < 1 || apiPort > 65535) throw new Error('Invalid loopback API port');
 export default defineConfig({
+  customLogger: logger,
   plugins: [react()],
   server: {
     host: '127.0.0.1',
@@ -9,10 +20,10 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      '/api': 'http://127.0.0.1:8080',
-      '/oauth2': 'http://127.0.0.1:8080',
-      '/login/oauth2': 'http://127.0.0.1:8080',
-      '/ws': { target: 'ws://127.0.0.1:8080', ws: true },
+      '/api': `http://127.0.0.1:${apiPort}`,
+      '/oauth2': `http://127.0.0.1:${apiPort}`,
+      '/login/oauth2': `http://127.0.0.1:${apiPort}`,
+      '/ws': { target: `ws://127.0.0.1:${apiPort}`, ws: true },
     },
   },
   build: {

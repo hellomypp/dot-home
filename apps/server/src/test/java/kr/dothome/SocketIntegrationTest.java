@@ -38,4 +38,27 @@ class SocketIntegrationTest {
     @Test void reconnectSnapshotRecoversMissedEventsAndRevokedMembershipClosesSocket()throws Exception{
         try(var owner=login();var guest=login()){String id=homes.create(owner.user,new Api.CreateHouse("복구의 집",2,"가온","sage",List.of())).household().id();var invite=homes.invite(id,owner.user);homes.accept(invite.token(),guest.user,new Api.Accept("나래","blue"));try(var first=socket(guest)){subscribe(first,id);}homes.event(id,owner.user,new Api.CreateEvent(UUID.randomUUID().toString(),"NOTE","연결 중단 중 남긴 소식"));try(var restored=socket(guest)){subscribe(restored,id);var snapshot=homes.world(id,guest.user);assertEquals("연결 중단 중 남긴 소식",snapshot.events().getFirst().message());var member=registry.members.findByHouseholdIdAndUserIdAndActiveTrue(id,guest.user).orElseThrow();member.active=false;registry.members.saveAndFlush(member);registry.expire();restored.take("CLOSED");assertThrows(ApiException.class,()->homes.world(id,guest.user));}}
     }
+
+    @Autowired ObjectNoteService objectNotes;@Autowired CalendarService calendar;@Autowired HousewarmingService visits;
+    @Test void newFeaturesPublishOnlyToFamilyAndVisitorsCannotSubscribe()throws Exception{
+        try(var owner=login();var family=login();var visitor=login()){
+            String h=homes.create(owner.user,new Api.CreateHouse("v06 실시간",2,"대표","sage",List.of())).household().id();
+            homes.accept(homes.invite(h,owner.user).token(),family.user,new Api.Accept("가족","blue"));
+            String link=visits.create(h,owner.user).url().substring(7);visits.enter(link,visitor.user);
+            try(var connected=socket(family)){
+                subscribe(connected,h);
+                var n=objectNotes.create(h,owner.user,"fridge",new NoteInput("가족 쪽지"));connected.take("OBJECT_NOTE_CHANGED");
+                objectNotes.take(h,family.user,n.id(),n.version());connected.take("OBJECT_NOTE_CHANGED");
+                calendar.save(h,owner.user,null,new CalendarInput("약속","","GENERAL",true,java.time.LocalDate.now(),java.time.LocalDate.now(),null,null,"Asia/Seoul",0));connected.take("CALENDAR_EVENT_CHANGED");
+                assertTrue(objectNotes.list(h,owner.user,"fridge").isEmpty());assertEquals(1,objectNotes.archive(h,owner.user).size());
+            }
+            try(var denied=socket(visitor)){denied.send("SUBSCRIBE\nid:visit\ndestination:/topic/households/"+h+"/events\n\n");denied.take("CLOSED");}
+            var response=visitor.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/households/"+h+"/objects/fridge/notes")).GET().build(),HttpResponse.BodyHandlers.ofString());assertEquals(403,response.statusCode());
+            var noCsrf=owner.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/households/"+h+"/objects/fridge/notes")).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString("{\"body\":\"forged\"}")).build(),HttpResponse.BodyHandlers.ofString());assertEquals(403,noCsrf.statusCode());
+            var forgedNote=owner.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/households/"+h+"/objects/fridge/notes")).header("Content-Type","application/json").header("X-CSRF-TOKEN",owner.csrf).POST(HttpRequest.BodyPublishers.ofString("{\"body\":\"x\",\"authorMemberId\":\"other\",\"householdId\":\"other\"}")).build(),HttpResponse.BodyHandlers.ofString());assertEquals(400,forgedNote.statusCode());
+            var forgedCalendar=owner.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/households/"+h+"/calendar-events")).header("Content-Type","application/json").header("X-CSRF-TOKEN",owner.csrf).POST(HttpRequest.BodyPublishers.ofString("{\"title\":\"x\",\"description\":\"\",\"category\":\"GENERAL\",\"allDay\":true,\"startDate\":\"2026-11-03\",\"endDate\":\"2026-11-03\",\"timeZone\":\"Asia/Seoul\",\"createdByMemberId\":\"other\"}")).build(),HttpResponse.BodyHandlers.ofString());assertEquals(400,forgedCalendar.statusCode());
+            var forgedGuest=visitor.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/visits/"+link+"/guestbook")).header("Content-Type","application/json").header("X-CSRF-TOKEN",visitor.csrf).POST(HttpRequest.BodyPublishers.ofString("{\"message\":\"x\",\"requestId\":\"forged\",\"visitorAccountId\":\"other\"}")).build(),HttpResponse.BodyHandlers.ofString());assertEquals(400,forgedGuest.statusCode());
+            var publicResponse=visitor.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/visits/"+link)).GET().build(),HttpResponse.BodyHandlers.ofString());assertEquals(200,publicResponse.statusCode());var publicJson=json.readTree(publicResponse.body());assertEquals(3,publicJson.size());assertFalse(publicJson.has("members"));assertFalse(publicJson.has("pantryItems"));
+        }
+    }
 }

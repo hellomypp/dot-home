@@ -23,3 +23,7 @@ Google 전환 후 CI 41317925677에서도 같은 두 실패가 재현됐다. acc
 ### 실제 MySQL 검증 결과
 
 [수정 브랜치 CI 41353158782](https://github.com/hellomypp/dot-home/actions/runs/41353158782)가 success로 완료됐다. 기존 실패 2건을 포함한 mysqlTest, 서버 회귀·bootJar, 프런트 테스트·빌드를 모두 통과했다. READ_COMMITTED는 초대 수락 메서드에만 적용했고 기존 가구 잠금·초대 잠금·일회성 검사·동시 수락 테스트는 유지했다.
+
+## DH-003: v0.6 실기기·실계정 전체 E2E 미수행
+
+쪽지/캘린더/집들이의 서버 DB·권한·HTTP/STOMP·로컬 브라우저 검사를 추가했다. 실제 iPhone Safari의 터치/키보드와 다른 Google 계정의 방문 전체 E2E는 미수행이다. 내장 브라우저 390px 검사를 실기기 통과로 보고하지 않는다. [구현/미검증 범위](V06.md). 기존 DH-001 MySQL 동시성 수정은 유지한다.

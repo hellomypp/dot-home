@@ -164,7 +164,7 @@ export function OnboardingExperience({
     try {
       const url = new URL(invite, window.location.origin);
       const path =
-        url.origin === window.location.origin && !url.search && !url.hash
+        url.origin === window.location.origin && url.pathname.startsWith("/invite/") && !url.search && !url.hash
           ? safeInvitePath(url.pathname)
           : null;
       if (!path) throw new Error();

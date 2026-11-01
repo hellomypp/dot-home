@@ -1,3 +1,5 @@
+> 2026-11-02 현재 구현: Google OIDC와 v0.6 쪽지·가족 달력·집들이를 구현했다. 아래 v0.5 초기 상태는 역사적 기록이며 최신 결과는 [v0.6 검증](V06.md)과 [VERIFICATION](VERIFICATION.md)을 따른다.
+
 # 도트홈 — 제품 기획서 v0.5 · 웹게임
 
 > 2026-11-01 확정 변경: 공식 로그인은 Google OIDC 하나다. 아래 이전 공급자 선정 내용보다 최신 정책과 `GOOGLE_LOGIN.md`가 우선한다. 실제 인증 성공은 아직 미검증이다.
@@ -56,7 +58,7 @@
 7. 참여가 확정된 뒤 캐릭터와 얼굴 아이콘이 나타난다. 입주 애니메이션은 추가 제안이다.
 8. 다음 접속에서는 연결된 자신의 구성원으로 시작한다. 모든 가족의 동시 가입을 시작 조건으로 삼지 않는다.
 
-간편 인증 선정안: 국내 초기 검증은 카카오 로그인 + 초대 링크를 사용한다. 로그인 제공자와 가구 초대는 역할이 다르며, 로그인만으로 임의의 집에 가입되는 구조를 만들지 않는다. 카카오 로그인 실제 연결은 앱 등록·리다이렉트 URI·인증 정보 설정 후 검증한다.
+공식 인증 확정안: Google OIDC 로그인 + 초대 링크를 사용한다. 로그인 제공자와 가구 초대는 역할이 다르며, 로그인만으로 임의의 집에 가입되는 구조를 만들지 않는다. Google OIDC 로그인 실제 연결은 Google Cloud Redirect URI·인증 정보 설정 후 별도로 검증한다.
 
 | 상태 | 세계와 얼굴 목록 | 비고 |
 |---|---|---|
@@ -130,7 +132,7 @@
 
 ## 8. 기술·플랫폼 선정
 
-대상은 PC·태블릿·모바일 반응형 웹 브라우저다. 설치 없이 HTTPS URL로 접속하며 카카오 웹 로그인과 초대 링크로 참여한다. 기존 모바일 우선 PWA·Capacitor 계획을 대체한다.
+대상은 PC·태블릿·모바일 반응형 웹 브라우저다. 설치 없이 HTTPS URL로 접속하며 Google OIDC 로그인과 초대 링크로 참여한다. 기존 모바일 우선 PWA·Capacitor 계획을 대체한다.
 
 선정안: React + TypeScript + Vite + Phaser / Java 21 + Spring Boot / MySQL + JPA + Flyway / REST + WebSocket(STOMP). React·Phaser·Spring·MySQL은 이미 웹에 적합하므로 유지한다. 실시간은 양방향 장면 상호작용을 고려해 SSE 중심 안에서 WebSocket으로 변경한다. 상세 근거는 TECH_STACK, 계약과 구현 순서는 IMPLEMENTATION을 따른다.
 
@@ -191,7 +193,7 @@ M0만 끝낸 결과를 웹게임 전체 완성으로 보고하지 않는다. 사
 
 아래는 해당 기능의 가능성 또는 채택 사례를 뒷받침하는 자료이며 도트홈의 성공을 입증하는 자료는 아니다. 2026-10-31 확인.
 
-- [카카오 로그인 공식 문서](https://developers.kakao.com/docs/ko/kakaologin/common)
+- [Google OIDC 공식 문서](https://developers.google.com/identity/openid-connect)
 - [Apple Web Push](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers)
 - [W3C Geolocation](https://www.w3.org/TR/geolocation/)
 - [Apple 지역 진입·이탈 감지](https://developer.apple.com/documentation/corelocation/monitoring-the-user-s-proximity-to-geographic-regions)
@@ -199,3 +201,11 @@ M0만 끝낸 결과를 웹게임 전체 완성으로 보고하지 않는다. 사
 - [SmartThings 기기 명령과 완료 확인](https://developer.smartthings.com/docs/service-integrations/control-devices)
 - [SumOne 공식 제품 설명](https://apps.apple.com/us/app/sumone-for-relationships/id1469506430)
 - [Widgetable 공식 제품 설명](https://apps.apple.com/us/app/widgetable-besties-couples/id1641107226)
+
+## v0.6 확정 기능
+
+- R19: 냉장고 사물 쪽지 부착·떼어 읽기·가족 보관함·권한 있는 삭제. LifeEvent NOTE와 별도 도메인.
+- R20: 서버에 저장되는 가족 공유 캘린더, 종일/시간 지정, 일반/생일/기념일, 공동 편집 및 실시간 변경.
+- R21: 대표의 7일 집들이 초대·취소, Google 인증 후 명시 방문, 공개 집 풍경·방명록·방문 기록. 가족 가입 권한과 별개다.
+
+[구현·정책·검증·미검증 환경](V06.md). 반복 일정, 외부 Google Calendar, Web Push, 방문자 실시간 아바타·이동·선물은 이번 범위에서 제외했다.

@@ -103,3 +103,9 @@ HTTP smoke: 개발 로그인 A/B/C → 집 생성(계획 3명, 반려동물 0마
 이번 UI의 실제 iPhone Safari, 실제 Google 계정으로 새 집 생성→게임→재로그인 E2E, Safari 소프트 키보드·주소창 검증은 아직 미수행이다. 내장 브라우저 캡처와 실기기를 혼동하지 않는다. MySQL 검사는 push 후 실제 GitHub Actions 결과와 구분해 기록한다.
 
 코드 커밋 d9ef1d2의 실제 [GitHub Actions 41359992314](https://github.com/hellomypp/dot-home/actions/runs/41359992314)에서 web/server 모두 success를 확인했다. server 명령 `test mysqlTest bootJar`가 성공했으며 MySQL 초대 동시성 테스트와 신규 외형·여러 반려동물·HTTP 생성 검사를 제외하지 않았다. HTTPS 미리보기에서 최신 온보딩 소스와 Google 활성/dev 비활성도 확인했다.
+
+## 2026-11-02: v0.6 사물 쪽지·가족 캘린더·집들이
+
+프런트 32건, 서버 48건(H2·실제 HTTP/STOMP·Google mock 포함), TypeScript/Vite 및 bootJar 빌드 통과. 신규 도메인/상태·버전·동시 떼기/수정/방명록 재전송, 공개 방문 권한, 작성자 위조 400·CSRF 403·방문자 가족 API/STOMP 차단을 검사했다. 실제 REST smoke에서 두 가족+방문자의 생성·읽기·보관·취소·인원 불변과 가족 API 5개 차단을 확인했다.
+
+격리된 5174→8081 메모리 DB에서 실제 로컬 세션을 사용해 모바일 쪽지 작성, 캘린더 등록·조회, 대표 방문 링크 발급, 로그아웃/새 방문자 로그인/원래 방문 목적지 복귀/명시 수락/방명록 저장을 UI로 확인했다. [상세 결과와 화면](V06.md). 실제 iPhone Safari·실제 Google 계정 전체 E2E·운영 복원은 미검증이다. MySQL 8.4 결과는 GitHub Actions 실행 후 별도로 기록한다.

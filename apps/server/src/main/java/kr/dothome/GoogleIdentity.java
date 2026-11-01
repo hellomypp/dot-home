@@ -60,7 +60,7 @@ class GoogleLoginFlow implements OAuth2AuthorizationRequestResolver, Authorizati
         if(uri.getHost()==null||uri.getRawUserInfo()!=null||uri.getRawQuery()!=null||uri.getRawFragment()!=null||!(uri.getRawPath().isEmpty()||uri.getRawPath().equals("/"))||!("https".equals(uri.getScheme())||"http".equals(uri.getScheme())&&loopback))throw new IllegalArgumentException("APP_ORIGIN must be an HTTPS origin or HTTP loopback origin");
         origin=uri.getScheme()+"://"+uri.getRawAuthority();
     }
-    static String safeNext(String value){return value!=null&&value.matches("/invite/[A-Za-z0-9_-]{43}")?value:null;}
+    static String safeNext(String value){return value!=null&&value.matches("/(?:invite|visit)/[A-Za-z0-9_-]{43}")?value:null;}
     private OAuth2AuthorizationRequest decorate(HttpServletRequest request,OAuth2AuthorizationRequest original){
         if(original==null)return null;
         String next=safeNext(request.getParameter("next"));

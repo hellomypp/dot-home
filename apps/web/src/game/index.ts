@@ -10,7 +10,7 @@ const seed=(s:string)=>[...s].reduce((v,c)=>(v*31+c.charCodeAt(0))>>>0,7);
 function typing(){const el=document.activeElement;return !!el?.matches('input,textarea,select,[contenteditable=true]')||!!document.querySelector('dialog[open]');}
 
 class HomeScene extends Phaser.Scene {
-  view:WorldView;emit:(e:WorldEvent)=>void;actors=new Map<string,Actor>();petActors:{sprite:Phaser.GameObjects.Image;path:Point[];index:number;name:Phaser.GameObjects.Text;lastAi:number}[]=[];keys=new Set<string>();lastInput=0;artVersion=0;
+  noteMarkers:Phaser.GameObjects.GameObject[]=[];view:WorldView;emit:(e:WorldEvent)=>void;actors=new Map<string,Actor>();petActors:{sprite:Phaser.GameObjects.Image;path:Point[];index:number;name:Phaser.GameObjects.Text;lastAi:number}[]=[];keys=new Set<string>();lastInput=0;artVersion=0;
   constructor(view:WorldView,emit:(e:WorldEvent)=>void){super('home');this.view=view;this.emit=emit;}
   create(){
     this.drawRoom();this.syncActors();this.resize();
@@ -38,7 +38,8 @@ class HomeScene extends Phaser.Scene {
     if(this.view.palette==='dusk')this.add.rectangle(320,224,640,448,0x47597a,.13).setDepth(9000);
     if(this.view.place!=='home')this.add.text(320,94,`${{office:'조용한 작업실',school:'작은 교실',outside:'집 앞 작은 정원'}[this.view.place]} · 기본 공간 시안`,{fontFamily:'sans-serif',fontSize:'12px',color:'#66735b',backgroundColor:'#f1eddb',padding:{x:12,y:6}}).setOrigin(.5).setDepth(9100);
   }
-  syncActors(){
+  syncNotes(){for(const marker of this.noteMarkers)marker.destroy();this.noteMarkers=[];if(this.view.place!=='home')return;const notes=this.view.objectNotes?.filter(n=>n.objectId==='fridge')||[];if(!notes.length)return;const marker=this.add.rectangle(560,121,16,16,0xf0da86).setStrokeStyle(2,0xb69b5b).setDepth(200).setInteractive({hitArea:new Phaser.Geom.Rectangle(-14,-14,44,44),hitAreaCallback:Phaser.Geom.Rectangle.Contains,useHandCursor:true});marker.on('pointerdown',(_p:unknown,_x:unknown,_y:unknown,event:Phaser.Types.Input.EventData)=>{event.stopPropagation();this.emit({type:'interact',target:'fridge',label:'냉장고 쪽지'});});this.noteMarkers.push(marker);if(notes.length>1)this.noteMarkers.push(this.add.text(571,112,String(notes.length),{fontSize:'11px',color:'#514b35',backgroundColor:'#fff7d9'}).setDepth(201));}
+  syncActors(){this.syncNotes();
     const members=this.view.members.filter(m=>m.place===this.view.place);
     for(const [id,actor]of this.actors)if(!members.some(m=>m.id===id)){actor.sprite.destroy();actor.label.destroy();actor.bubble.destroy();this.actors.delete(id);}
     for(const member of members){let actor=this.actors.get(member.id);const prefix=`world-${member.id}-${this.artVersion}-${JSON.stringify(member.appearance)}`;

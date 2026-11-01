@@ -1,4 +1,10 @@
-# Merge into a TLS-enabled server block after configuring your own certificate.
+# Include in the http context after configuring your own certificate.
+# Suppress access logs for token-bearing paths and OAuth next query strings.
+map $request_uri $dothome_log_request {
+    default 1;
+    ~*(/|%2f)(invite|visit|api(/|%2f)(invitations|visits))(/|%2f) 0;
+    ~*^/login/oauth2/ 0;
+}
 # This file is a deployment template, not a deployed or verified HTTPS endpoint.
 server {
     listen 443 ssl;
@@ -6,6 +12,7 @@ server {
     ssl_certificate /etc/ssl/dothome/fullchain.pem;
     ssl_certificate_key /etc/ssl/dothome/privkey.pem;
     root /srv/dothome/web;
+    access_log /var/log/nginx/dothome.access.log combined if=$dothome_log_request;
     add_header Referrer-Policy no-referrer always;
     location / { try_files $uri $uri/ /index.html; }
     location ~ ^/(api|oauth2|login/oauth2)/ {

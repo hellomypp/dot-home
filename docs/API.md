@@ -10,7 +10,7 @@
 - `POST /api/logout` → 204. CSRF 필수.
 - Google 시작 `GET /oauth2/authorization/google`; 콜백 `/login/oauth2/code/google`. openid/profile/email만 요청한다.
 - `GET /api/auth/config` → `{googleEnabled,devEnabled}`. 공개 설정 조회이며 인증 정보·토큰을 포함하지 않는다. UI는 서버 설정과 loopback 여부가 모두 맞을 때만 개발 폼을 표시한다.
-- 초대 복귀: `/oauth2/authorization/google?next=/invite/{43자 URL-safe 토큰}`. 목적지는 OAuth state에 묶인 서버 세션에 저장하고 Google에 전달하지 않는다. 외부 URL·쿼리·fragment를 반환 경로로 허용하지 않는다.
+- 가족 초대/집들이 복귀: `/oauth2/authorization/google?next=/invite/{43자 URL-safe 토큰}`. `/visit/{43자 토큰}`도 허용한다. 목적지는 OAuth state에 묶인 서버 세션에 저장하고 Google에 전달하지 않는다. 외부 URL·쿼리·fragment를 반환 경로로 허용하지 않는다.
 - 성공: 원래 초대 화면 → 사용자의 명시적 수락. 목적지가 없으면 기존 가구 또는 `/onboarding`. 실패/취소: `/login?error=google`와 검증된 재시도 목적지만 반환한다.
 - Google `(provider,sub)`로 내부 Account를 재사용하고 Principal.getName()은 내부 Account.id다. 이메일 기반 병합 없음. 세션/CSRF/STOMP 계약은 유지한다.
 - 프로필·외부 설정·Google 실제 인증 미검증 상태는 [Google 로그인](GOOGLE_LOGIN.md)을 따른다.
@@ -61,3 +61,45 @@
 ## 온보딩 외형 호환 (2026-11-02)
 
 기존 POST /api/households의 appearance 문자열은 구형 sage/rose/blue/amber 외에 `v1:HTBA`를 사용한다. H/T/B/A는 각각 헤어/상의/하의/액세서리 인덱스 0~3이며 예시는 `v1:3212`다. 기존 24자 저장 필드·DTO·API 경로는 변경하지 않았다. world의 appearance를 그대로 보존하고 프런트 공통 변환기로 해석한다. [화면·저장·호환 검증](ONBOARDING.md).
+
+## v0.6 사물 쪽지
+
+활성 가족만 접근한다. h=가구 ID, object=현재 fridge만 허용한다.
+
+- GET /api/households/{h}/objects/{object}/notes → ATTACHED 쪽지 배열.
+- POST 같은 경로, `{body}` → 생성된 쪽지.
+- POST /api/households/{h}/notes/{id}/take, `{version}` → TAKEN 쪽지. 오래된 버전/이미 떼어낸 경우 409.
+- GET /api/households/{h}/notes/archive → TAKEN 쪽지 배열.
+- DELETE /api/households/{h}/notes/{id}?version=N → 204. 작성자 또는 대표만.
+
+쪽지 DTO: `{id,objectId,authorMemberId,body,state,createdAt,takenByMemberId,takenAt,version}`. 본문 1~1000자 일반 텍스트. 작성자/가구/상태는 클라이언트가 지정하지 않는다.
+
+## v0.6 공유 캘린더
+
+- GET /api/households/{h}/calendar-events?from=YYYY-MM-DD&to=YYYY-MM-DD → 기간과 겹치는 일정 배열. 양 끝 날짜 포함, 최대 367일, 조회 날짜 경계는 Asia/Seoul.
+- POST /api/households/{h}/calendar-events → 생성된 일정.
+- PATCH /api/households/{h}/calendar-events/{id} → 수정된 일정. 버전 충돌 409.
+- DELETE /api/households/{h}/calendar-events/{id}?version=N → 204.
+
+입력 `{title,description,category,allDay,startDate,endDate,startAt,endAt,timeZone,version}`. title 1~120자, description 0~2000자. category=GENERAL|BIRTHDAY|ANNIVERSARY. 종일이면 LocalDate startDate/endDate만 입력(양 끝 포함), 시간이면 UTC ISO Instant startAt/endAt만 입력(시작 포함/종료 제외, 길이 0 허용). timeZone은 유효한 ZoneId, 웹 기본 Asia/Seoul. 응답은 입력 내용에 id, createdByMemberId, updatedByMemberId, createdAt, updatedAt, version을 포함한다. 작성자·수정자는 서버 인증에서 도출한다.
+
+## v0.6 집들이 (가족 입주 Invitation과 별개)
+
+대표만:
+
+- POST /api/households/{h}/housewarming-invitations → `{id,url:"/visit/{token}",expiresAt}`. 7일, 해시 저장, 원문은 생성 때만 반환.
+- GET 같은 경로 → `[{id,expiresAt,revokedAt}]`.
+- DELETE /api/households/{h}/housewarming-invitations/{id} → 204. 기존 방문자 권한도 무효화.
+- GET /api/households/{h}/visitors → `[{name,visitedAt}]`, 해당 링크의 최초 방문 시각.
+- GET /api/households/{h}/guestbook → `[{id,visitorName,message,createdAt,hidden}]`.
+- DELETE /api/households/{h}/guestbook/{id} → 204. 공개 목록에서 숨김.
+
+Google 인증한 방문자:
+
+- POST /api/visits/{token}/accept → 공개 방문 DTO 및 별도 방문 권한 생성/재사용. 명시 수락 전 GET은 403.
+- GET /api/visits/{token} → `{householdName,theme,guestbook}`. 가족 world DTO와 다르다. 만료/취소 410, 미인증 401.
+- POST /api/visits/{token}/guestbook, `{requestId,message}` → 방명록 DTO. message 1~1000자, requestId 1~80자. 같은 요청·같은 본문은 기존 결과, 같은 요청의 다른 본문은 409. 새 요청은 가구/계정별 30초 제한(429).
+
+모든 변경 요청에 CSRF 필요. body에 작성자·가구·방문자 식별자를 주입하면 400. 방문 권한으로 가족 API 또는 가족 STOMP SEND/SUBSCRIBE에 접근할 수 없다. 가족 Membership·계획 인원을 변경하지 않는다.
+
+쪽지/캘린더 변경은 기존 가족 topic으로 OBJECT_NOTE_CHANGED, CALENDAR_EVENT_CHANGED를 커밋 후 발행한다. payload는 변경된 레코드 ID이며 revision은 가구 전체 순서를 따른다. 클라이언트는 관련 REST를 재조회한다. [실제 검증/시간 정책](V06.md).
