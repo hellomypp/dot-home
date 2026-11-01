@@ -71,6 +71,9 @@ class HomeService {
         Household household=households.findById(invitation.householdId).orElseThrow(ApiException::missing);
         return new Api.InvitationPreview(household.name,invitation.expiresAt,true);
     }
+    // The household row lock serializes admission. READ_COMMITTED ensures queries after
+    // waiting for that lock see the previous admission, not a pre-lock MySQL RR snapshot.
+    @Transactional(isolation=org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     Api.World accept(String token,String userId,Api.Accept input) {
         Invitation first=invitation(token);
         Household household=households.locked(first.householdId).orElseThrow(ApiException::missing);

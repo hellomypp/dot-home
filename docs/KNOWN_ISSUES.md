@@ -13,3 +13,8 @@
 ## DH-002: Google 실제 계정 E2E 미검증
 
 실제 Cloud Client ID/Secret 및 테스트 사용자 등록 필요. 현재 Mock 검증만 완료 대상이며 Google 실제 인증 성공으로 표시하지 않는다.
+
+
+## DH-001 수정 시도 (2026-11-02)
+
+Google 전환 후 CI 41317925677에서도 같은 두 실패가 재현됐다. accept에만 READ_COMMITTED를 적용해 가구 잠금을 기다린 뒤 count·membership 조회가 이전 수락 커밋을 읽도록 수정했다. 가구/초대 행 잠금과 토큰 refresh는 유지하고 테스트를 제외하지 않는다. 로컬 H2 회귀와 실제 MySQL CI 결과를 따로 기록한다. MySQL 확인 전에는 해결 완료로 분류하지 않는다.
