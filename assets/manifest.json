@@ -1,0 +1,15 @@
+{
+  "version": "m0-2026-11-01",
+  "status": "provisional-art-direction",
+  "source": "apps/web/src/game/art.ts",
+  "origin": "Original programmatic pixel art authored for this project; no extracted game assets or reference HTML artwork reused.",
+  "logicalScene": [640, 448],
+  "navigationGrid": 8,
+  "avatarFrame": [32, 48],
+  "avatarDirections": ["down", "up", "left", "right"],
+  "walkFramesPerDirection": 4,
+  "petFrame": [34, 28],
+  "feetCollisionRadius": 7,
+  "palettes": ["warm", "dusk"],
+  "rendering": "nearest-neighbor; foot-Y depth; React state never updated per frame"
+}

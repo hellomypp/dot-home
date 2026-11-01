@@ -1,0 +1,16 @@
+{
+  "name": "dot-home",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @dot-home/web dev",
+    "build": "pnpm --filter @dot-home/web build",
+    "typecheck": "pnpm --filter @dot-home/web typecheck",
+    "test": "pnpm --filter @dot-home/web test",
+    "test:e2e": "pnpm --filter @dot-home/web test:e2e"
+  }
+}

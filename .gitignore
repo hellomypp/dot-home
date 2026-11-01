@@ -1,0 +1,17 @@
+node_modules/
+.pnpm-store/
+.tools/
+dist/
+build/
+.gradle/
+.gradle-local/
+.env
+.env.local
+*.log
+*.tsbuildinfo
+playwright-report/
+test-results/
+coverage/
+.DS_Store
+data/
+!gradle/wrapper/gradle-wrapper.jar

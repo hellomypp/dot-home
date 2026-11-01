@@ -1,0 +1,13 @@
+import { useEffect, useRef } from 'react';
+import { mountWorld } from '../game';
+import type { WorldView, WorldEvent } from '../game/types';
+
+export function WorldCanvas({ view, onEvent }: {view:WorldView;onEvent:(event:WorldEvent)=>void}) {
+  const parent = useRef<HTMLDivElement>(null);
+  const instance = useRef<ReturnType<typeof mountWorld> | null>(null);
+  const event = useRef(onEvent);
+  event.current = onEvent;
+  useEffect(() => {instance.current = mountWorld(parent.current!, view, e => event.current(e)); return () => {instance.current?.destroy(); instance.current=null;};}, []);
+  useEffect(() => {instance.current?.update(view);}, [view]);
+  return <div ref={parent} className="world-canvas" role="region" aria-label="도트홈 가상 공간. 바닥을 클릭하거나 방향키로 내 캐릭터를 움직일 수 있습니다." tabIndex={0}/>;
+}
