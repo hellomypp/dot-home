@@ -106,6 +106,10 @@ HTTP smoke: 개발 로그인 A/B/C → 집 생성(계획 3명, 반려동물 0마
 
 ## 2026-11-02: v0.6 사물 쪽지·가족 캘린더·집들이
 
-프런트 32건, 서버 48건(H2·실제 HTTP/STOMP·Google mock 포함), TypeScript/Vite 및 bootJar 빌드 통과. 신규 도메인/상태·버전·동시 떼기/수정/방명록 재전송, 공개 방문 권한, 작성자 위조 400·CSRF 403·방문자 가족 API/STOMP 차단을 검사했다. 실제 REST smoke에서 두 가족+방문자의 생성·읽기·보관·취소·인원 불변과 가족 API 5개 차단을 확인했다.
+프런트 33건, 서버 48건(H2·실제 HTTP/STOMP·Google mock 포함), TypeScript/Vite 및 bootJar 빌드 통과. 신규 도메인/상태·버전·동시 떼기/수정/방명록 재전송, 공개 방문 권한, 작성자 위조 400·CSRF 403·방문자 가족 API/STOMP 차단을 검사했다. 실제 REST smoke에서 두 가족+방문자의 생성·읽기·보관·취소·인원 불변과 가족 API 5개 차단을 확인했다.
 
 격리된 5174→8081 메모리 DB에서 실제 로컬 세션을 사용해 모바일 쪽지 작성, 캘린더 등록·조회, 대표 방문 링크 발급, 로그아웃/새 방문자 로그인/원래 방문 목적지 복귀/명시 수락/방명록 저장을 UI로 확인했다. [상세 결과와 화면](V06.md). 실제 iPhone Safari·실제 Google 계정 전체 E2E·운영 복원은 미검증이다. MySQL 8.4 결과는 GitHub Actions 실행 후 별도로 기록한다.
+
+코드 98ee7a7의 [GitHub Actions 41362627544](https://github.com/hellomypp/dot-home/actions/runs/41362627544)에서 web/server 모두 success, 실제 MySQL 8.4의 기존 11건+신규 11건 통합 검사 및 bootJar 성공을 확인했다. 프런트 집들이 반환 경로의 끝 줄바꿈 거부를 추가한 뒤 로컬 프런트 33건/서버 48건과 빌드를 재확인했다.
+
+기존 로컬 DB를 서버 정상 종료 후 비공개 백업하고 실제 HTTPS 미리보기를 재시작했다. Flyway V4~V6 적용 성공(현재 v6), /studio 200, Google 활성/dev 비활성을 확인했다. 기존 데이터 테이블을 초기화하지 않았다. QA 메모리 DB와 실제 미리보기 DB는 별개다.

@@ -1,6 +1,6 @@
 /** Only a family invitation or housewarming path can survive login; no origins, queries or fragments. */
 export function safeInvitePath(value:string|null):string|null {
-  return value && value.length<=51 && /^\/(?:invite|visit)\/[A-Za-z0-9_-]{43}$/.test(value)?value:null;
+  return value && value.length===(value.startsWith('/invite/')?51:50) && /^\/(?:invite|visit)\/[A-Za-z0-9_-]{43}$/.test(value)?value:null;
 }
 export function googleLoginUrl(next:string|null) {
   const destination=safeInvitePath(next);
