@@ -57,3 +57,7 @@
 `{code,message}`. 400 입력 오류, 401 로그인 필요, 403 가구/대표 권한 없음 또는 CSRF 실패, 404 데이터 없음, 409 인원/버전/요청 충돌, 410 만료·취소·이미 사용된 초대.
 
 구독 준비 절차: topic과 `/user/queue/errors`, `/user/queue/sync`를 구독하고 `/app/households/{id}/sync`로 `{}`를 보낸다. 서버의 `SYNC_READY`를 수신한 뒤 REST 스냅샷을 조회한다. 서버는 클라이언트 프레임 수신 순서를 유지하며, 조회 중 새 사건이 오면 최신 스냅샷을 다시 읽는다. 단순 브로커의 STOMP receipt 지원을 가정하지 않는다. 권한 위반 프레임은 정책 위반으로 소켓을 닫는다.
+
+## 온보딩 외형 호환 (2026-11-02)
+
+기존 POST /api/households의 appearance 문자열은 구형 sage/rose/blue/amber 외에 `v1:HTBA`를 사용한다. H/T/B/A는 각각 헤어/상의/하의/액세서리 인덱스 0~3이며 예시는 `v1:3212`다. 기존 24자 저장 필드·DTO·API 경로는 변경하지 않았다. world의 appearance를 그대로 보존하고 프런트 공통 변환기로 해석한다. [화면·저장·호환 검증](ONBOARDING.md).

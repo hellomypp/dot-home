@@ -41,7 +41,7 @@ class HomeScene extends Phaser.Scene {
   syncActors(){
     const members=this.view.members.filter(m=>m.place===this.view.place);
     for(const [id,actor]of this.actors)if(!members.some(m=>m.id===id)){actor.sprite.destroy();actor.label.destroy();actor.bubble.destroy();this.actors.delete(id);}
-    for(const member of members){let actor=this.actors.get(member.id);const prefix=`world-${member.id}-${this.artVersion}-${member.appearance?.shirt}`;
+    for(const member of members){let actor=this.actors.get(member.id);const prefix=`world-${member.id}-${this.artVersion}-${JSON.stringify(member.appearance)}`;
       if(!this.textures.exists(`${prefix}-down-0`))for(const d of directions)for(let f=0;f<4;f++)this.texture(`${prefix}-${d}-${f}`,makeAvatar(member,d,f));
       if(!actor){const initial=nearestWalkable({x:member.x??(280+seed(member.id)%160),y:member.y??(290+seed(member.id)%60)},this.solids());actor={member,sprite:this.add.image(initial.x,initial.y,`${prefix}-down-0`).setOrigin(.5,1),label:this.add.text(0,0,member.name,{fontFamily:'sans-serif',fontSize:'10px',color:'#576348',backgroundColor:'#eee9d7',padding:{x:5,y:2}}).setOrigin(.5,0).setDepth(9500),bubble:this.add.text(0,0,'',{fontFamily:'sans-serif',fontSize:'11px',color:'#5f604b',backgroundColor:'#fff8e5',padding:{x:9,y:6},wordWrap:{width:125}}).setOrigin(.5,1).setDepth(9600),path:[],direction:'down',frame:0,lastManual:0,lastAi:-1,remote:'',};this.actors.set(member.id,actor);}
       actor.member=member;actor.label.setText(member.name+(member.id===this.view.ownMemberId?' · 나':''));actor.bubble.setText(member.status||'').setVisible(!!member.status);
@@ -65,7 +65,7 @@ class HomeScene extends Phaser.Scene {
       if(!this.view.reducedMotion&&stamp-actor.lastManual>12000&&actor.lastAi!==cycle){actor.lastAi=cycle;const points=[{x:224,y:281},{x:316,y:195},{x:464,y:306},{x:340,y:370},{x:102,y:180}];actor.path=findPath({x:actor.sprite.x,y:actor.sprite.y},points[(cycle+hash)%points.length],this.solids());if(actor.member.id===this.view.ownMemberId)this.emit({type:'activity',text:['창가의 햇살을 바라봐요.','집 안을 천천히 걷는 중이에요.','잠깐, 나만의 시간을 보내요.'][(cycle+hash)%3]});}
       const before={x:actor.sprite.x,y:actor.sprite.y};this.advance(actor.sprite,actor.path,delta,58);const dx=actor.sprite.x-before.x,dy=actor.sprite.y-before.y;
       if(Math.abs(dx)+Math.abs(dy)>.01){actor.direction=Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up';actor.frame=Math.floor(time/150)%4;}else{actor.frame=0;if(actor.after){actor.after();actor.after=undefined;}}
-      actor.sprite.setTexture(`world-${actor.member.id}-${this.artVersion}-${actor.member.appearance?.shirt}-${actor.direction}-${actor.frame}`).setDepth(actor.sprite.y);
+      actor.sprite.setTexture(`world-${actor.member.id}-${this.artVersion}-${JSON.stringify(actor.member.appearance)}-${actor.direction}-${actor.frame}`).setDepth(actor.sprite.y);
       actor.label.setPosition(Math.round(actor.sprite.x),Math.round(actor.sprite.y+3));actor.bubble.setPosition(Math.round(actor.sprite.x),Math.round(actor.sprite.y-52));
     }
     for(const pet of this.petActors){const cycle=Math.floor(stamp/17000);if(!this.view.reducedMotion&&pet.lastAi!==cycle){pet.lastAi=cycle;const points=[{x:270,y:270},{x:332,y:336},{x:460,y:370}];pet.path=findPath({x:pet.sprite.x,y:pet.sprite.y},points[(cycle+pet.index)%3]);}this.advance(pet.sprite,pet.path,delta,32);pet.sprite.setDepth(pet.sprite.y).setTexture(`world-pet-${this.view.pets[pet.index].id}-${pet.path.length?Math.floor(time/180)%4:0}`);pet.name.setPosition(pet.sprite.x,pet.sprite.y+3);}

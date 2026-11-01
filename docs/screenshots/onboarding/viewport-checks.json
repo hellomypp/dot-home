@@ -1,0 +1,278 @@
+[
+  {
+    "stage": "start",
+    "buttons": [],
+    "height": 812,
+    "scrollHeight": 812,
+    "scrollWidth": 375,
+    "width": 375
+  },
+  {
+    "stage": "start",
+    "buttons": [],
+    "height": 844,
+    "scrollHeight": 844,
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "stage": "start",
+    "buttons": [],
+    "height": 932,
+    "scrollHeight": 932,
+    "scrollWidth": 430,
+    "width": 430
+  },
+  {
+    "stage": "start",
+    "buttons": [],
+    "height": 956,
+    "scrollHeight": 956,
+    "scrollWidth": 440,
+    "width": 440
+  },
+  {
+    "stage": "start",
+    "buttons": [],
+    "height": 1024,
+    "scrollHeight": 1024,
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "stage": "start",
+    "buttons": [],
+    "height": 900,
+    "scrollHeight": 900,
+    "scrollWidth": 1280,
+    "width": 1280
+  },
+  {
+    "stage": "house",
+    "buttons": [
+      {
+        "height": 52,
+        "text": "이전",
+        "width": 76.5250015258789
+      },
+      {
+        "height": 52,
+        "text": "다음: 캐릭터 꾸미기 ",
+        "width": 225.0749969482422
+      }
+    ],
+    "height": 812,
+    "scrollHeight": 907,
+    "scrollWidth": 375,
+    "width": 375
+  },
+  {
+    "stage": "house",
+    "buttons": [
+      {
+        "height": 52,
+        "text": "이전",
+        "width": 84.36250305175781
+      },
+      {
+        "height": 52,
+        "text": "다음: 캐릭터 꾸미기 ",
+        "width": 200.4375
+      }
+    ],
+    "height": 844,
+    "scrollHeight": 907,
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "stage": "house",
+    "buttons": [
+      {
+        "height": 52,
+        "text": "이전",
+        "width": 84.36250305175781
+      },
+      {
+        "height": 52,
+        "text": "다음: 캐릭터 꾸미기 ",
+        "width": 240.4375
+      }
+    ],
+    "height": 932,
+    "scrollHeight": 932,
+    "scrollWidth": 430,
+    "width": 430
+  },
+  {
+    "stage": "house",
+    "buttons": [
+      {
+        "height": 52,
+        "text": "이전",
+        "width": 84.36250305175781
+      },
+      {
+        "height": 52,
+        "text": "다음: 캐릭터 꾸미기 ",
+        "width": 250.0375061035156
+      }
+    ],
+    "height": 956,
+    "scrollHeight": 956,
+    "scrollWidth": 440,
+    "width": 440
+  },
+  {
+    "stage": "house",
+    "buttons": [
+      {
+        "height": 52,
+        "text": "이전",
+        "width": 84.36250305175781
+      },
+      {
+        "height": 52,
+        "text": "다음: 캐릭터 꾸미기 ",
+        "width": 382.0375061035156
+      }
+    ],
+    "height": 1024,
+    "scrollHeight": 1024,
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "stage": "house",
+    "buttons": [
+      {
+        "height": 52,
+        "text": "이전",
+        "width": 84.36250305175781
+      },
+      {
+        "height": 52,
+        "text": "다음: 캐릭터 꾸미기 ",
+        "width": 423.6375122070313
+      }
+    ],
+    "height": 900,
+    "scrollHeight": 1017,
+    "scrollWidth": 1280,
+    "width": 1280
+  },
+  {
+    "stage": "character",
+    "buttons": [
+      {
+        "height": 52,
+        "text": "이전",
+        "width": 76.5250015258789
+      },
+      {
+        "height": 52,
+        "text": "우리 집 만들기",
+        "width": 229.0749969482422
+      }
+    ],
+    "height": 812,
+    "scrollHeight": 911,
+    "scrollWidth": 375,
+    "width": 375
+  },
+  {
+    "stage": "character",
+    "buttons": [
+      {
+        "height": 52,
+        "text": "이전",
+        "width": 84.36250305175781
+      },
+      {
+        "height": 52,
+        "text": "우리 집 만들기",
+        "width": 210.4375
+      }
+    ],
+    "height": 844,
+    "scrollHeight": 914,
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "stage": "character",
+    "buttons": [
+      {
+        "height": 52,
+        "text": "이전",
+        "width": 84.36250305175781
+      },
+      {
+        "height": 52,
+        "text": "우리 집 만들기",
+        "width": 250.4375
+      }
+    ],
+    "height": 932,
+    "scrollHeight": 945,
+    "scrollWidth": 430,
+    "width": 430
+  },
+  {
+    "stage": "character",
+    "buttons": [
+      {
+        "height": 52,
+        "text": "이전",
+        "width": 84.36250305175781
+      },
+      {
+        "height": 52,
+        "text": "우리 집 만들기",
+        "width": 260.0375061035156
+      }
+    ],
+    "height": 956,
+    "scrollHeight": 956,
+    "scrollWidth": 440,
+    "width": 440
+  },
+  {
+    "stage": "character",
+    "buttons": [
+      {
+        "height": 52,
+        "text": "이전",
+        "width": 84.36250305175781
+      },
+      {
+        "height": 52,
+        "text": "우리 집 만들기",
+        "width": 392.0375061035156
+      }
+    ],
+    "height": 1024,
+    "scrollHeight": 1055,
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "stage": "character",
+    "buttons": [
+      {
+        "height": 52,
+        "text": "이전",
+        "width": 84.36250305175781
+      },
+      {
+        "height": 52,
+        "text": "우리 집 만들기",
+        "width": 322.8374938964844
+      }
+    ],
+    "height": 900,
+    "scrollHeight": 900,
+    "scrollWidth": 1280,
+    "width": 1280
+  }
+]

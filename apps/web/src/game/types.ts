@@ -2,7 +2,7 @@ export type Place = 'home' | 'office' | 'school' | 'outside';
 export interface WorldMember {
   id: string;
   name: string;
-  appearance?: { hair?: string; shirt?: string; skin?: string };
+  appearance?: { hair?: string; shirt?: string; skin?: string; pants?: string; hairStyle?: number; accessory?: number };
   place: Place;
   status?: string;
   online?: boolean;

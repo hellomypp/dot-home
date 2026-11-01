@@ -95,3 +95,9 @@ HTTP smoke: 개발 로그인 A/B/C → 집 생성(계획 3명, 반려동물 0마
 ## 2026-11-02: MySQL 초대 동시성 수정 검증
 
 초대 수락 트랜잭션에 READ_COMMITTED를 적용해 가구 잠금을 기다린 후 수행하는 구성원 조회·인원 검사가 최신 커밋을 읽도록 수정했다. 로컬 서버 31개·bootJar 통과. 실제 GitHub CI 41353158782에서 기존 MySQL 실패 2건을 포함한 mysqlTest 및 서버·프런트 작업 전체가 success로 완료됐다. 테스트를 제외하거나 완화하지 않았다.
+
+## 2026-11-02: 모바일 온보딩 A→B→C
+
+프런트 24/24, 서버 32/32(WebSocket 포함), TypeScript/Vite 및 bootJar 통과. 새 외형과 여러 반려동물의 DB 저장·HTTP 생성→world 재조회·미인증 API 401을 검증했다. 기존 Google·가족 초대·동시성 테스트를 유지했다. 375·390·430·440·768·1280px의 A/B/C 캡처에서 가로 넘침 없음, 주요 CTA 높이 52px을 확인했다. [상세 검증·미검증 사항과 스크린샷](ONBOARDING.md).
+
+이번 UI의 실제 iPhone Safari, 실제 Google 계정으로 새 집 생성→게임→재로그인 E2E, Safari 소프트 키보드·주소창 검증은 아직 미수행이다. 내장 브라우저 캡처와 실기기를 혼동하지 않는다. MySQL 검사는 push 후 실제 GitHub Actions 결과와 구분해 기록한다.

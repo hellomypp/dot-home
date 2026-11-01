@@ -1,3 +1,40 @@
-export function Portrait({ color = '#6d8b74', small = false }: { color?: string; small?: boolean }) {
-  return <span className={`portrait ${small ? 'small' : ''}`} aria-hidden="true"><svg viewBox="0 0 24 28" shapeRendering="crispEdges"><path fill="#e4c8a0" d="M4 0h16v28H4z"/><path fill="#574331" d="M7 3h10v2h3v10h-3V8H7v7H4V6h3z"/><path fill="#f2ccaa" d="M7 8h10v10H7zM5 11h14v5H5z"/><path fill="#574331" d="M7 8h2v3H7zm8 0h2v3h-2z"/><path fill="#3f342d" d="M8 12h2v2H8zm6 0h2v2h-2z"/><path fill="#c17c6c" d="M11 16h2v1h-2z"/><path fill={color} d="M7 19h10v2h3v7H4v-7h3z"/><path fill="#eed9b8" d="M10 19h4v3h-4z"/></svg></span>;
+import { useEffect, useRef } from "react";
+import { makeAvatar } from "../game/art";
+import { gameAppearance } from "../lib/appearance";
+export function Portrait({
+  color = "#7c9170",
+  small = false,
+  appearance,
+}: {
+  color?: string;
+  small?: boolean;
+  appearance?: string;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const context = ref.current?.getContext("2d");
+    if (!context) return;
+    context.clearRect(0, 0, 32, 48);
+    context.drawImage(
+      makeAvatar(
+        {
+          id: "portrait",
+          name: "",
+          place: "home",
+          appearance: appearance
+            ? gameAppearance(appearance)
+            : { shirt: color },
+        },
+        "down",
+        0,
+      ),
+      0,
+      0,
+    );
+  }, [color, appearance]);
+  return (
+    <span className={`portrait ${small ? "small" : ""}`} aria-hidden="true">
+      <canvas ref={ref} width={32} height={48} />
+    </span>
+  );
 }

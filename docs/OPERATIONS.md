@@ -26,7 +26,7 @@ Flyway V1은 도메인 스키마, V2는 Spring Session 테이블, V3는 MySQL용
 
 Spring은 loopback 바인딩과 `forward-headers-strategy=none`으로 전달 헤더를 무조건 신뢰하지 않는다. 콜백은 APP_ORIGIN으로 고정하며 운영·HTTPS 테스트 모두 해당 값을 정확한 외부 origin으로 설정한다. Vite/Nginx는 원래 Host를 유지하고 /oauth2·/login/oauth2·/api·/ws를 전달한다. Nginx 예시는 `infra/nginx.conf.example`에 있다. HTTPS의 Secure·HttpOnly·SameSite=Lax 쿠키, CSRF, WebSocket Origin 검사를 유지한다.
 
-실제 Google Cloud 정보가 없어 아직 Google 계정으로 로그인하거나 실제 콜백을 검증하지 않았다. Mock 테스트와 실제 OAuth 성공은 별도로 기록한다. 초대 목적지 보존은 서버 세션·OAuth state와 함께 구현했으며, Google 로그인 뒤 원래 초대 화면에서 직접 입주를 수락해야 한다.
+Google 인증 정보는 로컬 비공개 환경 파일에 설정되어 있고 이전 iPhone 사진에서 로그인 후 진입을 확인했다. 전체 가족 흐름의 실계정 E2E는 아직 미완료다. Mock 테스트와 실제 OAuth 성공은 별도로 기록한다. 초대 목적지 보존은 서버 세션·OAuth state와 함께 구현했으며, Google 로그인 뒤 원래 초대 화면에서 직접 입주를 수락해야 한다.
 
 ## 백업·복원과 오류 확인
 
@@ -35,3 +35,7 @@ MySQL 논리 백업은 `mysqldump --single-transaction --no-tablespaces`를 사�
 복원은 빈 검증 DB에 먼저 수행한다. Flyway history, 계정·가구·초대 관계, 재고, 사건 건수와 앱 로그인·조회까지 확인한 뒤 운영 복원을 결정한다. 현재 이 복원 연습은 미수행이다.
 
 기본 애플리케이션 로그는 표준 출력, 테스트 결과는 `apps/server/build/reports/tests/test/`에 남는다. 일반 입력 오류는 400, 인증은 401, 권한은 403, 버전/정책 충돌은 409, 만료 초대는 410이다. 로그에 OAuth secret·세션 쿠키·초대 원문 토큰을 남기지 않는다. 접근 로그에서 `/invite/:token` 및 `/api/invitations/:token`은 마스킹하거나 수집에서 제외한다.
+
+## 모바일 온보딩 (2026-11-02)
+
+[온보딩 구현·검증·캡처](ONBOARDING.md)에 A→B→C와 실제 Safari 확인 절차를 기록했다. 개발 서버의 /studio/onboarding은 저장되지 않는 시안이며 production 경로가 아니다. 실제 신규 사용자 흐름은 Google 로그인 후 /onboarding이다. 별도 DB 마이그레이션이나 신규 비밀값은 필요 없다. 임시 입력은 계정별 탭 세션에만 보관하고 성공/로그아웃 시 지운다.

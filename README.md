@@ -6,7 +6,7 @@
 
 공식 로그인은 **Google 계정(OAuth 2.0 Authorization Code + OpenID Connect)** 하나입니다. 신규 사용자는 집 생성 또는 받은 초대 링크의 명시적 수락으로 시작합니다. 로그인만으로 다른 가구에 가입하지 않습니다. 기존 Google 계정은 같은 내부 계정·캐릭터로 복구합니다. 이메일이 같아도 개발 계정과 자동 병합하지 않습니다.
 
-Google Cloud에서 Web application Client를 생성하고 승인된 callback을 등록한 뒤, 서버 전용 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`을 설정하세요. [Google 설정 및 실제 검증 상태](docs/GOOGLE_LOGIN.md)에 단계별 절차가 있습니다. 실제 Google 인증은 아직 미검증입니다.
+Google Cloud에서 Web application Client를 생성하고 승인된 callback을 등록한 뒤, 서버 전용 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`을 설정하세요. [Google 설정 및 실제 검증 상태](docs/GOOGLE_LOGIN.md)에 단계별 절차가 있습니다. 기존 iPhone 사진에서 Google 로그인 후 진입은 확인했으며, 전체 가족 흐름의 실계정 E2E는 별도 검증이 필요합니다.
 
 ```sh
 cd ~/Developer/dot-home
@@ -23,6 +23,10 @@ bash scripts/dev.sh
 - Node 24.15+ / pnpm 11.25.0 / Java 21. 이 Mac에서는 번들 런타임 fallback도 제공합니다.
 - 개발용 임의 계정 키 로그인이 필요한 자동/로컬 테스트만 `bash scripts/server.sh dev`로 실행합니다. 이 로그인은 loopback 호스트에서만 허용되고 운영/원격 Google 로그인과 함께 사용할 수 없습니다.
 - iPhone 미리보기는 `python3 scripts/remote-preview.py start|stop|status`를 사용합니다. [원격 실행](docs/IPHONE_PREVIEW.md) 참조. Google 설정 전에는 시안과 설정 대기 화면만 제공하며 원격 개발 계정 로그인을 허용하지 않습니다.
+
+## 모바일 온보딩
+
+스토리 시작 → 집 정보 → 캐릭터 꾸미기 → 입주 완료를 구현했습니다. 헤어·상의·하의·액세서리, 반려동물별 등록, 세션 임시 입력 복원과 작은 계정 메뉴를 제공합니다. [구현 결과·테스트·화면 캡처·iPhone 확인 방법](docs/ONBOARDING.md). 개발 서버의 `/studio/onboarding`에서 저장 없이 시안을 확인할 수 있습니다.
 
 ## 구현한 기능
 

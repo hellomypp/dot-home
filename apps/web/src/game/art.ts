@@ -170,7 +170,7 @@ export function makeAvatar(member: WorldMember, direction: Direction, frame: num
   const step = frame === 1 ? -2 : frame === 3 ? 2 : 0, bob = frame % 2;
   const side = direction === 'left' || direction === 'right';
   oval(c, 5, 42, 22, 5, '#74694f44');
-  r(c, 10, 35 + bob, 5, 7 - step / 2, '#626b66'); r(c, 18, 35 + bob, 5, 7 + step / 2, '#626b66');
+  r(c, 10, 35 + bob, 5, 7 - step / 2, member.appearance?.pants || '#626b66'); r(c, 18, 35 + bob, 5, 7 + step / 2, member.appearance?.pants || '#626b66');
   r(c, 8, 41 - step / 2, 8, 4, '#514d45'); r(c, 18, 41 + step / 2, 8, 4, '#514d45'); r(c, 10, 41 - step / 2, 4, 1, '#b0a68a');
   r(c, 9, 23 + bob, 15, 14, '#816955'); r(c, 10, 23 + bob, 13, 12, shirt); r(c, 11, 24 + bob, 2, 10, '#ffffff20');
   r(c, 6, 25 + bob - step / 2, 4, 9, shirt); r(c, 23, 25 + bob + step / 2, 4, 9, shirt);
@@ -187,6 +187,13 @@ export function makeAvatar(member: WorldMember, direction: Direction, frame: num
       r(c, 12, 16 + bob, 2, 2, '#4d453d'); r(c, 20, 16 + bob, 2, 2, '#4d453d'); r(c, 10, 19 + bob, 3, 1, '#cc8e78'); r(c, 22, 19 + bob, 2, 1, '#cc8e78'); r(c, 16, 21 + bob, 3, 1, '#ad7563');
     }
   } else { r(c, 8, 8 + bob, 17, 11, '#ffffff0c'); r(c, 12, 20 + bob, 9, 3, hair); }
+  const style=member.appearance?.hairStyle||0, accessory=member.appearance?.accessory||0;
+  if(style===1){r(c,5,10+bob,3,16,hair);r(c,25,10+bob,3,16,hair);}
+  if(style===2){for(let x=6;x<26;x+=5){r(c,x,3+bob,4,5,hair);r(c,x-1,6+bob,4,3,hair);}}
+  if(style===3){r(c,4,10+bob,4,21,hair);r(c,25,10+bob,4,21,hair);}
+  if(accessory===1 && direction!=='up'){outline(c,10,14+bob,6,6,'#e7d7b550','#514d45');outline(c,18,14+bob,6,6,'#e7d7b550','#514d45');r(c,16,16+bob,2,1,'#514d45');}
+  if(accessory===2){r(c,23,9+bob,5,5,'#d48c7c');r(c,25,7+bob,2,9,'#e5b2a1');r(c,25,10+bob,2,2,'#f2dc91');}
+  if(accessory===3){r(c,11,23+bob,13,3,'#526b51');r(c,20,26+bob,4,7,'#7e985f');}
   r(c, 10, 5 + bob, 10, 2, '#ffffff16');
   return el;
 }
@@ -228,4 +235,30 @@ export function makeDog(frame: number, color = '#b68c66'): HTMLCanvasElement {
   r(c,7,10+bob,2,2,'#3f3933');r(c,15,10+bob,2,2,'#3f3933');
   r(c,8,20+bob,10,2,'#8e9c77');
   return el;
+}
+
+/** Original onboarding cottage, drawn with the same integer pixel primitives as the game. */
+export function makeCottage():HTMLCanvasElement {
+ const [el,c]=canvas(240,176);
+ oval(c,43,148,158,16,'#71875038');
+ outline(c,65,70,112,80,'#f0dfad','#8a7250');r(c,70,76,102,68,'#f7e8bf');r(c,165,75,8,69,'#d6be8b');
+ r(c,150,30,13,31,'#a57457');r(c,147,27,19,6,'#785744');
+ for(let row=0;row<12;row++){const w=18+row*11,x=120-w/2,y=26+row*4;r(c,x,y,w,5,'#a2634d');r(c,x+2,y,w-4,2,'#d68a68');for(let i=x+7;i<x+w-3;i+=13)r(c,i,y,1,4,'#bb7258');}
+ r(c,54,72,132,5,'#805e46');r(c,58,77,123,3,'#c6a16f');
+ outline(c,103,102,29,48,'#a77a50','#73563d');r(c,108,108,19,35,'#bb9061');r(c,124,125,3,3,'#eed6a0');r(c,99,148,38,5,'#ae9673');r(c,96,153,44,4,'#c7b394');
+ for(const x of [77,142]){outline(c,x,94,22,26,'#8eabac','#897953');r(c,x+3,97,16,20,'#bbd5c8');r(c,x+10,96,2,23,'#f2dfac');r(c,x+2,106,18,2,'#f2dfac');r(c,x-2,120,26,4,'#a58758');}
+ outline(c,112,59,18,18,'#e4ce8f','#95684b');r(c,119,62,3,12,'#b19e69');r(c,115,67,12,3,'#b19e69');
+ for(let x=58;x<190;x+=13){r(c,x,146,13,8,'#8a9e69');r(c,x+3,142,8,7,'#a5b678');}
+ for(const x of [61,83,151,179]){r(c,x,148,2,4,'#dca28a');r(c,x-1,149,4,2,'#eadbb1');}
+ return el;
+}
+export function makeGarden():HTMLCanvasElement {
+ const [el,c]=canvas(360,310);r(c,0,0,360,310,'#c2dfeb');
+ for(const [x,y] of [[18,49],[266,31],[179,64]]){r(c,x,y,36,9,'#fff9e9');r(c,x+8,y-7,18,8,'#fff9e9');r(c,x-4,y+4,46,5,'#eef5ed');}
+ r(c,0,204,360,106,'#b4c58a');r(c,0,224,360,86,'#c1cc91');
+ for(let x=0;x<360;x+=22){r(c,x,193,7,42,'#a28c60');r(c,x+1,191,5,38,'#f1deb0');}r(c,0,205,360,5,'#e4cd9e');r(c,0,222,360,4,'#e4cd9e');
+ for(const [x,y] of [[-17,77],[287,65]]){r(c,x+28,y+55,12,109,'#907051');r(c,x+39,y+64,6,48,'#aa875f');oval(c,x,y,81,91,'#8fa26e');oval(c,x-8,y+20,84,70,'#98b07a');oval(c,x+8,y+8,56,66,'#b3c38a');for(let i=0;i<9;i++)r(c,x+(i*19)%69,y+(i*23)%71,5,5,'#c8cf8b');}
+ c.drawImage(makeCottage(),60,112);
+ for(let i=0;i<70;i++){const x=(i*73+13)%360,y=239+(i*37)%71;r(c,x,y,3,2,i%4?'#a8ba7c':'#e9d498');if(i%7===0){r(c,x,y-3,3,5,'#f2c1a0');r(c,x-1,y-1,5,2,'#fff0bb');}}
+ return el;
 }
