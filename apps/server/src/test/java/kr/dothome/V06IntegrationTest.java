@@ -12,7 +12,7 @@ import java.util.concurrent.*;
 class V06IntegrationTest {
  @Autowired HomeService homes;@Autowired IdentityService identity;@Autowired ObjectNoteService notes;@Autowired CalendarService calendar;@Autowired HousewarmingService visits;@Autowired HousewarmingInvitations links;@Autowired Members members;
  String user(){return identity.resolve("test",UUID.randomUUID().toString(),"테스트 가족").id;}
- String house(String u){return homes.create(u,new Api.CreateHouse("공유 집",3,"가족","sage",List.of())).household().id();}
+ String house(String u){return homes.create(u,new Api.CreateHouse("공유 집","가족","sage")).household().id();}
  String join(String h,String owner){String u=user();homes.accept(homes.invite(h,owner).token(),u,new Api.Accept("다른 가족","blue"));return u;}
  String token(HousewarmingLink l){return l.url().substring("/visit/".length());}
  @Test void notesAreSharedArchivedAndScoped(){String a=user(),h=house(a),b=join(h,a),outsider=user();var n=notes.create(h,a,"fridge",new NoteInput("<script>alert(1)</script>"));assertEquals(homes.requireMember(h,a).id,n.authorMemberId());assertEquals(1,notes.list(h,b,"fridge").size());assertThrows(ApiException.class,()->notes.list(h,outsider,"fridge"));assertThrows(ApiException.class,()->notes.create(h,a,"unknown",new NoteInput("no")));assertThrows(ApiException.class,()->notes.delete(h,b,n.id(),n.version()));var taken=notes.take(h,b,n.id(),n.version());assertEquals("TAKEN",taken.state());assertEquals(homes.requireMember(h,b).id,taken.takenByMemberId());assertTrue(notes.list(h,a,"fridge").isEmpty());assertEquals(n.body(),notes.archive(h,a).getFirst().body());assertThrows(ApiException.class,()->notes.take(h,a,n.id(),n.version()));notes.delete(h,a,n.id(),taken.version());assertTrue(notes.archive(h,b).isEmpty());}

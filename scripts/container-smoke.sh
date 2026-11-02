@@ -60,7 +60,7 @@ with zipfile.ZipFile(p/'app.jar') as z:
  assert b'SPA delivery test fixture' not in z.read('BOOT-INF/classes/static/index.html')
 PY
 [[ $(docker inspect "$app" --format '{{.Config.User}}') == 10001:10001 ]]
-[[ $(sql 'SELECT COUNT(*) FROM dothome.flyway_schema_history WHERE success=1') -ge 6 ]]
+[[ $(sql 'SELECT COUNT(*) FROM dothome.flyway_schema_history WHERE success=1') -ge 7 ]]
 sql 'CREATE TABLE dothome.beta_persistence_probe(id INT PRIMARY KEY); INSERT INTO dothome.beta_persistence_probe VALUES (1)' >/dev/null
 echo "Verify application restart and persistent database"
 docker restart "$app" >/dev/null; wait_app

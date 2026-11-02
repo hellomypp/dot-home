@@ -1,0 +1,117 @@
+[
+  {
+    "step": "house",
+    "cta": 52,
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "step": "house",
+    "cta": 52,
+    "scroll": 390,
+    "width": 390
+  },
+  {
+    "step": "house",
+    "cta": 52,
+    "scroll": 430,
+    "width": 430
+  },
+  {
+    "step": "house",
+    "cta": 52,
+    "scroll": 768,
+    "width": 768
+  },
+  {
+    "step": "house",
+    "cta": 52,
+    "scroll": 1280,
+    "width": 1280
+  },
+  {
+    "step": "character",
+    "cta": 52,
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "step": "character",
+    "cta": 52,
+    "scroll": 390,
+    "width": 390
+  },
+  {
+    "step": "character",
+    "cta": 52,
+    "scroll": 430,
+    "width": 430
+  },
+  {
+    "step": "character",
+    "cta": 52,
+    "scroll": 768,
+    "width": 768
+  },
+  {
+    "step": "character",
+    "cta": 52,
+    "scroll": 1280,
+    "width": 1280
+  },
+  {
+    "step": "pets",
+    "cta": 44.79999923706055,
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "step": "pets",
+    "cta": 44.79999923706055,
+    "scroll": 390,
+    "width": 390
+  },
+  {
+    "step": "pets",
+    "cta": 44.79999923706055,
+    "scroll": 430,
+    "width": 430
+  },
+  {
+    "step": "pets",
+    "cta": 44.79999923706055,
+    "scroll": 768,
+    "width": 768
+  },
+  {
+    "step": "pets",
+    "cta": 44.79999923706055,
+    "scroll": 1280,
+    "width": 1280
+  },
+  {
+    "step": "game",
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "step": "game",
+    "scroll": 390,
+    "width": 390
+  },
+  {
+    "step": "game",
+    "scroll": 430,
+    "width": 430
+  },
+  {
+    "step": "game",
+    "scroll": 768,
+    "width": 768
+  },
+  {
+    "step": "game",
+    "scroll": 1280,
+    "width": 1280
+  }
+]

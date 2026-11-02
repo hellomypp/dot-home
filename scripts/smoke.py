@@ -34,7 +34,7 @@ if '--verify' in sys.argv:
 else:
     a,b,c=Client(),Client(),Client();key='smoke-'+uuid.uuid4().hex
     a.login(key,'검증 A');b.login(key+'b','검증 B');c.login(key+'c','검증 C')
-    world=a.call('/api/households','POST',{'name':'격리된 QA 집','plannedPeople':3,'memberName':'검증 A','appearance':'sage','pets':[]});hid=world['household']['id'];root='/api/households/'+hid
+    world=a.call('/api/households','POST',{'name':'격리된 QA 집','memberName':'검증 A','appearance':'sage'});hid=world['household']['id'];root='/api/households/'+hid
     assert len(world['members'])==1 and world['pets']==[]
     invite=a.call(root+'/invitations','POST');b.call('/api/invitations/'+invite['token']);assert len(a.call(root+'/world')['members'])==1
     joined=b.call('/api/invitations/'+invite['token']+'/accept','POST',{'memberName':'검증 B','appearance':'blue'});assert len(joined['members'])==2

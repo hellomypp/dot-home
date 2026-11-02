@@ -21,7 +21,7 @@ class Client:
   return value
 suffix=uuid.uuid4().hex[:12]
 a,b,c=Client('v06qa-owner'),Client('v06qa-family-'+suffix),Client('v06qa-visitor-'+suffix)
-h=a.call('/api/households','POST',{'name':'v0.6 검증의 집','plannedPeople':2,'memberName':'하늘','appearance':'sage','pets':[]})['household']['id'];root='/api/households/'+h
+h=a.call('/api/households','POST',{'name':'v0.6 검증의 집','memberName':'하늘','appearance':'sage'})['household']['id'];root='/api/households/'+h
 invite=a.call(root+'/invitations','POST');b.call('/api/invitations/'+invite['url'].split('/')[-1]+'/accept','POST',{'memberName':'보리','appearance':'blue'})
 n=a.call(root+'/objects/fridge/notes','POST',{'body':'우유 사왔어요. 함께 마셔요!'});assert len(b.call(root+'/objects/fridge/notes'))==1
 b.call(root+'/notes/'+n['id']+'/take','POST',{'version':n['version']});assert a.call(root+'/objects/fridge/notes')==[];assert len(a.call(root+'/notes/archive'))==1

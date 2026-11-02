@@ -62,7 +62,7 @@ jdbc:mysql://${{dot-home-mysql.RAILWAY_PRIVATE_DOMAIN}}:3306/${{dot-home-mysql.M
 
 DB_URL에 비밀번호를 넣지 않는다. 위 `allowPublicKeyRetrieval`은 private network의 MySQL 8 인증용이다. DB public proxy를 만들지 않는다. Secret을 `VITE_` 변수·Docker ARG·로그에 넣지 않는다. 계정 변수는 가능한 경우 Railway의 sealed variable 기능을 사용한다.
 
-6. Deploy에서 기동 및 `/healthz` 통과를 확인한다. 필수 변수 누락, HTTP origin, dev/local/test/kakao 프로필, 비 MySQL DB, Secure 쿠키 해제, JPA 재생성, access log 또는 DEBUG 설정은 부팅 검증에서 거절한다. Spring Session JDBC와 Flyway V1~V6는 유지하며 새 스키마 변경은 없다.
+6. Deploy에서 기동 및 `/healthz` 통과를 확인한다. 필수 변수 누락, HTTP origin, dev/local/test/kakao 프로필, 비 MySQL DB, Secure 쿠키 해제, JPA 재생성, access log 또는 DEBUG 설정은 부팅 검증에서 거절한다. Spring Session JDBC와 Flyway V1~V6는 유지하고 V7을 추가했다. V7은 legacy planned_people의 기본값만 설정하며 기존 행을 변경하지 않는다.
 
 ## Google Cloud Console
 
@@ -94,7 +94,7 @@ GitHub Actions `Verify`는 web 테스트/빌드 → server의 test+mysqlTest+boo
 2. Railway 앱 Settings → Source/Deploy의 **Wait for CI**를 켠다. 필요 시 Railway GitHub App 권한 갱신을 직접 승인한다. main 연결 및 자동 배포 활성화를 확인한다. [Wait for CI](https://docs.railway.com/deployments/github-autodeploys).
 3. PR의 세 검사를 통과한 변경만 main에 병합한다. main에서 재실행한 Actions 성공 후 Railway가 배포하고 healthcheck 성공 시 동일 URL의 트래픽을 전환하는지 확인한다.
 4. 배포 실패는 Deployments에서 원인을 확인한다. 이전 정상 배포가 계속 제공되는지 확인하고 필요하면 해당 배포의 메뉴 → Rollback을 사용한다. DB/볼륨을 삭제하지 않는다. 최초 배포 실패에는 이전 정상 배포가 없다.
-5. Flyway 적용은 앱 rollback과 별개다. V1~V6를 변경하지 않으며 향후 schema 변경은 이전 앱과 호환되는 추가 방식으로 먼저 배포한다. 파괴적인 migration을 앱 rollback으로 되돌릴 수 없다.
+5. Flyway 적용은 앱 rollback과 별개다. V1~V6를 변경하지 않고 V7을 추가했으며 향후 schema 변경은 이전 앱과 호환되는 추가 방식으로 먼저 배포한다. 파괴적인 migration을 앱 rollback으로 되돌릴 수 없다.
 
 ## 백업과 빈 DB 복원 시험
 
@@ -136,3 +136,7 @@ SSH 명령이 실패하면 빈/불완전 dump를 정상 백업으로 취급하�
 2026-11-02 공식 요금 기준 Hobby는 월 최소 $5이며 포함 크레딧을 넘는 사용량은 추가된다. RAM은 약 $10/GB·월이므로 앱+DB 평균 합계 1.5 GB라면 RAM만 약 $15/월에 CPU·디스크·트래픽·백업을 더한다. 이는 예시 계산이며 **월 $5 고정 요금이나 총액 보장이 아니다**. Workspace Usage에서 첫 주 사용량으로 월 예상치를 확인하고 예산 알림을 설정한다. [공식 요금](https://docs.railway.com/pricing), [Trial 한도](https://docs.railway.com/pricing/free-trial).
 
 앱 중지는 서비스의 현재 배포 Stop/Remove Deployment 메뉴를 확인해 실행한다. DB/Volume 삭제는 데이터 삭제이므로 중지 수단으로 사용하지 않는다. 실행 compute를 멈춰도 볼륨·backup 보관 비용이 남을 수 있다. 재시작은 동일 변수·동일 DB 볼륨으로 Redeploy한다. 완전 종료 시 먼저 검증한 백업과 보관 정책을 합의한다.
+
+## V7 배포·rollback 주의
+
+DB를 백업한 뒤 V7을 적용한다. planned_people은 새 JPA/DTO/UI/정책에서 제거했지만 이전 바이너리의 스키마 호환을 위해 컬럼과 기존 값은 유지했다. 물리 삭제는 이전 버전 지원 종료 후 별도 migration으로 한다. 이전 앱으로 rollback하면 예전 인원 정책이 돌아오므로 새 초대 쓰기를 중지하고 호환성을 확인한다. 구형 브라우저의 POST body/계획 PATCH는 더 이상 지원하지 않으므로 새로고침을 안내한다. 실 배포 DB는 아직 없고 미리보기 파일 DB와 별개다.

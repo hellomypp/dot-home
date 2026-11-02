@@ -8,8 +8,6 @@ import {
   ChevronRight,
   Home,
   Mail,
-  Minus,
-  Plus,
   Shirt,
   Scissors,
   Glasses,
@@ -55,47 +53,6 @@ export function OnboardingPreview() {
       }}
       preview
     />
-  );
-}
-function Stepper({
-  label,
-  hint,
-  value,
-  min,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  value: number;
-  min: number;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <fieldset className="number-field">
-      <legend>{label}</legend>
-      <p>{hint}</p>
-      <div className="number-stepper">
-        <button
-          type="button"
-          aria-label={`${label} 줄이기`}
-          disabled={value <= min}
-          onClick={() => onChange(value - 1)}
-        >
-          <Minus size={18} />
-        </button>
-        <output aria-live="polite" aria-label={label}>
-          {value}
-        </output>
-        <button
-          type="button"
-          aria-label={`${label} 늘리기`}
-          disabled={value === Number.MAX_SAFE_INTEGER}
-          onClick={() => onChange(value + 1)}
-        >
-          <Plus size={18} />
-        </button>
-      </div>
-    </fieldset>
   );
 }
 function Progress({ step }: { step: number }) {
@@ -182,19 +139,14 @@ export function OnboardingExperience({
     try {
       if (
         !draft.name.trim() ||
-        !draft.memberName.trim() ||
-        draft.pets.slice(0, draft.petCount).some((p) => !p.name.trim())
+        !draft.memberName.trim()
       )
-        throw new Error("집과 캐릭터, 반려동물 이름을 입력해 주세요.");
+        throw new Error("집과 캐릭터 이름을 입력해 주세요.");
       const body = {
         name: draft.name.trim(),
-        plannedPeople: draft.people,
         memberName: draft.memberName.trim(),
         appearance: draft.appearance,
-        pets: Array.from({ length: draft.petCount }, (_, i) => ({
-          ...draft.pets[i],
-          appearance: "cream",
-        })),
+
       };
       const data = preview
         ? ({ household: { id: "studio", name: body.name } } as Snapshot)
@@ -216,15 +168,6 @@ export function OnboardingExperience({
     }
   }
   const outfit = decodeOutfit(draft.appearance);
-  function petCount(n: number) {
-    change({
-      petCount: n,
-      pets: Array.from(
-        { length: Math.max(n, draft.pets.length) },
-        (_, i) => draft.pets[i] || { name: "", kind: "cat" },
-      ),
-    });
-  }
   const isStory = draft.step === 0 && !complete;
   return (
     <div className={`onboarding-shell ${isStory ? "story-shell" : ""}`}>
@@ -381,25 +324,6 @@ export function OnboardingExperience({
                   autoComplete="off"
                 />
               </label>
-              <div className="onboarding-columns">
-                <Stepper
-                  label="함께할 사람 수"
-                  hint="나를 포함해요"
-                  value={draft.people}
-                  min={1}
-                  onChange={(n) => change({ people: n })}
-                />
-                <Stepper
-                  label="반려동물 수"
-                  hint="0마리도 좋아요"
-                  value={draft.petCount}
-                  min={0}
-                  onChange={petCount}
-                />
-              </div>
-              <p className="field-note">
-                함께할 사람은 초대를 수락한 뒤에 나타나요.
-              </p>
               <div className="onboarding-actions">
                 <button
                   type="button"
@@ -528,55 +452,6 @@ export function OnboardingExperience({
                   autoComplete="nickname"
                 />
               </label>
-              {draft.petCount > 0 && (
-                <section className="pet-registration">
-                  <h2>함께 입주할 반려동물</h2>
-                  <p>각자의 이름과 종류를 알려주세요.</p>
-                  {Array.from({ length: draft.petCount }, (_, i) => (
-                    <fieldset key={i}>
-                      <legend>반려동물 {i + 1}</legend>
-                      <div className="onboarding-columns">
-                        <label>
-                          반려동물 {i + 1} 이름
-                          <input
-                            required
-                            maxLength={30}
-                            value={draft.pets[i]?.name || ""}
-                            onChange={(e) =>
-                              change({
-                                pets: draft.pets.map((p, j) =>
-                                  j === i ? { ...p, name: e.target.value } : p,
-                                ),
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          반려동물 {i + 1} 종류
-                          <select
-                            value={draft.pets[i]?.kind || "cat"}
-                            onChange={(e) =>
-                              change({
-                                pets: draft.pets.map((p, j) =>
-                                  j === i
-                                    ? {
-                                        ...p,
-                                        kind: e.target.value as "cat" | "dog",
-                                      }
-                                    : p,
-                                ),
-                              })
-                            }
-                          >
-                            <option value="cat">고양이</option>
-                            <option value="dog">강아지</option>
-                          </select>
-                        </label>
-                      </div>
-                    </fieldset>
-                  ))}
-                </section>
-              )}
               <div className="onboarding-actions">
                 <button
                   type="button"

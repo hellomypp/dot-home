@@ -341,50 +341,13 @@
   font-size: 16px;
   line-height: 1.5;
 }
-.onboarding-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-}
-.number-field {
-  border: 0;
-  padding: 0;
-  margin: 0;
-  min-width: 0;
-}
-.number-field legend {
-  font-size: 14px;
-  font-weight: 600;
-}
-.number-field p {
-  font-size: 12px;
-  color: #69745f;
-  margin: 7px 0 10px;
-}
-.number-stepper {
-  display: flex;
-  align-items: center;
-  border: 1px solid #d8d9c8;
-  background: #fffef8;
-  border-radius: 10px;
-  min-height: 50px;
-}
-.number-stepper button {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  min-height: 48px;
-  color: #526d44;
-  flex: none;
-}
-.number-stepper output {
-  flex: 1;
-  min-width: 0;
-  text-align: center;
-  font-weight: 600;
-  font-size: 16px;
-  overflow-wrap: anywhere;
-}
+
+
+
+
+
+
+
 .field-note {
   font-size: 12px;
   line-height: 1.7;
@@ -517,33 +480,12 @@
   height: 36px;
   width: 24px;
 }
-.pet-registration {
-  border-top: 1px solid #e4e3d3;
-  padding-top: 22px;
-}
-.pet-registration h2 {
-  font-size: 17px;
-}
-.pet-registration > p {
-  font-size: 13px;
-  color: #6d775f;
-  margin: 8px 0 20px;
-}
-.pet-registration fieldset {
-  border: 1px solid #e4dfcd;
-  border-radius: 12px;
-  padding: 15px 12px 0;
-  margin-bottom: 15px;
-  min-width: 0;
-}
-.pet-registration legend {
-  font-size: 13px;
-  color: #667853;
-  padding: 0 5px;
-}
-.pet-registration label {
-  font-size: 12px;
-}
+
+
+
+
+
+
 .onboarding-error {
   background: #fff1e8;
   color: #9a4032;
@@ -697,9 +639,7 @@
   .story-choice strong {
     font-size: 15px;
   }
-  .onboarding-columns {
-    gap: 12px;
-  }
+
   .onboarding-actions {
     gap: 8px;
   }
