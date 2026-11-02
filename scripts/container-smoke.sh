@@ -21,7 +21,7 @@ docker run -d --name "$app" --network "$network" -p 127.0.0.1::8080 \
  -e DB_USER=root -e DB_PASSWORD="$password" \
  -e GOOGLE_CLIENT_ID=container-test.apps.googleusercontent.com -e GOOGLE_CLIENT_SECRET=container-test-only "$image" >/dev/null
 host_port=$(docker port "$app" 8080/tcp); base="http://$host_port"
-wait_app(){ for attempt in $(seq 1 90); do if curl -fsS --max-time 8 "$base/healthz" >"$artifact_dir/health" 2>/dev/null; then return; fi; sleep 2; done; docker logs --tail 60 "$app" >&2; return 1; }
+wait_app(){ host_port=$(docker port "$app" 8080/tcp); base="http://$host_port"; for attempt in $(seq 1 90); do if curl -fsS --max-time 8 "$base/healthz" >"$artifact_dir/health" 2>/dev/null; then return; fi; sleep 2; done; docker logs --tail 60 "$app" >&2; return 1; }
 wait_app
 for route in / /login /onboarding /home/example /invite/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa /visit/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; do
  curl -fsS -D "$artifact_dir/headers" "$base$route" >"$artifact_dir/index"
@@ -60,8 +60,10 @@ PY
 [[ $(docker inspect "$app" --format '{{.Config.User}}') == 10001:10001 ]]
 [[ $(sql 'SELECT COUNT(*) FROM dothome.flyway_schema_history WHERE success=1') -ge 6 ]]
 sql 'CREATE TABLE dothome.beta_persistence_probe(id INT PRIMARY KEY); INSERT INTO dothome.beta_persistence_probe VALUES (1)' >/dev/null
+echo "Verify application restart and persistent database"
 docker restart "$app" >/dev/null; wait_app
 [[ $(sql 'SELECT COUNT(*) FROM dothome.beta_persistence_probe') == 1 ]]
+echo "Verify database failure and recovery"
 docker stop "$database" >/dev/null
 [[ $(curl -sS --max-time 15 -o "$artifact_dir/down" -w '%{http_code}' "$base/healthz") == 503 ]]
 python3 - "$artifact_dir/down" <<'PY'
