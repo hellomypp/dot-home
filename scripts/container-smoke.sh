@@ -42,12 +42,14 @@ curl -fsS -D "$artifact_dir/asset-headers" "$base$asset" >/dev/null
 [[ $(curl -sS -o /dev/null -w '%{http_code}' -X POST "$base/api/auth/dev") == 403 ]]
 [[ $(curl -sS -o /dev/null -w '%{http_code}' "$base/studio") != 200 ]]
 curl -fsS "$base/api/auth/config" >"$artifact_dir/auth"
+curl -fsS -D "$artifact_dir/csrf-headers" "$base/api/auth/csrf" >"$artifact_dir/csrf"
 curl -sS -D "$artifact_dir/oauth-headers" -o /dev/null -H 'Host: untrusted.example' -H 'X-Forwarded-Host: evil.example' -H 'X-Forwarded-Proto: http' "$base/oauth2/authorization/google"
 docker cp "$app:/app/app.jar" "$artifact_dir/app.jar" >/dev/null
 python3 - "$artifact_dir" <<'PY'
 from pathlib import Path
 import sys,json,zipfile,urllib.parse
 p=Path(sys.argv[1]);assert 'immutable' in (p/'asset-headers').read_text().lower()
+headers=(p/'csrf-headers').read_text().lower();assert all(v in headers for v in ['secure','httponly','samesite=lax','referrer-policy: no-referrer','strict-transport-security:'])
 a=json.loads((p/'auth').read_text());assert a=={'googleEnabled':True,'devEnabled':False}
 lines=(p/'oauth-headers').read_text().splitlines();location=next(l.split(':',1)[1].strip() for l in lines if l.lower().startswith('location:'))
 query=urllib.parse.parse_qs(urllib.parse.urlsplit(location).query);assert query['redirect_uri']==['https://beta.example.org/login/oauth2/code/google']

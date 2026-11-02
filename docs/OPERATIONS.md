@@ -1,6 +1,6 @@
 # 로컬 실행과 운영 준비
 
-이 문서는 실행 방법과 준비 사항이다. 외부 서버 배포·HTTPS·MySQL 복원은 아직 검증하지 않았다.
+로컬 실행과 베타 운영 지침이다. [Railway 배포 상세 절차](DEPLOYMENT.md)에 Dashboard 메뉴·환경변수·Google Cloud·CI·백업을 정리했다. Docker/MySQL 실행은 CI에서 검증했으며 실제 Railway 공개 배포·Google E2E·복원은 아직 미검증이다.
 
 ## 로컬 저장
 
@@ -16,15 +16,15 @@ DB 파일은 서버가 사용하는 동안 복사하지 않는다. 로컬 백업
 4. 로컬 MySQL 검증은 `bash scripts/server.sh mysqlTest`로 별도 Testcontainers DB를 사용한다.
 5. 실제 앱에서 MySQL을 사용할 때는 기본 프로필 또는 `google` 프로필을 선택한다. 개발 인증으로 로컬 MySQL만 시험하려면 위 DB 환경변수를 지정한 뒤 `dev`로 실행한다.
 
-Flyway V1은 도메인 스키마, V2는 Spring Session 테이블, V3는 MySQL용 명시적 외래키를 추가한다. JPA는 `ddl-auto=validate`이며 스키마를 임의 재생성하지 않는다. 이미 적용한 마이그레이션은 수정하지 않고 새 버전을 추가한다.
+Flyway V1은 도메인 스키마, V2는 Spring Session 테이블, V3는 MySQL용 명시적 외래키, V4~V6는 외형·v0.6 도메인 및 제약을 추가한다. JPA는 `ddl-auto=validate`이며 스키마를 임의 재생성하지 않는다. 이미 적용한 마이그레이션은 수정하지 않고 새 버전을 추가한다.
 
 ## Google OIDC와 HTTPS
 
 [Google 로그인 실행 지침](GOOGLE_LOGIN.md)에서 Cloud 프로젝트·Auth Platform Branding/Audience·Web Client·정확한 Redirect URI·테스트 사용자·환경변수 설정을 진행한다. `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`은 서버에만 저장한다. 프런트에 Client Secret 또는 Google 토큰을 저장하지 않는다.
 
-로컬 파일 DB는 `APP_ORIGIN=http://127.0.0.1:5173 bash scripts/server.sh google`로 실행한다. 실제 운영 MySQL은 DB 환경변수와 google 프로필로 JAR를 실행한다. 로컬 테스트의 dev와 google/prod는 동시에 활성화할 수 없다. 원격 preview는 local 또는 local,google만 사용하며 dev endpoint를 제공하지 않는다.
+로컬 파일 DB는 `APP_ORIGIN=http://127.0.0.1:5173 bash scripts/server.sh google`로 실행한다. 실제 운영 MySQL은 필수 DB/Google/PORT/APP_ORIGIN 환경변수와 google,prod 프로필로 JAR를 실행한다. 로컬 테스트의 dev와 google/prod는 동시에 활성화할 수 없다. 원격 preview는 local 또는 local,google만 사용하며 dev endpoint를 제공하지 않는다.
 
-Spring은 loopback 바인딩과 `forward-headers-strategy=none`으로 전달 헤더를 무조건 신뢰하지 않는다. 콜백은 APP_ORIGIN으로 고정하며 운영·HTTPS 테스트 모두 해당 값을 정확한 외부 origin으로 설정한다. Vite/Nginx는 원래 Host를 유지하고 /oauth2·/login/oauth2·/api·/ws를 전달한다. Nginx 예시는 `infra/nginx.conf.example`에 있다. HTTPS의 Secure·HttpOnly·SameSite=Lax 쿠키, CSRF, WebSocket Origin 검사를 유지한다.
+로컬 Spring은 loopback 바인딩과 `forward-headers-strategy=none`으로 전달 헤더를 무조건 신뢰하지 않는다. 콜백은 APP_ORIGIN으로 고정하며 운영·HTTPS 테스트 모두 해당 값을 정확한 외부 origin으로 설정한다. Vite/Nginx는 원래 Host를 유지하고 /oauth2·/login/oauth2·/api·/ws를 전달한다. Nginx 예시는 `infra/nginx.conf.example`에 있다. HTTPS의 Secure·HttpOnly·SameSite=Lax 쿠키, CSRF, WebSocket Origin 검사를 유지한다.
 
 Google 인증 정보는 로컬 비공개 환경 파일에 설정되어 있고 이전 iPhone 사진에서 로그인 후 진입을 확인했다. 전체 가족 흐름의 실계정 E2E는 아직 미완료다. Mock 테스트와 실제 OAuth 성공은 별도로 기록한다. 초대 목적지 보존은 서버 세션·OAuth state와 함께 구현했으며, Google 로그인 뒤 원래 초대 화면에서 직접 입주를 수락해야 한다.
 
@@ -39,3 +39,9 @@ MySQL 논리 백업은 `mysqldump --single-transaction --no-tablespaces`를 사�
 ## 모바일 온보딩 (2026-11-02)
 
 [온보딩 구현·검증·캡처](ONBOARDING.md)에 A→B→C와 실제 Safari 확인 절차를 기록했다. 개발 서버의 /studio/onboarding은 저장되지 않는 시안이며 production 경로가 아니다. 실제 신규 사용자 흐름은 Google 로그인 후 /onboarding이다. 별도 DB 마이그레이션이나 신규 비밀값은 필요 없다. 임시 입력은 계정별 탭 세션에만 보관하고 성공/로그아웃 시 지운다.
+
+## 외부 베타 운영
+
+운영 Docker 이미지는 google,prod로 0.0.0.0:${PORT}에 바인딩하고 MySQL만 사용한다. 앱+정적 SPA의 단일 서비스·1 replica와 private MySQL 영구 볼륨을 사용한다. /healthz는 readiness와 DB 상태를 함께 검사한다. 변수 누락·dev/local 혼용·안전하지 않은 쿠키/스키마/로그 설정은 부팅 실패한다. DB 초기화나 로컬 H2 자동 이관은 하지 않는다.
+
+운영 access log는 비활성화했다. Railway edge HTTP 로그의 토큰 마스킹/수집 제외는 별도 확인이 필요하며 앱 설정으로 완료했다고 간주하지 않는다. [배포 지침](DEPLOYMENT.md)의 미완료 점검표를 따른다.
