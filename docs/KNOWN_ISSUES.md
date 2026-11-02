@@ -31,3 +31,9 @@ Google 전환 후 CI 41317925677에서도 같은 두 실패가 재현됐다. acc
 ## 배포 준비: 외부 설정 대기 (2026-11-02)
 
 Railway 웹 로그인·비용 승인·프로젝트/영구 DB·도메인·Google callback 등록이 필요하다. 공개 URL과 클라우드 실계정 E2E는 아직 없다. 앱 접근 로그는 끄지만 Railway edge HTTP 로그는 별도 수집이므로 토큰 포함 path/query의 마스킹·제외 정책을 계정에서 확인해야 한다. 공식 문서만으로는 수집 제외 설정을 확인하지 못했으며 검색 필터로 해결됐다고 처리하지 않는다. 자세한 절차와 미검증 항목은 [DEPLOYMENT](DEPLOYMENT.md).
+
+## DH-007: 미리보기 JAR 재빌드 후 초대 생성 무응답 — 수정 (2026-11-02)
+
+실행 중인 JVM이 `apps/server/build/libs`의 JAR를 직접 사용해, 다른 작업의 bootJar가 파일을 교체하면 이후 지연 로딩되는 클래스가 깨졌다. 실제 미리보기에서 `NoClassDefFoundError`와 초대 조회/health 요청 timeout을 재현했다. 새 격리 서버에서는 동일 초대 생성/조회/수락이 정상이라 DB 정책·초대 API 결함과 구분했다.
+
+미리보기 시작 시 JAR를 SHA-256별 읽기 전용 `.tools/remote-preview/releases` 파일로 복사하고 launchd는 그 파일을 실행하도록 수정했다. 기존 서버를 정상 중지한 뒤 파일 DB를 비공개 백업하고 재시작했다. 다른 구성의 JAR를 다시 빌드한 뒤 HTTPS health 200/유효하지 않은 초대 410이 계속 정상임을 확인했다. 실제 iPhone에서 버튼 재확인은 사용자 확인이 필요하다.
