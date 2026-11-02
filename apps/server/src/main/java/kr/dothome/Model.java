@@ -20,7 +20,6 @@ class Account extends Row {
 class Household extends Row {
     @Column(nullable = false, length = 80) String name;
     @Column(nullable = false, length = 36) String ownerId;
-    int plannedPeople;
     long revision;
     protected Household() {}
 }

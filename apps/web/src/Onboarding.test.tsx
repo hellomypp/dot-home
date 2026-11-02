@@ -120,50 +120,22 @@ it("가족 링크를 확인해 원래 초대 화면으로 이동하고 외부 �
   expect(screen.getByText("초대 수락 화면")).toBeTruthy();
   expect(post).not.toHaveBeenCalled();
 });
-it("스테퍼는 사람 최소 1, 반려동물 최소 0을 유지하며 단계 이동에 생성 요청을 보내지 않는다", async () => {
-  show();
-  await house();
-  fireEvent.click(
-    screen.getByRole("button", { name: "함께할 사람 수 줄이기" }),
-  );
-  expect(
-    (
-      screen.getByRole("button", {
-        name: "함께할 사람 수 줄이기",
-      }) as HTMLButtonElement
-    ).disabled,
-  ).toBe(true);
-  expect(
-    (
-      screen.getByRole("button", {
-        name: "반려동물 수 줄이기",
-      }) as HTMLButtonElement
-    ).disabled,
-  ).toBe(true);
-  character();
-  expect(post).not.toHaveBeenCalled();
+it("집 이름만 입력하고 캐릭터 단계로 이동하며 인원과 반려동물 입력이 없다", async () => {
+  show();await house();
+  expect(screen.queryByText("함께할 사람 수")).toBeNull();
+  expect(screen.queryByText("반려동물 수")).toBeNull();
+  character();expect(post).not.toHaveBeenCalled();
   expect(screen.queryByText("함께 입주할 반려동물")).toBeNull();
 });
-it("이전 단계와 새로고침에 집 이름, 캐릭터, 외형과 반려동물별 입력을 보존한다", async () => {
+it("이전 단계와 새로고침에 집 이름, 캐릭터, 외형을 보존한다", async () => {
   const app = show();
   await house();
   fireEvent.change(screen.getByLabelText("집 이름"), {
     target: { value: "느린 집" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "반려동물 수 늘리기" }));
-  fireEvent.click(screen.getByRole("button", { name: "반려동물 수 늘리기" }));
   character();
   fireEvent.change(screen.getByLabelText("내 캐릭터 이름"), {
     target: { value: "하늘" },
-  });
-  fireEvent.change(screen.getByLabelText("반려동물 1 이름"), {
-    target: { value: "모카" },
-  });
-  fireEvent.change(screen.getByLabelText("반려동물 2 이름"), {
-    target: { value: "보리" },
-  });
-  fireEvent.change(screen.getByLabelText("반려동물 2 종류"), {
-    target: { value: "dog" },
   });
   fireEvent.click(screen.getByRole("tab", { name: "헤어" }));
   fireEvent.click(screen.getByRole("button", { name: "검정 단발" }));
@@ -185,10 +157,6 @@ it("이전 단계와 새로고침에 집 이름, 캐릭터, 외형과 반려동�
     name: "느린 집",
     memberName: "하늘",
     appearance: "v1:1000",
-    pets: [
-      { name: "모카", kind: "cat" },
-      { name: "보리", kind: "dog" },
-    ],
   });
   expect(sessionStorage.getItem("dot-home:onboarding:google-user")).toBeNull();
 });
@@ -207,7 +175,7 @@ it("0마리 생성과 중복 클릭 방지를 검증하고 완료 후 게임에 
   fireEvent.click(button);
   fireEvent.click(button);
   await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
-  expect(JSON.parse(post.mock.calls[0][0]!.body as string).pets).toEqual([]);
+  expect(Object.keys(JSON.parse(post.mock.calls[0][0]!.body as string)).sort()).toEqual(["appearance","memberName","name"]);
   finish(
     new Response(
       JSON.stringify({ household: { id: "created", name: "새 집" } }),
@@ -291,8 +259,8 @@ it("로그아웃은 CSRF POST, 쿼리 캐시와 계정별 임시 입력을 정�
   expect(sessionStorage.getItem("dot-home:onboarding:google-user")).toBeNull();
 });
 it("오래되거나 잘못된 draft는 복원하지 않으며 계정 사이에 공유되지 않는다", () => {
-  saveDraft("a", { ...emptyDraft("하늘"), people: 0 });
-  expect(readDraft("a", "새 이름").people).toBe(2);
+  sessionStorage.setItem("dot-home:onboarding:a",JSON.stringify({updatedAt:Date.now(),draft:null}));
+  expect(readDraft("a", "새 이름").memberName).toBe("새 이름");
   saveDraft("a", { ...emptyDraft("하늘"), name: "개인 집" });
   expect(readDraft("b", "보리").name).toBe("우리의 작은 집");
   sessionStorage.setItem(
@@ -336,4 +304,9 @@ it("꾸미기 분류는 방향키로 이동하고 선택한 외형을 유지한�
   expect(JSON.parse(post.mock.calls[0][0]!.body as string).appearance).toBe(
     "v1:0011",
   );
+});
+
+it("구형 draft의 인원/반려동물 필드를 무시하고 필요한 값만 복원한다",()=>{
+  sessionStorage.setItem("dot-home:onboarding:a",JSON.stringify({updatedAt:Date.now(),draft:{step:2,name:"이전 집",memberName:"이전 이름",appearance:"v1:3212",people:0,petCount:999,pets:[{name:"옛 동물"}],token:"비밀 아님 테스트"}}));
+  expect(readDraft("a","기본")).toEqual({step:2,name:"이전 집",memberName:"이전 이름",appearance:"v1:3212"});
 });

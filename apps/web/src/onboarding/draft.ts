@@ -2,22 +2,16 @@ import { decodeOutfit, encodeOutfit } from "../lib/appearance";
 export interface Draft {
   step: 0 | 1 | 2;
   name: string;
-  people: number;
-  petCount: number;
   memberName: string;
   appearance: string;
-  pets: { name: string; kind: "cat" | "dog" }[];
 }
 export const draftPrefix = "dot-home:onboarding:";
 export function emptyDraft(name: string): Draft {
   return {
     step: 0,
     name: "우리의 작은 집",
-    people: 2,
-    petCount: 0,
     memberName: name,
     appearance: "v1:0000",
-    pets: [],
   };
 }
 export function readDraft(id: string, name: string): Draft {
@@ -34,32 +28,20 @@ export function readDraft(id: string, name: string): Draft {
     )
       return fresh;
     const d = saved.draft;
+    if (!d || typeof d !== "object") return fresh;
     if (
       ![0, 1, 2].includes(d.step) ||
       typeof d.name !== "string" ||
-      typeof d.memberName !== "string" ||
-      !Number.isSafeInteger(d.people) ||
-      d.people < 1 ||
-      !Number.isSafeInteger(d.petCount) ||
-      d.petCount < 0 ||
-      !Array.isArray(d.pets)
+      typeof d.memberName !== "string"
     )
       return fresh;
     return {
       ...fresh,
-      ...d,
+      step: d.step,
       name: d.name.slice(0, 60),
       memberName: d.memberName.slice(0, 30),
       appearance: encodeOutfit(decodeOutfit(String(d.appearance))),
-      pets: d.pets
-        .filter(
-          (p: Draft["pets"][number]) =>
-            typeof p?.name === "string" && ["cat", "dog"].includes(p.kind),
-        )
-        .map((p: Draft["pets"][number]) => ({
-          ...p,
-          name: p.name.slice(0, 30),
-        })),
+
     };
   } catch {
     return fresh;

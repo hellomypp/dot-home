@@ -3,7 +3,7 @@ import type { Place } from '../game/types';
 export interface Member { id:string;userId:string;name:string;appearance:string;role:'OWNER'|'MEMBER';place:Place;mood:string;food:string;thought:string;statusExpiresAt:string|null;statusUpdatedAt:string;x:number;y:number;action:string }
 export interface PantryItem { id:string;name:string;location:string;quantity:number;unit:string;expiresOn:string|null;version:number;updatedAt:string }
 export interface LifeEvent { id:string;type:string;message:string;authorMemberId:string;authorName:string;createdAt:string }
-export interface Snapshot { household:{id:string;name:string;plannedPeople:number;ownerId:string};meMemberId:string;revision:number;serverTime:string;members:Member[];pets:{id:string;name:string;kind:string;appearance:string}[];pantryItems:PantryItem[];events:LifeEvent[] }
+export interface Snapshot { household:{id:string;name:string;ownerId:string};meMemberId:string;revision:number;serverTime:string;members:Member[];pets:{id:string;name:string;kind:string;appearance:string}[];pantryItems:PantryItem[];events:LifeEvent[] }
 export interface Identity { user:{id:string;name:string};memberships:{householdId:string;householdName:string;memberId:string;role:string}[] }
 export class ApiError extends Error { constructor(public status:number,message:string) {super(message);} }
 let csrf: {token:string;headerName:string}|null = null;

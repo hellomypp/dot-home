@@ -35,22 +35,32 @@ class HomeService {
     }
     void owner(Household household,String userId) { if(!household.ownerId.equals(userId)) throw ApiException.forbidden(); }
     Api.World create(String userId,Api.CreateHouse input) {
-        Household household=new Household(); household.name=input.name().strip();household.ownerId=userId;household.plannedPeople=input.plannedPeople(); household.revision=1;
+        Household household=new Household(); household.name=input.name().strip();household.ownerId=userId;household.revision=1;
         households.save(household);
         Member me=member(household.id,userId,input.memberName(),input.appearance(),"OWNER"); members.save(me);
-        for(Api.PetInput value:input.pets()) {
-            Pet pet=new Pet();pet.householdId=household.id;pet.name=value.name().strip();pet.kind=value.kind();pet.appearance=value.appearance();pets.save(pet);
-        }
         return snapshot(household,me.id);
     }
     static Member member(String householdId,String userId,String name,String appearance,String role) {
         Member member=new Member();member.householdId=householdId;member.userId=userId;member.name=name.strip();member.appearance=appearance;member.role=role; return member;
     }
     Api.World world(String householdId,String userId) { Household household=lock(householdId,userId); return snapshot(household,requireMember(householdId,userId).id); }
-    Api.World plan(String householdId,String userId,Api.Plan input) {
+    static String petName(String value) {
+        if(value==null||value.strip().isBlank()||value.length()>40||value.codePoints().anyMatch(Character::isISOControl))throw ApiException.invalid("반려동물 이름은 줄바꿈 없이 1~40자로 입력해 주세요.");
+        return value.strip();
+    }
+    static void petKind(String kind){if(!Set.of("cat","dog").contains(kind==null?"":kind))throw ApiException.invalid("고양이 또는 강아지를 선택해 주세요.");}
+    Api.World addPet(String householdId,String userId,Api.PetInput input) {
         Household household=lock(householdId,userId);owner(household,userId);
-        if(input.plannedPeople()<members.countByHouseholdIdAndActiveTrue(householdId)) throw ApiException.conflict("이미 입주한 구성원보다 계획 인원을 줄일 수 없어요.");
-        household.plannedPeople=input.plannedPeople();emit(household,"HOUSEHOLD_CHANGED",Map.of());return snapshot(household,requireMember(householdId,userId).id);
+        petKind(input.kind());if(!"cream".equals(input.appearance()))throw ApiException.invalid("지원하지 않는 반려동물 외형이에요.");
+        Pet pet=new Pet();pet.householdId=householdId;pet.name=petName(input.name());pet.kind=input.kind();pet.appearance=input.appearance();pets.save(pet);
+        emit(household,"PETS_CHANGED",Map.of("petId",pet.id));return snapshot(household,requireMember(householdId,userId).id);
+    }
+    Api.World editPet(String householdId,String userId,String petId,Api.PetEdit input) {
+        Household household=lock(householdId,userId);owner(household,userId);
+        Pet pet=pets.findById(petId).orElseThrow(ApiException::missing);
+        if(!pet.householdId.equals(householdId))throw ApiException.forbidden();
+        petKind(input.kind());pet.name=petName(input.name());pet.kind=input.kind();
+        emit(household,"PETS_CHANGED",Map.of("petId",pet.id));return snapshot(household,requireMember(householdId,userId).id);
     }
     Api.InvitationView invite(String householdId,String userId) {
         Household household=lock(householdId,userId);owner(household,userId);
@@ -83,7 +93,6 @@ class HomeService {
         available(invitation);
         Optional<Member> existing=members.findByHouseholdIdAndUserIdAndActiveTrue(household.id,userId);
         if(existing.isPresent()) return snapshot(household,existing.get().id);
-        if(members.countByHouseholdIdAndActiveTrue(household.id)>=household.plannedPeople) throw ApiException.conflict("계획한 인원이 모두 입주했어요. 대표에게 인원 변경을 요청해주세요.");
         Member member=member(household.id,userId,input.memberName(),input.appearance(),"MEMBER");members.save(member);
         invitation.acceptedBy=userId;invitation.acceptedAt=Instant.now();emit(household,"MEMBER_JOINED",memberView(member));return snapshot(household,member.id);
     }
@@ -132,7 +141,7 @@ class HomeService {
     }
     void emit(Household household,String type,Object payload) { household.revision++;publisher.publishEvent(new CommittedSignal(household.id,new Api.Signal(UUID.randomUUID().toString(),household.revision,type,Instant.now(),payload))); }
     Api.World snapshot(Household household,String meId) {
-        return new Api.World(new Api.HouseView(household.id,household.name,household.plannedPeople,household.ownerId),meId,household.revision,Instant.now(),members.findByHouseholdIdAndActiveTrueOrderById(household.id).stream().map(HomeService::memberView).toList(),pets.findByHouseholdIdOrderById(household.id).stream().map(p->new Api.PetView(p.id,p.name,p.kind,p.appearance)).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),events.findTop100ByHouseholdIdOrderByCreatedAtDesc(household.id).stream().map(HomeService::eventView).toList());
+        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,Instant.now(),members.findByHouseholdIdAndActiveTrueOrderById(household.id).stream().map(HomeService::memberView).toList(),pets.findByHouseholdIdOrderById(household.id).stream().map(p->new Api.PetView(p.id,p.name,p.kind,p.appearance)).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),events.findTop100ByHouseholdIdOrderByCreatedAtDesc(household.id).stream().map(HomeService::eventView).toList());
     }
     static Api.MemberView memberView(Member m) { boolean current=m.statusExpiresAt!=null && m.statusExpiresAt.isAfter(Instant.now());return new Api.MemberView(m.id,m.userId,m.name,m.appearance,m.role,m.place,current?m.mood:"",current?m.food:"",current?m.thought:"",m.statusExpiresAt,m.statusUpdatedAt,m.x,m.y,m.action); }
     static Api.PantryView pantryView(PantryItem p) { return new Api.PantryView(p.id,p.name,p.location,p.quantity,p.unit,p.expiresOn,p.version,p.updatedAt); }

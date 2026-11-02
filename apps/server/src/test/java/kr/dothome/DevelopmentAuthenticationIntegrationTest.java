@@ -23,7 +23,7 @@ class DevelopmentAuthenticationIntegrationTest {
  @Test void nicknamePatchRequiresAuthenticationCsrfMembershipAndRejectsForgedIdentity()throws Exception{
   String owner=identity.resolve("test",java.util.UUID.randomUUID().toString(),"대표").id;
   String outsider=identity.resolve("test",java.util.UUID.randomUUID().toString(),"외부").id;
-  String h=homes.create(owner,new Api.CreateHouse("닉네임 집",1,"처음","sage",java.util.List.of())).household().id();
+  String h=homes.create(owner,new Api.CreateHouse("닉네임 집","처음","sage")).household().id();
   String path="/api/households/"+h+"/me/profile",body="{\"memberName\":\"바꾼 이름\"}";
   mvc.perform(patch(path).with(csrf()).contentType("application/json").content(body)).andExpect(status().isUnauthorized());
   mvc.perform(patch(path).with(user(owner)).contentType("application/json").content(body)).andExpect(status().isForbidden());

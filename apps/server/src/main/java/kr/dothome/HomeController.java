@@ -11,7 +11,8 @@ class HomeController {
     HomeController(HomeService service) { this.service=service; }
     @PostMapping("/api/households") Api.World create(Principal p,@Valid @RequestBody Api.CreateHouse body) { return service.create(p.getName(),body); }
     @GetMapping("/api/households/{id}/world") Api.World world(Principal p,@PathVariable String id) { return service.world(id,p.getName()); }
-    @PatchMapping("/api/households/{id}") Api.World plan(Principal p,@PathVariable String id,@Valid @RequestBody Api.Plan body) { return service.plan(id,p.getName(),body); }
+    @PostMapping("/api/households/{id}/pets") Api.World pet(Principal p,@PathVariable String id,@Valid @RequestBody Api.PetInput body) { return service.addPet(id,p.getName(),body); }
+    @PatchMapping("/api/households/{id}/pets/{petId}") Api.World pet(Principal p,@PathVariable String id,@PathVariable String petId,@Valid @RequestBody Api.PetEdit body) { return service.editPet(id,p.getName(),petId,body); }
     @PostMapping("/api/households/{id}/invitations") Api.InvitationView invite(Principal p,@PathVariable String id) { return service.invite(id,p.getName()); }
     @DeleteMapping("/api/households/{id}/invitations/{invitationId}") @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     void cancel(Principal p,@PathVariable String id,@PathVariable String invitationId) { service.cancel(id,p.getName(),invitationId); }
