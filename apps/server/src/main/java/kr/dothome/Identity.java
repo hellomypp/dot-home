@@ -51,7 +51,8 @@ class SecurityConfiguration {
     @Bean CsrfTokenRepository csrfRepository() { return new HttpSessionCsrfTokenRepository(); }
     @Bean SecurityFilterChain security(HttpSecurity http,CsrfTokenRepository csrfRepository,ObjectProvider<ClientRegistrationRepository> clients,IdentityService identity,Environment environment,SocketRegistry sockets,GoogleIdentity google,@org.springframework.beans.factory.annotation.Value("${app.origin}") String appOrigin) throws Exception {
         validateProfiles(environment);
-        http.authorizeHttpRequests(a -> a.requestMatchers("/api/auth/csrf","/api/auth/config","/api/invitations/*","/oauth2/**","/login/**","/error").permitAll()
+        http.authorizeHttpRequests(a -> a.requestMatchers(org.springframework.http.HttpMethod.GET,"/","/index.html","/login","/onboarding","/settings","/home/*","/invite/*","/visit/*","/assets/**","/favicon.ico","/healthz").permitAll()
+            .requestMatchers("/api/auth/csrf","/api/auth/config","/api/invitations/*","/oauth2/**","/login/**","/error").permitAll()
             .requestMatchers("/api/auth/dev").access((auth, context) -> new org.springframework.security.authorization.AuthorizationDecision(environment.matchesProfiles("dev") && localRequest(context.getRequest())))
             .anyRequest().authenticated());
         http.csrf(c -> c.csrfTokenRepository(csrfRepository).csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()));
@@ -63,6 +64,7 @@ class SecurityConfiguration {
         http.logout(l -> l.logoutUrl("/api/logout").addLogoutHandler((request,response,authentication) -> {
             HttpSession session=request.getSession(false); if(session!=null) sockets.closeHttpSession(session.getId());
         }).logoutSuccessHandler((request,response,authentication) -> response.setStatus(204)));
+        if(environment.matchesProfiles("prod"))http.headers(h -> h.httpStrictTransportSecurity(t -> t.requestMatcher(request -> true)));
         http.headers(h -> h.referrerPolicy(r -> r.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)));
         if(clients.getIfAvailable()!=null) {
             var flow=new GoogleLoginFlow(clients.getObject(),identity,appOrigin);

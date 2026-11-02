@@ -18,7 +18,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-session-jdbc'
     implementation 'org.flywaydb:flyway-mysql'
     runtimeOnly 'com.mysql:mysql-connector-j'
-    runtimeOnly 'com.h2database:h2'
+    if (!project.hasProperty('productionImage')) { runtimeOnly 'com.h2database:h2' }
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.testcontainers:testcontainers-mysql:2.0.3'
@@ -31,4 +31,11 @@ tasks.register('mysqlTest', Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform { includeTags 'mysql' }
+}
+
+// Docker supplies the separately built SPA; no generated files are written to src/.
+tasks.named('processResources') {
+    if (project.hasProperty('webDist')) {
+        from(file(project.property('webDist'))) { into 'static' }
+    }
 }

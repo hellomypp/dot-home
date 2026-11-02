@@ -30,3 +30,19 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew test mysqlTest bootJar --no-daemon
         working-directory: apps/server
+  container:
+    needs: [web, server]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: dot-home:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Verify production image with isolated MySQL 8.4
+        run: bash scripts/container-smoke.sh dot-home:ci
