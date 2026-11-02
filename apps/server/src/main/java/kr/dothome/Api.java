@@ -11,6 +11,7 @@ public final class Api {
     public record PetInput(@NotBlank @Size(max=40) String name,@Pattern(regexp="cat|dog|other") String kind,@NotBlank @Size(max=24) String appearance) {}
     public record CreateHouse(@NotBlank @Size(max=80) String name,@Min(1) int plannedPeople,@NotBlank @Size(max=40) String memberName,@NotBlank @Size(max=24) String appearance,@NotNull List<@Valid PetInput> pets) {}
     public record Plan(@Min(1) int plannedPeople) {}
+    public record Profile(@NotBlank @Size(max=40) String memberName) {}
     public record Accept(@NotBlank @Size(max=40) String memberName,@NotBlank @Size(max=24) String appearance) {}
     public record Status(@NotNull @Pattern(regexp="home|office|school|outside") String place,@NotNull @Size(max=80) String mood,@NotNull @Size(max=80) String food,@NotNull @Size(max=200) String thought,@Min(1) @Max(1440) int expiresInMinutes) {}
     public record CreatePantry(@NotBlank @Size(max=80) String name,@NotBlank @Size(max=40) String location,@PositiveOrZero double quantity,@NotBlank @Size(max=16) String unit,LocalDate expiresOn) {}

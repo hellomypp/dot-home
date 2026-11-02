@@ -18,6 +18,24 @@ import java.time.*;
 class HouseholdIntegrationTest {
     @Autowired HomeService homes; @Autowired IdentityService identity; @Autowired Invitations invitations; @Autowired Members members; @Autowired MovementService movement; @Autowired Environment env; @Autowired ObjectMapper json;
     String user(){return identity.resolve("test",UUID.randomUUID().toString(),"검증 구성원").id;}
+    @Test void nicknameIsOwnHouseholdProfileAndSurvivesRelogin(){
+        String key=UUID.randomUUID().toString(),owner=user();
+        String guest=identity.resolve("google",key,"Google 이름").id;
+        String h=house(owner,2).household().id();
+        var before=homes.accept(homes.invite(h,owner).token(),guest,new Api.Accept("이전 이름","v1:3212"));
+        var renamed=homes.profile(h,guest,new Api.Profile("  새 닉네임  "));
+        assertEquals(before.meMemberId(),renamed.meMemberId());
+        var me=renamed.members().stream().filter(m->m.id().equals(renamed.meMemberId())).findFirst().orElseThrow();
+        assertEquals("새 닉네임",me.name());assertEquals("v1:3212",me.appearance());
+        assertEquals("가온",renamed.members().stream().filter(m->m.userId().equals(owner)).findFirst().orElseThrow().name());
+        assertTrue(renamed.revision()>before.revision());
+        assertEquals(guest,identity.resolve("google",key,"다른 Google 이름").id);
+        assertTrue(homes.world(h,guest).members().stream().anyMatch(m->m.id().equals(me.id())&&m.name().equals("새 닉네임")));
+        assertEquals(2,members.countByHouseholdIdAndActiveTrue(h));
+        assertThrows(ApiException.class,()->homes.profile(h,user(),new Api.Profile("위조")));
+        for(String bad:List.of(" ","x".repeat(41),"이름\n줄바꿈","제어\u0001문자"))assertThrows(ApiException.class,()->homes.profile(h,guest,new Api.Profile(bad)));
+        assertEquals("새 닉네임",members.findById(me.id()).orElseThrow().name);
+    }
     Api.World house(String user,int count){return homes.create(user,new Api.CreateHouse("검증의 집",count,"가온","sage",List.of()));}
     @Test void versionedAppearanceAndMultiplePetsSurviveWorldReload(){
         String owner=user();

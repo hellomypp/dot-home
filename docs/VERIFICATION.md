@@ -127,3 +127,9 @@ Google 인증은 CI 전용 가짜 credential의 redirect 설정만 확인했다.
 사용자 보고는 버튼을 눌러도 링크가 나오지 않는 현상이다. 실제 실행 중인 preview에서 invitation preview/health가 timeout이고 로그에는 JAR 재빌드 후 클래스 로딩 실패가 있었다. 동일 소스의 격리 8081/5174 메모리 QA에서는 UI의 ‘초대 링크 만들기’ → URL·만료·복사 버튼 표시, 실제 HTTP의 두 계정 생성→초대 조회→명시 수락이 정상이다. v06-smoke의 가족 초대/집들이 발급·수락·취소와 가족 권한 차단도 통과했다.
 
 실행 JAR를 빌드 산출물과 분리하는 Python 회귀 검사 2건 성공. 프런트 33건 성공, 기존 서버 59건/bootJar Gradle 검사 성공(서버 소스 미변경으로 UP-TO-DATE). 실제 미리보기 중지→비공개 파일 DB 백업→immutable release 재시작 후 health 200/잘못된 초대 410/Google 활성·dev 비활성 확인. 이어 `bash scripts/server.sh bootJar -PwebDist=../web/dist`로 빌드 JAR를 실제로 교체한 뒤에도 preview HTTPS 응답이 유지됨을 확인했다. 실제 사용자의 Google 세션에서 초대를 생성하거나 iPhone Safari를 직접 조작하지는 않았다. 사용자 데이터 초기화·삭제는 하지 않았다.
+
+## 2026-11-02: 내 닉네임 변경
+
+새 PATCH me/profile API와 별도 NicknameForm을 계정 설정에 추가했다. 기존 구성원의 name 필드를 사용하며 마이그레이션이 없다. 프런트 37건(새 4건: 저장·중복 방지·오류 입력 보존/재시도·유효성), 서버 62건(새 3건: 저장/재로그인/외형 보존, HTTP 인증/CSRF/가구/ID 위조 차단, 다른 가족의 실제 STOMP 알림)과 웹/bootJar 빌드 성공. 도메인 검사 1건은 MySQL 통합에도 상속하여 실행한다.
+
+별도 파일 QA DB의 8081/5174에서 실제 UI로 닉네임 저장→계정/가족 목록 갱신→새로고침 복구를 확인하고 데스크톱·390px 시뮬레이션 캡처를 생성했다. 실 iPhone Safari·Google 계정 E2E와 구분한다. 현재 Google sub/계정 이름은 변경하지 않으며 과거 생활 사건의 저장된 작성자 이름은 그대로 둔다.

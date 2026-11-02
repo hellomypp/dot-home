@@ -103,3 +103,9 @@ Google 인증한 방문자:
 모든 변경 요청에 CSRF 필요. body에 작성자·가구·방문자 식별자를 주입하면 400. 방문 권한으로 가족 API 또는 가족 STOMP SEND/SUBSCRIBE에 접근할 수 없다. 가족 Membership·계획 인원을 변경하지 않는다.
 
 쪽지/캘린더 변경은 기존 가족 topic으로 OBJECT_NOTE_CHANGED, CALENDAR_EVENT_CHANGED를 커밋 후 발행한다. payload는 변경된 레코드 ID이며 revision은 가구 전체 순서를 따른다. 클라이언트는 관련 REST를 재조회한다. [실제 검증/시간 정책](V06.md).
+
+## 내 닉네임 변경
+
+`PATCH /api/households/{id}/me/profile` — 세션 인증·CSRF·해당 가구의 활성 가입 필요. body: `{"memberName":"새 닉네임"}`. 앞뒤 공백을 제거하고 1~40자, 제어문자/줄바꿈을 거절한다. userId/memberId를 받지 않으며 서버가 현재 사용자의 구성원을 결정한다. 대표와 일반 구성원 모두 본인 이름만 변경한다. 성공은 갱신된 World, 가구에는 커밋 후 `MEMBER_PROFILE_CHANGED`를 발행해 재조회한다. 같은 이름 재저장은 revision을 올리지 않는다.
+
+가구 캐릭터의 표시 이름 변경이며 Google 계정 이름·인증 식별자·다른 집의 캐릭터 이름은 변경하지 않는다. 기존 LifeEvent에 저장된 과거 작성자 이름은 당시 기록으로 유지한다. DB 마이그레이션은 없다.
