@@ -26,7 +26,11 @@ if [[ "${1:-}" == google || "${1:-}" == preview ]]; then
     export SESSION_COOKIE_SECURE=true
   fi
   if [[ "${1:-}" == preview ]]; then
-    exec "${JAVA_HOME:+$JAVA_HOME/bin/}java" -jar build/libs/dot-home-server-0.1.0.jar --spring.profiles.active="$dot_home_profiles"
+    if [[ -z "${DOT_HOME_PREVIEW_JAR:-}" || ! -f "$DOT_HOME_PREVIEW_JAR" ]]; then
+      echo '미리보기 실행 파일이 없습니다. python3 scripts/remote-preview.py start로 실행하세요.' >&2
+      exit 1
+    fi
+    exec "${JAVA_HOME:+$JAVA_HOME/bin/}java" -jar "$DOT_HOME_PREVIEW_JAR" --spring.profiles.active="$dot_home_profiles"
   fi
   exec ./gradlew bootRun --args="--spring.profiles.active=$dot_home_profiles" --console=plain
 fi

@@ -1,5 +1,6 @@
 """Tailnet-only preview; launchd jobs survive Codex sessions. No tokens are stored."""
 import json,os,pathlib,plistlib,shutil,subprocess,sys
+from preview_artifact import snapshot_jar
 root=pathlib.Path(__file__).resolve().parent.parent
 cli=shutil.which('tailscale') or '/Applications/Tailscale.app/Contents/MacOS/Tailscale'
 uid=str(os.getuid()); folder=pathlib.Path.home()/'Library/LaunchAgents'
@@ -43,10 +44,12 @@ if serve and serve != expected:sys.exit('다른 Serve 설정이 있습니다. �
 run('/bin/bash',str(root/'scripts/server.sh'),'bootJar')
 folder.mkdir(parents=True,exist_ok=True)
 logs=root/'.tools/remote-preview';logs.mkdir(parents=True,exist_ok=True)
+server_jar=snapshot_jar(root/'apps/server/build/libs/dot-home-server-0.1.0.jar',logs/'releases')
 runtime=pathlib.Path.home()/'.cache/codex-runtimes/codex-primary-runtime/dependencies'
 node=shutil.which('node')
 path=(str(pathlib.Path(node).parent) if node else str(runtime/'node/bin'))+':/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
 env={'PATH':path,'HOME':str(pathlib.Path.home()),'APP_ORIGIN':origin,'DOT_HOME_PREVIEW_HOST':host,'SERVER_SERVLET_SESSION_COOKIE_SECURE':'true'}
+env['DOT_HOME_PREVIEW_JAR']=str(server_jar)
 for label,script in zip(labels,['server.sh','dev.sh']):
  args=['/bin/bash',str(root/'scripts'/script)]+(['preview'] if script=='server.sh' else [])
  config={'Label':label,'ProgramArguments':args,'WorkingDirectory':str(root),'EnvironmentVariables':env,'RunAtLoad':True,'KeepAlive':True,'ThrottleInterval':15,'StandardOutPath':str(logs/(label+'.log')),'StandardErrorPath':str(logs/(label+'.error.log'))}

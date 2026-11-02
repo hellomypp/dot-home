@@ -121,3 +121,9 @@ HTTP smoke: 개발 로그인 A/B/C → 집 생성(계획 3명, 반려동물 0마
 [CI 41369502510](https://github.com/hellomypp/dot-home/actions/runs/41369502510)에서 web/server/container 모두 성공했다. server는 MySQL 통합 22건을 포함한다. Ubuntu Docker에서 실제 production image를 빌드하고 MySQL 8.4.7과 기동해 bundled SPA·캐시·missing asset 404·API 인증·운영 dev 차단·위조 Host에도 고정 OAuth callback·H2 제외·비루트 실행·Flyway V1~V6·앱 재시작 후 데이터 유지·DB 장애 503/복구 200을 확인했다. 첫 CI의 컨테이너 재시작 후 임시 포트 변경으로 인한 검사 실패는 포트 재조회로 수정했다. 로컬 Mac에는 Docker가 없어 로컬 Docker 실행으로 보고하지 않는다.
 
 Google 인증은 CI 전용 가짜 credential의 redirect 설정만 확인했다. Railway 프로젝트/DB/HTTPS 공개 URL 생성, 실제 Google 인증, 배포/재배포의 클라우드 데이터 유지, 실기기 4종, 백업/빈 DB 복원, Railway edge 로그 토큰 정책은 미검증이다. Docker 실행 검증을 실제 Railway 배포 성공과 구분한다. [설정·검증 점검표](DEPLOYMENT.md).
+
+## 2026-11-02: 초대 링크 만들기 무응답 조사·복구
+
+사용자 보고는 버튼을 눌러도 링크가 나오지 않는 현상이다. 실제 실행 중인 preview에서 invitation preview/health가 timeout이고 로그에는 JAR 재빌드 후 클래스 로딩 실패가 있었다. 동일 소스의 격리 8081/5174 메모리 QA에서는 UI의 ‘초대 링크 만들기’ → URL·만료·복사 버튼 표시, 실제 HTTP의 두 계정 생성→초대 조회→명시 수락이 정상이다. v06-smoke의 가족 초대/집들이 발급·수락·취소와 가족 권한 차단도 통과했다.
+
+실행 JAR를 빌드 산출물과 분리하는 Python 회귀 검사 2건 성공. 프런트 33건 성공, 기존 서버 59건/bootJar Gradle 검사 성공(서버 소스 미변경으로 UP-TO-DATE). 실제 미리보기 중지→비공개 파일 DB 백업→immutable release 재시작 후 health 200/잘못된 초대 410/Google 활성·dev 비활성 확인. 이어 `bash scripts/server.sh bootJar -PwebDist=../web/dist`로 빌드 JAR를 실제로 교체한 뒤에도 preview HTTPS 응답이 유지됨을 확인했다. 실제 사용자의 Google 세션에서 초대를 생성하거나 iPhone Safari를 직접 조작하지는 않았다. 사용자 데이터 초기화·삭제는 하지 않았다.
