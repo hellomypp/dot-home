@@ -24,6 +24,18 @@ class SocketIntegrationTest {
     record Socket(WebSocket ws,Listener listener) implements AutoCloseable {public void close(){ws.abort();}void send(String value){ws.sendText(value+"\u0000",true).join();}String take(String contains)throws Exception{var received=new java.util.ArrayList<String>();long until=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);while(System.nanoTime()<until){String frame=listener.frames.poll(1,TimeUnit.SECONDS);if(frame!=null){received.add(frame);if(frame.contains(contains))return frame;}}throw new AssertionError("Expected frame: "+contains+" received="+received);}}
     Socket socket(Client client)throws Exception{var listener=new Listener();var ws=client.http.newWebSocketBuilder().header("Origin","http://localhost:5173").buildAsync(URI.create(base().replace("http:","ws:")+"/ws"),listener).get(5,TimeUnit.SECONDS);var socket=new Socket(ws,listener);socket.send("CONNECT\naccept-version:1.2\nhost:localhost\nX-CSRF-TOKEN:"+client.csrf+"\n\n");socket.take("CONNECTED");return socket;}
     void subscribe(Socket socket,String id)throws Exception{socket.send("SUBSCRIBE\nid:sync\ndestination:/user/queue/sync\n\n");socket.send("SUBSCRIBE\nid:world\ndestination:/topic/households/"+id+"/events\n\n");socket.send("SEND\ndestination:/app/households/"+id+"/sync\n\n{}");socket.take("SYNC_READY");}
+    @Test void nicknamePatchNotifiesOtherFamilyAfterCommit()throws Exception{
+        try(var owner=login();var family=login()){
+            String h=homes.create(owner.user,new Api.CreateHouse("이름 공유",2,"이전 이름","sage",List.of())).household().id();
+            homes.accept(homes.invite(h,owner.user).token(),family.user,new Api.Accept("가족","blue"));
+            try(var connected=socket(family)){
+                subscribe(connected,h);
+                var response=owner.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/households/"+h+"/me/profile")).header("Content-Type","application/json").header("X-CSRF-TOKEN",owner.csrf).method("PATCH",HttpRequest.BodyPublishers.ofString("{\"memberName\":\"새 이름\"}")).build(),HttpResponse.BodyHandlers.ofString());
+                assertEquals(200,response.statusCode());assertTrue(connected.take("MEMBER_PROFILE_CHANGED").contains("새 이름"));
+                assertTrue(homes.world(h,family.user).members().stream().anyMatch(m->m.userId().equals(owner.user)&&m.name().equals("새 이름")));
+            }
+        }
+    }
     @Test void committedEventIsDeliveredAndUnauthorizedSubscribeIsRejected()throws Exception{
         try(var owner=login();var outsider=login()){var home=homes.create(owner.user,new Api.CreateHouse("실시간 집",2,"가온","sage",List.of()));String id=home.household().id();try(var allowed=socket(owner)){subscribe(allowed,id);homes.event(id,owner.user,new Api.CreateEvent(UUID.randomUUID().toString(),"NOTE","함께하는 하루"));assertTrue(allowed.take("LIFE_EVENT_CREATED").contains("함께하는 하루"));try(var denied=socket(outsider)){denied.send("SUBSCRIBE\nid:bad\ndestination:/topic/households/"+id+"/events\n\n");denied.take("CLOSED");}}}
     }

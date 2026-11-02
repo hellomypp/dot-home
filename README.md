@@ -90,3 +90,7 @@ bash scripts/server.sh mysqlTest
 [Railway 배포 지침](docs/DEPLOYMENT.md)에 계정 로그인부터 private MySQL 8.4 영구 볼륨, Google Cloud callback, 단일 Docker 앱, Wait for CI, 백업·복원을 설명했습니다. 루트 Dockerfile은 React 빌드 결과를 Spring Boot JAR에 포함하며 운영 google,prod 프로필은 필수 환경변수와 MySQL을 검증합니다. /healthz 및 SPA deep link·캐시 정책을 제공합니다. CI는 실제 Docker 이미지 기동, MySQL migration, 재시작 데이터 유지와 DB 장애 복구를 검사합니다.
 
 **Railway 리소스와 공개 URL은 아직 생성하지 않았습니다.** 웹 로그인 및 비용 승인 후 배포하고 실제 Google 인증·두 계정·실기기 검증을 수행해야 합니다. Mac/Tailscale 미리보기는 독립 외부 배포가 아닙니다.
+
+## 닉네임 변경
+
+게임 상단 오른쪽 내 계정 → 닉네임 입력 → ‘닉네임 저장’으로 해당 집의 내 표시 이름을 바꿀 수 있습니다. 가족 목록·캐릭터 이름표와 다른 가족 화면에 반영되고 재접속 후에도 유지됩니다. Google 계정 이름은 변경하지 않습니다.

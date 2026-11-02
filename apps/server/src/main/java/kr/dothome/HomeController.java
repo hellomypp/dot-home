@@ -18,6 +18,7 @@ class HomeController {
     @GetMapping("/api/invitations/{token}") Api.InvitationPreview preview(@PathVariable String token) { return service.preview(token); }
     @PostMapping("/api/invitations/{token}/accept") Api.World accept(Principal p,@PathVariable String token,@Valid @RequestBody Api.Accept body) { return service.accept(token,p.getName(),body); }
     @PatchMapping("/api/households/{id}/me/status") Api.World status(Principal p,@PathVariable String id,@Valid @RequestBody Api.Status body) { return service.status(id,p.getName(),body); }
+    @PatchMapping("/api/households/{id}/me/profile") Api.World profile(Principal p,@PathVariable String id,@Valid @RequestBody Api.Profile body) { return service.profile(id,p.getName(),body); }
     @GetMapping("/api/households/{id}/pantry-items") List<Api.PantryView> pantry(Principal p,@PathVariable String id) { return service.pantry(id,p.getName()); }
     @PostMapping("/api/households/{id}/pantry-items") Api.PantryView add(Principal p,@PathVariable String id,@Valid @RequestBody Api.CreatePantry body) { return service.addPantry(id,p.getName(),body); }
     @PatchMapping("/api/households/{id}/pantry-items/{item}") Api.PantryView update(Principal p,@PathVariable String id,@PathVariable String item,@Valid @RequestBody Api.UpdatePantry body) { return service.updatePantry(id,p.getName(),item,body); }

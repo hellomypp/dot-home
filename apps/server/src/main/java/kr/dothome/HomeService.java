@@ -91,6 +91,14 @@ class HomeService {
     static void available(Invitation i) { if(i.cancelled || i.acceptedBy!=null || !i.expiresAt.isAfter(Instant.now())) throw gone(); }
     static ApiException gone() { return new ApiException(HttpStatus.GONE,"INVITATION_UNAVAILABLE","초대가 만료되었거나 사용·취소되었어요."); }
     static String hash(String value) { try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))); } catch(NoSuchAlgorithmException e) { throw new IllegalStateException(e); } }
+    Api.World profile(String householdId,String userId,Api.Profile input) {
+        Household household=lock(householdId,userId);
+        String name=input.memberName()==null?"":input.memberName().strip();
+        if(name.isBlank()||name.length()>40||name.codePoints().anyMatch(Character::isISOControl))throw ApiException.invalid("닉네임은 줄바꿈 없이 1~40자로 입력해 주세요.");
+        Member me=requireMember(householdId,userId);
+        if(!me.name.equals(name)){me.name=name;emit(household,"MEMBER_PROFILE_CHANGED",memberView(me));}
+        return snapshot(household,me.id);
+    }
     Api.World status(String householdId,String userId,Api.Status input) {
         Household household=lock(householdId,userId);Member me=requireMember(householdId,userId);
         if(!me.place.equals(input.place())) { me.x=320;me.y=288;me.action="idle";me.avatarUpdatedAt=Instant.now(); }
