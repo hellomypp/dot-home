@@ -113,3 +113,11 @@ HTTP smoke: 개발 로그인 A/B/C → 집 생성(계획 3명, 반려동물 0마
 코드 98ee7a7의 [GitHub Actions 41362627544](https://github.com/hellomypp/dot-home/actions/runs/41362627544)에서 web/server 모두 success, 실제 MySQL 8.4의 기존 11건+신규 11건 통합 검사 및 bootJar 성공을 확인했다. 프런트 집들이 반환 경로의 끝 줄바꿈 거부를 추가한 뒤 로컬 프런트 33건/서버 48건과 빌드를 재확인했다.
 
 기존 로컬 DB를 서버 정상 종료 후 비공개 백업하고 실제 HTTPS 미리보기를 재시작했다. Flyway V4~V6 적용 성공(현재 v6), /studio 200, Google 활성/dev 비활성을 확인했다. 기존 데이터 테이블을 초기화하지 않았다. QA 메모리 DB와 실제 미리보기 DB는 별개다.
+
+## 2026-11-02: Railway 베타 배포 준비
+
+로컬 `bash scripts/pnpm.sh test` 33건, `bash scripts/pnpm.sh build`, `bash scripts/server.sh test bootJar` 59건 성공. 신규 11건은 prod 부팅 차단·SPA deep link/asset/401·readiness/DB 실패 응답 검사다. `bash scripts/server.sh bootJar -PwebDist=../web/dist` 산출 JAR를 별도 8082 메모리 QA DB로 실행해 실제 SPA/asset/health HTTP 응답을 확인했다. 실제 미리보기의 데이터/포트는 변경하지 않았다.
+
+[CI 41369502510](https://github.com/hellomypp/dot-home/actions/runs/41369502510)에서 web/server/container 모두 성공했다. server는 MySQL 통합 22건을 포함한다. Ubuntu Docker에서 실제 production image를 빌드하고 MySQL 8.4.7과 기동해 bundled SPA·캐시·missing asset 404·API 인증·운영 dev 차단·위조 Host에도 고정 OAuth callback·H2 제외·비루트 실행·Flyway V1~V6·앱 재시작 후 데이터 유지·DB 장애 503/복구 200을 확인했다. 첫 CI의 컨테이너 재시작 후 임시 포트 변경으로 인한 검사 실패는 포트 재조회로 수정했다. 로컬 Mac에는 Docker가 없어 로컬 Docker 실행으로 보고하지 않는다.
+
+Google 인증은 CI 전용 가짜 credential의 redirect 설정만 확인했다. Railway 프로젝트/DB/HTTPS 공개 URL 생성, 실제 Google 인증, 배포/재배포의 클라우드 데이터 유지, 실기기 4종, 백업/빈 DB 복원, Railway edge 로그 토큰 정책은 미검증이다. Docker 실행 검증을 실제 Railway 배포 성공과 구분한다. [설정·검증 점검표](DEPLOYMENT.md).

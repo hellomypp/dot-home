@@ -49,11 +49,11 @@ APP_ORIGIN=http://127.0.0.1:5173 bash scripts/server.sh google
 bash scripts/dev.sh
 ```
 
-server.sh google은 local,google 프로필과 파일 DB를 사용하고 .tools/google.env가 있으면 읽는다. HTTP loopback에서만 Secure 쿠키 기본값을 false로 지정한다. 외부 HTTPS에서는 true다. local은 DB 실행 환경일 뿐 개발 인증을 켜지 않는다. 실제 운영은 MySQL DB 환경변수와 google 프로필로 JAR를 실행한다.
+server.sh google은 local,google 프로필과 파일 DB를 사용하고 .tools/google.env가 있으면 읽는다. HTTP loopback에서만 Secure 쿠키 기본값을 false로 지정한다. 외부 HTTPS에서는 true다. local은 DB 실행 환경일 뿐 개발 인증을 켜지 않는다. 실제 운영은 MySQL DB 환경변수와 google,prod 프로필로 JAR를 실행한다. PORT도 필수다. [Railway 상세 지침](DEPLOYMENT.md)을 따른다.
 
 ```sh
 APP_ORIGIN=https://실제도메인 \
-java -jar apps/server/build/libs/dot-home-server-0.1.0.jar --spring.profiles.active=google
+java -jar apps/server/build/libs/dot-home-server-0.1.0.jar --spring.profiles.active=google,prod
 ```
 
 GOOGLE_CLIENT_ID/SECRET, DB_URL/USER/PASSWORD는 실행 환경에서 별도로 주입한다. 기존 12h 세션·HttpOnly·SameSite=Lax·CSRF·세션 ID 교체·로그아웃 소켓 정리를 유지하며 remember-me는 추가하지 않는다.

@@ -35,7 +35,7 @@ bash scripts/dev.sh
 - Spring Security 세션과 CSRF, 집 생성, 계획 인원 변경, 해시로 저장하는 72시간 초대, 취소·만료·동시 수락 제어.
 - 서버가 작성자를 결정하는 기분·음식·생각, 만료·해제, 식료품 수량과 사용 이력, 버전 충돌, 수동 귀가·퇴근·택배·메모 사건.
 - STOMP 가구별 SEND/SUBSCRIBE 인가, 재연결과 구독 준비 확인 후 스냅샷 복구, 중복 사건 처리, 다중 탭 제어권, 로그아웃·가입 권한 회수 시 소켓 정리.
-- Flyway 마이그레이션 3개, Gradle Wrapper와 pnpm lockfile, CI 설정, MySQL Compose 및 HTTPS 프록시 예시.
+- Flyway 마이그레이션 6개, Gradle Wrapper와 pnpm lockfile, CI 설정, MySQL Compose 및 HTTPS 프록시 예시.
 
 실제 집 데이터는 브라우저 localStorage에 저장하지 않습니다. 개발 프로필은 독립 실행을 위한 H2 파일 DB(`apps/server/data/dothome.mv.db`)를 사용하며, 기본 서버 설정과 배포 대상은 MySQL 8.4입니다. H2 검사 결과를 MySQL 검사 결과로 간주하지 않습니다.
 
@@ -55,12 +55,12 @@ python3 scripts/smoke.py --verify
 bash scripts/server.sh mysqlTest
 ```
 
-현재 확인한 결과는 프런트 테스트 14개, 서버 통합 테스트 31개, 웹 빌드·서버 JAR 빌드, 격리된 계정의 HTTP 시나리오 및 서버 재시작 후 저장 복구 통과입니다. 브라우저에서는 집 장면·모바일 390px 레이아웃·말풍선 폼을 확인했습니다. 자세한 범위와 미검증 항목은 [검증 기록](docs/VERIFICATION.md)에 있습니다.
+현재 확인한 결과는 프런트 테스트 33개, 서버 테스트 59개, 웹 빌드·서버 JAR 빌드, 격리된 계정의 HTTP 시나리오 및 서버 재시작 후 저장 복구 통과입니다. 브라우저에서는 집 장면·모바일 390px 레이아웃·말풍선 폼을 확인했습니다. 자세한 범위와 미검증 항목은 [검증 기록](docs/VERIFICATION.md)에 있습니다.
 
 ## 다음 단계
 
 1. 집 시안의 색감·비율 검토와 앉기 등 행동 스프라이트 확장.
-2. Docker/MySQL에서 `mysqlTest` 실행, 실제 두 브라우저의 전체 가입→초대→관찰→공유 E2E 및 세션 만료 검사.
+2. CI의 MySQL 8.4 통합 검사 22건은 통과했으며 실제 두 브라우저의 전체 가입→초대→관찰→공유 E2E 및 세션 만료 검사는 별도 수행.
 3. Google Cloud Client·콜백·테스트 사용자 설정 후 실제 Google 계정 E2E 검증.
 4. HTTPS 배포와 백업/복원 연습, Safari·Android·iPhone/iPad 실기기 및 성능 검사.
 
@@ -84,3 +84,9 @@ bash scripts/server.sh mysqlTest
 ## v0.6 가족 생활 기능
 
 냉장고 쪽지·떼어 읽기·가족 보관함, 가족 공유 캘린더, 가족 가입과 분리된 집들이·방명록을 실제 서버 DB/게임에 연결했습니다. [사용 방법·API·마이그레이션·검증·남은 실기기 확인](docs/V06.md). 기존 V1~V3와 가족 데이터는 유지하며 새 V4~V6가 추가됩니다.
+
+## 가족·친구 외부 베타 배포
+
+[Railway 배포 지침](docs/DEPLOYMENT.md)에 계정 로그인부터 private MySQL 8.4 영구 볼륨, Google Cloud callback, 단일 Docker 앱, Wait for CI, 백업·복원을 설명했습니다. 루트 Dockerfile은 React 빌드 결과를 Spring Boot JAR에 포함하며 운영 google,prod 프로필은 필수 환경변수와 MySQL을 검증합니다. /healthz 및 SPA deep link·캐시 정책을 제공합니다. CI는 실제 Docker 이미지 기동, MySQL migration, 재시작 데이터 유지와 DB 장애 복구를 검사합니다.
+
+**Railway 리소스와 공개 URL은 아직 생성하지 않았습니다.** 웹 로그인 및 비용 승인 후 배포하고 실제 Google 인증·두 계정·실기기 검증을 수행해야 합니다. Mac/Tailscale 미리보기는 독립 외부 배포가 아닙니다.
