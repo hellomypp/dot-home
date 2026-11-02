@@ -1,6 +1,5 @@
 package kr.dothome;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.time.*;
 import java.util.List;

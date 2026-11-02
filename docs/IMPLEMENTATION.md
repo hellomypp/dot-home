@@ -33,7 +33,7 @@ React↔Phaser는 타입이 정의된 이벤트·어댑터로 연결한다. 장�
 ## 4. 첫 진입과 화면 흐름
 
 1. URL 접속 → 로그인/시작 화면.
-2. 대표가 본인 포함 계획 인원·반려동물 수와 본인 외형을 설정한다.
+2. 대표가 집 이름과 본인 이름·외형만 설정한다. 생성 직후 가족 1명·반려동물 0마리다.
 3. 집과 대표 가입을 한 트랜잭션으로 저장한다. 대표와 등록 반려동물만 등장한다.
 4. 초대받은 사람은 링크에서 인증·수락·본인 프로필 연결을 마친 뒤 입주한다. 링크 열람만으로 가입시키지 않는다.
 5. 실제 가입자의 얼굴 아이콘을 누르면 그 사람이 있는 집·직장·학교·밖을 관찰한다.
@@ -50,7 +50,7 @@ React↔Phaser는 타입이 정의된 이벤트·어댑터로 연결한다. 장�
 | 모델 | 핵심 데이터 | 무결성 |
 |---|---|---|
 | User / ExternalIdentity | 계정, 제공자·subject | 제공자 식별 조합 고유 |
-| Household | 집, 계획 인원, 소유자 | 인원 감소로 가입자 자동 삭제 금지 |
+| Household | 집 이름, 소유자, revision | 실제 가족 수는 Membership에서 계산 |
 | Membership | 가구·계정·역할·가입 상태·외형 | 중복 가입 방지, 미참여자 미표시 |
 | Invitation | 토큰 해시·가구·만료·수락·취소 | 열람/수락 분리, 동시 수락 트랜잭션 |
 | Pet | 가구·이름·종류·외형 | 계정 불필요, 0마리 지원 |
@@ -69,7 +69,7 @@ React↔Phaser는 타입이 정의된 이벤트·어댑터로 연결한다. 장�
 | 내 계정 | GET /api/me | 세션 사용자·가입 가구 |
 | 집 생성 | POST /api/households | 집과 대표 가입 동시 저장 |
 | 초대 생성 | POST /api/households/{id}/invitations | 대표 권한·만료·취소 |
-| 초대 수락 | POST /api/invitations/{token}/accept | 인증·유효성·중복·인원 정책을 원자적으로 검증 |
+| 초대 수락 | POST /api/invitations/{token}/accept | 인증·유효성·중복 가입·토큰 일회성을 원자적으로 검증 |
 | 월드 초기/복구 | GET /api/households/{id}/world | 실제 가입자·반려동물·공유 상태·revision |
 | 내 상태 | PATCH /api/households/{id}/me/status | 작성자를 인증에서 결정 |
 | 식료품 | /api/households/{id}/pantry-items | 가구 범위·버전 충돌 |
@@ -153,3 +153,13 @@ v0.4에서 PWA/앱 확장 중심을 웹 브라우저로 변경하고 REST+WebSoc
 ## v0.6 증분 구현 결과
 
 [P1/P2/P3 구현 및 검증](V06.md). 기능별 ObjectNotes/FamilyCalendar/Housewarming 서버 파일과 React 컴포넌트로 분리했다. 기존 REST 식별자·가족 가입·LifeEvent NOTE는 유지했다. Flyway V4~V6 추가, 신규 DTO/인가/버전/공개 방문 컨텍스트를 도입했다. POST/수정 후 커밋 이벤트와 REST 재동기화를 연결했다. /visit/:token은 Google OAuth state에 묶인 내부 반환 경로이며 가족 가입이 아니다. 방문자는 별도 공개 실내 아트와 방명록만 사용한다.
+
+## 입장 후 가족·반려동물 관리
+
+CreateHouse는 name/memberName/appearance만 받는다. Plan DTO와 계획 인원 PATCH를 제거했다. accept의 READ_COMMITTED/가구·초대 행 잠금은 유지하고 capacity 검사만 제거했다. 서로 다른 토큰은 모두 입주 가능하고 같은 토큰 경쟁은 한 계정만 성공한다. 동일 계정의 서로 다른 토큰 동시 수락도 기존 Membership를 재사용한다.
+
+POST pets는 대표만 한 마리 등록하고 PATCH pets/{petId}는 이름/종류를 바꾼다. 기존 Pet와 appearance는 유지한다. 등록 외형은 현재 기본 cream만 받으며 수정 요청은 외형을 변경하지 않는다. world 응답에 목록을 포함하고 PETS_CHANGED 후 재조회한다. Phaser는 이름 변경 시 label을 즉시 갱신하고 종류 변경 시 텍스처를 다시 선택한다.
+
+V7은 legacy planned_people에 DEFAULT 1을 설정한다. 앱/JPA에는 필드가 없으며 기존 데이터는 건드리지 않는다. 이전 버전의 JPA 스키마 검증과 운영 rollback 지원을 위해 물리 삭제를 분리했다. 이전 앱으로 되돌리면 예전 인원 정책이 재적용되므로 초대 쓰기는 중지하고 조정해야 한다. 이후 지원 종료 시 별도 migration으로 컬럼을 삭제한다.
+
+초대 남용 방어는 가족 수 제한과 별개다. 현재 대표 권한/CSRF/안전한 토큰/클라이언트 중복 클릭 방지를 유지한다. 다중 재배포에도 유지되는 사용자·가구별 발급 rate limit은 후속 작업이며, 프로세스 메모리만의 임시 상한을 제품 인원 제한처럼 도입하지 않는다.

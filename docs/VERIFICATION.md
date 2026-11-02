@@ -133,3 +133,17 @@ Google 인증은 CI 전용 가짜 credential의 redirect 설정만 확인했다.
 새 PATCH me/profile API와 별도 NicknameForm을 계정 설정에 추가했다. 기존 구성원의 name 필드를 사용하며 마이그레이션이 없다. 프런트 37건(새 4건: 저장·중복 방지·오류 입력 보존/재시도·유효성), 서버 62건(새 3건: 저장/재로그인/외형 보존, HTTP 인증/CSRF/가구/ID 위조 차단, 다른 가족의 실제 STOMP 알림)과 웹/bootJar 빌드 성공. 도메인 검사 1건은 MySQL 통합에도 상속하여 실행한다.
 
 별도 파일 QA DB의 8081/5174에서 실제 UI로 닉네임 저장→계정/가족 목록 갱신→새로고침 복구를 확인하고 데스크톱·390px 시뮬레이션 캡처를 생성했다. 실 iPhone Safari·Google 계정 E2E와 구분한다. 현재 Google sub/계정 이름은 변경하지 않으며 과거 생활 사건의 저장된 작성자 이름은 그대로 둔다.
+
+## 2026-11-02: 집 생성 간소화·가족 무제한 초대·입장 후 반려동물 관리
+
+기준 aa04402, 작업 시작 main 최신·clean 확인. CreateHouse/HouseView/Snapshot와 JPA에서 plannedPeople 제거, 계획 PATCH 폐기. 기존 잠금과 READ_COMMITTED는 유지하고 capacity 검사만 제거. 새 집은 1명/0마리, 대표의 pets POST/PATCH와 PETS_CHANGED 커밋 후 통지를 추가했다. 구형 draft는 집/이름/외형/단계만 복원한다. Phaser 이름 label은 매 snapshot 갱신하고 종류별 texture key를 분리한다.
+
+로컬 프런트 42건, 웹 build, 서버/H2 67건과 bootJar 성공. 요청한 `bash scripts/server.sh test mysqlTest bootJar`도 실행했으나 mysqlTest는 이 Mac에 Docker가 없어 세 클래스 initialization 단계에서 실패했다. 이를 통과로 처리하지 않았다. 실제 [GitHub CI 41384449741](https://github.com/hellomypp/dot-home/actions/runs/41384449741)의 web/server/container는 모두 성공했다. MySQL 8.4의 별개 초대 동시 수락 모두 성공·같은 토큰 한 번 성공·같은 계정 중복 Membership 방지·legacy limit 무관 가입·pet 권한/저장 및 V6→V7 기존 행 보존 검사를 포함한다. 이후 HTTP pet 입력/위조 검사를 추가한 최종 CI는 별도 결과로 확인한다.
+
+V1~V6 SQL 원본은 변경하지 않았다. V7은 legacy planned_people의 DEFAULT 1만 설정하고 기존 값/컬럼을 보존한다. 실제 미리보기 정상 중지→비공개 파일 백업→별도 복사본에서 V7/JPA 기동→정상 종료 후 비교를 수행했다. 계정/가구/구성원/반려동물/초대/재고/이력/쪽지/캘린더/방문/방명록 등 13개 도메인 테이블의 행 수·모든 행 해시가 동일했다. 복사본 검증 후 실제 preview V7 기동과 HTTPS health 200, Google 활성/dev 비활성을 확인했다. 인증 쿠키/초대/데이터 내용을 로그나 Git에 저장하지 않았다. 외부 배포 DB는 아직 없다.
+
+별도 파일 QA DB 8081/5174에서 실제 UI로 집 이름→캐릭터→1명/0마리 집 생성→반려동물 두 마리 순차 등록→이름 수정→가족 초대 링크 생성→로그아웃→별도 계정 로그인 후 초대 복귀→명시 수락을 확인했다. 가족 브라우저를 그대로 둔 채 별도 대표 HTTP 세션에서 추가 등록/종류·이름 변경하자 새로고침 없이 목록·Phaser에 반영됐다. 이후 QA 서버 재시작·재로그인으로 동일 Membership와 pet ID/이름/종류를 확인했다. v06-smoke의 쪽지/보관/캘린더/집들이/방명록/방문자 가족 API 차단도 성공.
+
+375/390/430/768/1280 CSS px에서 집 정보·캐릭터·반려동물 관리·게임을 캡처/측정했다. 가로 넘침 없고 온보딩 CTA 52px, 반려동물 등록 CTA 약 44.8px. 캡처는 로컬 `.tools/family-pets-qa/screenshots/`(Git 제외), 실제 iPhone Safari·키보드·Google 계정 E2E를 직접 수행한 것은 아니다. 과거 v0.6 구현·검증 이력은 위에 보존했다.
+
+현재 정책의 대표 캡처: [집 설정 390px](screenshots/family-pets/house-390.png), [반려동물 관리 390px](screenshots/family-pets/pets-390.png), [다른 가족에게 실시간 반영](screenshots/family-pets/family-realtime.png), [20개 화면 측정](screenshots/family-pets/viewport-checks.json).

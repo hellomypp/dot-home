@@ -17,18 +17,17 @@
 
 ## 가구·초대
 
-- `POST /api/households` body `{name:"우리의 작은 집",plannedPeople:3,memberName:"다은",appearance:"rose",pets:[{name:"보리",kind:"cat",appearance:"cream"}]}` → world. 빈 pets 허용, 미가입 자리는 생성하지 않는다.
+- `POST /api/households` body `{name:"우리의 작은 집",memberName:"다은",appearance:"rose"}` → world. 대표 1명·반려동물 0마리로 시작하며 가족/반려동물 사전 설정을 받지 않는다.
 - `GET /api/households/{id}/world` → 아래 스냅샷.
-- `PATCH /api/households/{id}` body `{plannedPeople:3}` → world. 대표만, 가입자 수 이하 불가.
 - `POST /api/households/{id}/invitations` → `{id,token,expiresAt,url:"/invite/{token}"}`. 대표만; 토큰은 생성 응답에서만 제공, DB에는 해시만 저장. 72시간 일회성 초대.
 - `DELETE /api/households/{id}/invitations/{invitationId}` → 204. 대표만 취소.
 - `GET /api/invitations/{token}` → `{householdName,expiresAt,available:true}`. 공개 미리보기이며 가입하지 않는다. 만료/취소/사용됨 410.
-- `POST /api/invitations/{token}/accept` body `{memberName:"민준",appearance:"blue"}` → world. 인증 필수. 같은 계정 반복 수락은 동일 가구 반환, 다른 계정 사용 완료/만료 토큰 410. 계획 인원 도달 409.
+- `POST /api/invitations/{token}/accept` body `{memberName:"민준",appearance:"blue"}` → world. 인증 필수. 같은 계정 반복 수락은 동일 가구 반환, 다른 계정 사용 완료/만료 토큰 410. 가족 인원에 따른 제한은 없다.
 
 ## world 예시
 
 ```json
-{"household":{"id":"1","name":"우리의 작은 집","plannedPeople":3,"ownerId":"1"},"meMemberId":"1","revision":1,"serverTime":"2026-11-01T00:00:00Z","members":[{"id":"1","userId":"1","name":"다은","appearance":"rose","role":"OWNER","place":"home","mood":"","food":"","thought":"","statusExpiresAt":null,"statusUpdatedAt":"2026-11-01T00:00:00Z","x":320,"y":320,"action":"idle"}],"pets":[],"pantryItems":[],"events":[]}
+{"household":{"id":"1","name":"우리의 작은 집","ownerId":"1"},"meMemberId":"1","revision":1,"serverTime":"2026-11-01T00:00:00Z","members":[{"id":"1","userId":"1","name":"다은","appearance":"rose","role":"OWNER","place":"home","mood":"","food":"","thought":"","statusExpiresAt":null,"statusUpdatedAt":"2026-11-01T00:00:00Z","x":320,"y":320,"action":"idle"}],"pets":[],"pantryItems":[],"events":[]}
 ```
 
 - place enum `home|office|school|outside`. 가입자는 접속이 없어도 유지한다. `members`는 수락 완료 가입자만. `pets` → `{id,name,kind,appearance}`.
@@ -54,7 +53,7 @@
 
 ## 오류
 
-`{code,message}`. 400 입력 오류, 401 로그인 필요, 403 가구/대표 권한 없음 또는 CSRF 실패, 404 데이터 없음, 409 인원/버전/요청 충돌, 410 만료·취소·이미 사용된 초대.
+`{code,message}`. 400 입력 오류, 401 로그인 필요, 403 가구/대표 권한 없음 또는 CSRF 실패, 404 데이터 없음, 409 버전/요청 충돌, 410 만료·취소·이미 사용된 초대.
 
 구독 준비 절차: topic과 `/user/queue/errors`, `/user/queue/sync`를 구독하고 `/app/households/{id}/sync`로 `{}`를 보낸다. 서버의 `SYNC_READY`를 수신한 뒤 REST 스냅샷을 조회한다. 서버는 클라이언트 프레임 수신 순서를 유지하며, 조회 중 새 사건이 오면 최신 스냅샷을 다시 읽는다. 단순 브로커의 STOMP receipt 지원을 가정하지 않는다. 권한 위반 프레임은 정책 위반으로 소켓을 닫는다.
 
@@ -100,7 +99,7 @@ Google 인증한 방문자:
 - GET /api/visits/{token} → `{householdName,theme,guestbook}`. 가족 world DTO와 다르다. 만료/취소 410, 미인증 401.
 - POST /api/visits/{token}/guestbook, `{requestId,message}` → 방명록 DTO. message 1~1000자, requestId 1~80자. 같은 요청·같은 본문은 기존 결과, 같은 요청의 다른 본문은 409. 새 요청은 가구/계정별 30초 제한(429).
 
-모든 변경 요청에 CSRF 필요. body에 작성자·가구·방문자 식별자를 주입하면 400. 방문 권한으로 가족 API 또는 가족 STOMP SEND/SUBSCRIBE에 접근할 수 없다. 가족 Membership·계획 인원을 변경하지 않는다.
+모든 변경 요청에 CSRF 필요. body에 작성자·가구·방문자 식별자를 주입하면 400. 방문 권한으로 가족 API 또는 가족 STOMP SEND/SUBSCRIBE에 접근할 수 없다. 가족 Membership를 생성하거나 변경하지 않는다.
 
 쪽지/캘린더 변경은 기존 가족 topic으로 OBJECT_NOTE_CHANGED, CALENDAR_EVENT_CHANGED를 커밋 후 발행한다. payload는 변경된 레코드 ID이며 revision은 가구 전체 순서를 따른다. 클라이언트는 관련 REST를 재조회한다. [실제 검증/시간 정책](V06.md).
 
@@ -109,3 +108,11 @@ Google 인증한 방문자:
 `PATCH /api/households/{id}/me/profile` — 세션 인증·CSRF·해당 가구의 활성 가입 필요. body: `{"memberName":"새 닉네임"}`. 앞뒤 공백을 제거하고 1~40자, 제어문자/줄바꿈을 거절한다. userId/memberId를 받지 않으며 서버가 현재 사용자의 구성원을 결정한다. 대표와 일반 구성원 모두 본인 이름만 변경한다. 성공은 갱신된 World, 가구에는 커밋 후 `MEMBER_PROFILE_CHANGED`를 발행해 재조회한다. 같은 이름 재저장은 revision을 올리지 않는다.
 
 가구 캐릭터의 표시 이름 변경이며 Google 계정 이름·인증 식별자·다른 집의 캐릭터 이름은 변경하지 않는다. 기존 LifeEvent에 저장된 과거 작성자 이름은 당시 기록으로 유지한다. DB 마이그레이션은 없다.
+
+## 반려동물 관리
+
+- `POST /api/households/{id}/pets`: `{name:"모카",kind:"cat",appearance:"cream"}` → 갱신된 World. kind는 cat/dog, appearance는 현재 기본 cream. 이름 1~40자·공백 정리·제어문자 거절.
+- `PATCH /api/households/{id}/pets/{petId}`: `{name:"보리",kind:"dog"}` → 갱신된 World. 기존 appearance는 그대로 유지한다.
+- 목록은 기존 `GET /api/households/{id}/world`의 pets로 조회한다. 모든 활성 가족 조회 가능, 등록/수정은 대표만. 타 가구 petId·방문자·비대표는 403, 인증/CSRF/알 수 없는 필드 검증 유지.
+- 성공 커밋 후 `PETS_CHANGED` 이벤트와 revision 갱신. 서버 응답/이벤트의 World로 사이드바와 Phaser를 갱신하며 새로고침을 요구하지 않는다.
+- 삭제 API는 제공하지 않는다. 구형 POST households의 plannedPeople/pets는 제거된 계약이며 400이다. 계획 인원 PATCH는 제거했다.

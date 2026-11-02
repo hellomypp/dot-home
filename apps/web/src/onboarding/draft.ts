@@ -41,7 +41,6 @@ export function readDraft(id: string, name: string): Draft {
       name: d.name.slice(0, 60),
       memberName: d.memberName.slice(0, 30),
       appearance: encodeOutfit(decodeOutfit(String(d.appearance))),
-
     };
   } catch {
     return fresh;

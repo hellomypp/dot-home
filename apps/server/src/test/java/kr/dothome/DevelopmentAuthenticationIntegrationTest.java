@@ -32,4 +32,15 @@ class DevelopmentAuthenticationIntegrationTest {
    mvc.perform(patch(path).with(user(owner)).with(csrf()).contentType("application/json").content(invalid)).andExpect(status().isBadRequest());
   mvc.perform(patch(path).with(user(owner)).with(csrf()).contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.members[0].name").value("바꾼 이름"));
  }
+ @Test void petInputAndOwnerIdentityAreValidatedAtHttpBoundary()throws Exception{
+  String owner=identity.resolve("test",java.util.UUID.randomUUID().toString(),"대표").id;
+  String h=homes.create(owner,new Api.CreateHouse("반려동물 집","대표","sage")).household().id(),path="/api/households/"+h+"/pets";
+  String valid="{\"name\":\"모카\",\"kind\":\"cat\",\"appearance\":\"cream\"}";
+  mvc.perform(post(path).with(csrf()).contentType("application/json").content(valid)).andExpect(status().isUnauthorized());
+  mvc.perform(post(path).with(user(owner)).contentType("application/json").content(valid)).andExpect(status().isForbidden());
+  for(String invalid:new String[]{"{\"name\":\" \",\"kind\":\"cat\",\"appearance\":\"cream\"}","{\"name\":\"모카\",\"kind\":\"other\",\"appearance\":\"cream\"}","{\"name\":\"모카\",\"kind\":\"cat\",\"appearance\":\"invalid\"}","{\"name\":\"모카\",\"kind\":\"cat\",\"appearance\":\"cream\",\"ownerId\":\"forged\"}"})
+   mvc.perform(post(path).with(user(owner)).with(csrf()).contentType("application/json").content(invalid)).andExpect(status().isBadRequest());
+  mvc.perform(post(path).with(user(owner)).with(csrf()).contentType("application/json").content(valid)).andExpect(status().isOk()).andExpect(jsonPath("$.pets[0].name").value("모카"));
+ }
+
 }
