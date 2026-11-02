@@ -4,6 +4,7 @@ export interface Draft {
   name: string;
   memberName: string;
   appearance: string;
+  presetId:string;
 }
 export const draftPrefix = "dot-home:onboarding:";
 export function emptyDraft(name: string): Draft {
@@ -11,7 +12,8 @@ export function emptyDraft(name: string): Draft {
     step: 0,
     name: "우리의 작은 집",
     memberName: name,
-    appearance: "v1:0000",
+    appearance: "v2:adult_female",
+    presetId:"garden_home",
   };
 }
 export function readDraft(id: string, name: string): Draft {
@@ -40,7 +42,8 @@ export function readDraft(id: string, name: string): Draft {
       step: d.step,
       name: d.name.slice(0, 60),
       memberName: d.memberName.slice(0, 30),
-      appearance: encodeOutfit(decodeOutfit(String(d.appearance))),
+      appearance: /^v2:(adult_female|adult_male|child)$/.test(d.appearance)?d.appearance:encodeOutfit(decodeOutfit(String(d.appearance))),
+      presetId: ["garden_home","sunny_apartment","brick_loft"].includes(d.presetId)?d.presetId:"garden_home",
     };
   } catch {
     return fresh;

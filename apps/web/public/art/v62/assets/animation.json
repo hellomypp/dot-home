@@ -1,0 +1,67 @@
+{
+  "directions": [
+    "down",
+    "left",
+    "right",
+    "up"
+  ],
+  "human": {
+    "frame": [
+      24,
+      40
+    ],
+    "sheet": [
+      96,
+      160
+    ],
+    "origin": [
+      0.5,
+      1
+    ],
+    "idle": 0,
+    "walk": [
+      1,
+      2,
+      3,
+      2
+    ],
+    "msPerFrame": 150,
+    "collision": [
+      -6,
+      -8,
+      12,
+      8
+    ],
+    "childVisibleHeight": 32
+  },
+  "dog": {
+    "frame": [
+      20,
+      16
+    ],
+    "walkSheet": [
+      80,
+      64
+    ],
+    "statesSheet": [
+      40,
+      64
+    ],
+    "idle": 0,
+    "walk": [
+      1,
+      2,
+      3,
+      2
+    ],
+    "sitColumn": 0,
+    "sleepColumn": 1,
+    "states": "static poses",
+    "collision": [
+      -5,
+      -5,
+      10,
+      5
+    ]
+  }
+}

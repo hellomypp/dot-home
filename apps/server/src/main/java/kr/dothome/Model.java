@@ -20,6 +20,9 @@ class Account extends Row {
 class Household extends Row {
     @Column(nullable = false, length = 80) String name;
     @Column(nullable = false, length = 36) String ownerId;
+    @Column(nullable=false,length=32) String presetId="classic_home";
+    long designVersion;
+    @Column(nullable=false,length=512) String objectVariants="{}";
     long revision;
     protected Household() {}
 }
@@ -36,7 +39,8 @@ class Member extends Row {
     @Column(nullable = false, length = 200) String thought = "";
     Instant statusExpiresAt;
     Instant statusUpdatedAt = Instant.now();
-    double x = 320, y = 288;
+    @Column(nullable=false,length=16) String avatarSpace="v62";
+    double x = 224, y = 272;
     @Column(nullable = false, length = 24) String action = "idle";
     Instant avatarUpdatedAt = Instant.now();
     boolean active = true;

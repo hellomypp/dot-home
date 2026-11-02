@@ -5,14 +5,16 @@ RUN npm install --global pnpm@11.25.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/package.json
 RUN pnpm install --frozen-lockfile
+COPY assets/space-catalog.json ./assets/space-catalog.json
 COPY apps/web ./apps/web
 RUN pnpm build
 
 FROM eclipse-temurin:21-jdk-jammy AS server
 WORKDIR /workspace/server
 COPY apps/server ./
+COPY assets/space-catalog.json /workspace/space-catalog.json
 COPY --from=web /workspace/apps/web/dist /workspace/web-dist
-RUN ./gradlew --no-daemon bootJar -PwebDist=/workspace/web-dist -PproductionImage
+RUN ./gradlew --no-daemon bootJar -PwebDist=/workspace/web-dist -PproductionImage -PspaceCatalogue=/workspace/space-catalog.json
 
 FROM eclipse-temurin:21-jre-jammy AS runtime
 RUN groupadd --gid 10001 dothome && useradd --uid 10001 --gid dothome --no-create-home --home-dir /app dothome

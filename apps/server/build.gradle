@@ -39,3 +39,8 @@ tasks.named('processResources') {
         from(file(project.property('webDist'))) { into 'static' }
     }
 }
+
+// Single canonical asset/physics catalogue; never load sample characters as members.
+tasks.named('processResources') {
+    from(project.hasProperty('spaceCatalogue') ? file(project.property('spaceCatalogue')) : rootProject.file('../../assets/space-catalog.json')) { into 'spaces' }
+}

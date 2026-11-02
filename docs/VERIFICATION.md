@@ -1,5 +1,10 @@
 # 2026-11-01 구현·검증 기록
 
+## v6.2 / v0.7 로컬 검증 (2026-11-02)
+
+web 50건 / server 72건, Vite build와 bootJar 통과. v62-smoke.py 및 v06-smoke.py 실제 HTTP 통과. H2 기존 데이터 보존과 STOMP 변경 이벤트 회귀 포함. mysqlTest는 Docker 런타임 부재로 초기화 실패(통과 아님). 새 push·GitHub Actions·배포 및 실기기 Safari/Google E2E는 실행하지 않았다. [명령·스크린샷·제한](V62_INTEGRATION.md).
+
+
 원본 `ACCEPTANCE.md`는 목표 체크리스트로 보존한다. 이 문서만 실제 수행 결과를 기록한다. M0~M3 웹 MVP 전체 완료를 선언하지 않는다.
 
 ## 환경

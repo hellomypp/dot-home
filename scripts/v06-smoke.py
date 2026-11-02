@@ -28,7 +28,7 @@ b.call(root+'/notes/'+n['id']+'/take','POST',{'version':n['version']});assert a.
 a.call(root+'/objects/fridge/notes','POST',{'body':'주말에 같이 산책할까요?'})
 e=a.call(root+'/calendar-events','POST',{'title':'가족 저녁 식사','description':'함께 따뜻한 밥을 먹어요','category':'GENERAL','allDay':True,'startDate':'2026-11-03','endDate':'2026-11-03','startAt':None,'endAt':None,'timeZone':'Asia/Seoul','version':0});assert len(b.call(root+'/calendar-events?from=2026-11-01&to=2026-11-30'))==1
 link=a.call(root+'/housewarming-invitations','POST');token=link['url'].split('/')[-1]
-visit=c.call('/api/visits/'+token+'/accept','POST',{});assert set(visit)=={'householdName','theme','guestbook'}
+visit=c.call('/api/visits/'+token+'/accept','POST',{});assert set(visit)=={'householdName','theme','guestbook','design'}
 c.call('/api/visits/'+token+'/guestbook','POST',{'requestId':'smoke-'+suffix,'message':'따뜻한 집이네요. 초대해줘서 고마워요!'});assert len(a.call(root+'/guestbook'))==1
 assert len(a.call(root+'/visitors'))==1
 for path in ['/world','/objects/fridge/notes','/notes/archive','/calendar-events?from=2026-11-01&to=2026-11-30','/guestbook']:

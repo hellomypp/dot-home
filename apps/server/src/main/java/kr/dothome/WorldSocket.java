@@ -78,16 +78,15 @@ class SocketConfiguration implements WebSocketMessageBrokerConfigurer {
 class MovementService {
     final HomeService homes;final Map<String,Long> rate=new ConcurrentHashMap<>();final Map<String,LinkedHashSet<String>> requests=new ConcurrentHashMap<>();
     MovementService(HomeService homes){this.homes=homes;}
-    static final double[][] HOME={{336,120,184,46},{542,100,44,65},{70,218,130,45},{92,304,96,32},{55,335,30,30},{361,226,78,51},{510,245,75,110},{242,130,32,60},{236,326,63,36}};
     static final double[][] OTHER={{112,200,120,48},{410,200,110,48}};
-    static boolean walkable(double x,double y,String scene){if(!Double.isFinite(x)||!Double.isFinite(y)||x<51||x>589||y<137||y>399)return false;for(double[] r:scene.equals("home")?HOME:OTHER)if(x>r[0]-7&&x<r[0]+r[2]+7&&y>r[1]-7&&y<r[1]+r[3]+7)return false;return true;}
+    static boolean walkable(double x,double y,String scene){if(scene.equals("home"))return Spaces.walkable(x,y,"garden_home");if(!Double.isFinite(x)||!Double.isFinite(y)||x<51||x>589||y<137||y>399)return false;for(double[] r:OTHER)if(x>r[0]-7&&x<r[0]+r[2]+7&&y>r[1]-7&&y<r[1]+r[3]+7)return false;return true;}
     @Transactional void apply(String householdId,String userId,Api.Intent intent){
         Household house=homes.lock(householdId,userId);Member member=homes.requireMember(householdId,userId);if(!member.place.equals(intent.scene()))throw ApiException.invalid("내 캐릭터가 있는 공간에서만 움직일 수 있어요.");
         var seen=requests.computeIfAbsent(member.id,k->new LinkedHashSet<>());synchronized(seen){if(seen.contains(intent.requestId()))return;}
         long now=System.currentTimeMillis();Long previous=rate.put(member.id,now);if(previous!=null&&now-previous<120)throw ApiException.invalid("이동 요청이 너무 빨라요.");
-        if(intent.kind().equals("MOVE_INTENT")){if(intent.x()==null||intent.y()==null||!walkable(intent.x(),intent.y(),intent.scene()))throw ApiException.invalid("이곳으로 이동할 수 없어요.");member.x=intent.x();member.y=intent.y();member.action="walk";}
-        else{if(!Set.of("sofa","fridge","table","window").contains(Objects.toString(intent.target(),"")))throw ApiException.invalid("알 수 없는 가구예요.");member.action="idle";}
-        member.avatarUpdatedAt=Instant.now();synchronized(seen){seen.add(intent.requestId());while(seen.size()>256)seen.remove(seen.iterator().next());}homes.emit(house,"AVATAR_ACTION_CHANGED",HomeService.memberView(member));
+        if(intent.kind().equals("MOVE_INTENT")){if(intent.x()==null||intent.y()==null||!(intent.scene().equals("home")?Spaces.walkable(intent.x(),intent.y(),house.presetId):walkable(intent.x(),intent.y(),intent.scene())))throw ApiException.invalid("이곳으로 이동할 수 없어요.");member.x=intent.x();member.y=intent.y();member.avatarSpace="v62";member.action="walk";}
+        else{if(!Set.of("sofa","fridge","table","window","calendar","entrance","pet_rest").contains(Objects.toString(intent.target(),"")))throw ApiException.invalid("알 수 없는 가구예요.");member.action="idle";}
+        member.avatarUpdatedAt=Instant.now();synchronized(seen){seen.add(intent.requestId());while(seen.size()>256)seen.remove(seen.iterator().next());}homes.emit(house,"AVATAR_ACTION_CHANGED",HomeService.memberView(member,house.presetId));
     }
 }
 

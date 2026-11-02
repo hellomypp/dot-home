@@ -1,0 +1,34 @@
+{
+  "id": "adult_male",
+  "eyeClusters": [
+    {
+      "frame": 0,
+      "topY": 15,
+      "leftX": 7,
+      "rightX": 14
+    },
+    {
+      "frame": 1,
+      "topY": 15,
+      "leftX": 7,
+      "rightX": 14
+    },
+    {
+      "frame": 2,
+      "topY": 15,
+      "leftX": 7,
+      "rightX": 14
+    },
+    {
+      "frame": 3,
+      "topY": 15,
+      "leftX": 7,
+      "rightX": 14
+    }
+  ],
+  "eyePixels": [
+    3,
+    3
+  ],
+  "notes": "Native front-face finishing retains lid, iris, pupil and one ivory glint; profiles use generated eye artwork. All walking frames keep eyes open."
+}

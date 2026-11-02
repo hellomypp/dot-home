@@ -1,7 +1,9 @@
+import type {SpaceDesign} from './spaces';
 export type Place = 'home' | 'office' | 'school' | 'outside';
 export interface WorldMember {
   id: string;
   name: string;
+  characterStyle?: string;
   appearance?: { hair?: string; shirt?: string; skin?: string; pants?: string; hairStyle?: number; accessory?: number };
   place: Place;
   status?: string;
@@ -12,6 +14,7 @@ export interface WorldMember {
 }
 export interface WorldPet { id: string; name: string; kind?: string; color?: string }
 export interface WorldView {
+  design?:SpaceDesign;
   objectNotes?: {id:string;objectId:string}[];
   place: Place;
   ownMemberId: string;
@@ -22,7 +25,7 @@ export interface WorldView {
   palette?: 'warm' | 'dusk';
 }
 export type WorldEvent =
-  | { type: 'interact'; target: 'fridge' | 'sofa' | 'table' | 'pet' | 'window'; label: string }
+  | { type: 'interact'; target: 'fridge' | 'sofa' | 'table' | 'pet' | 'window' | 'calendar' | 'entrance' | 'pet_rest'; label: string }
   | { type: 'activity'; text: string }
   | { type: 'ready' }
   | { type: 'visibility-resume' }

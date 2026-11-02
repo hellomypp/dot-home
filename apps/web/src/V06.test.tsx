@@ -145,6 +145,7 @@ it("집들이는 로그인 후 방문 버튼을 눌러야 수락하고 텍스트
         user: { id: "visitor", name: "친구" },
         memberships: [],
       } as never;
+    if(path === "/api/visits/"+token && !method)return {householdName:"새 분위기의 친구 집",theme:"warm",guestbook:[],design:{presetId:"brick_loft",version:2,variants:{sofa:"blue"}}} as never;
     if (method === "POST")
       return {
         householdName: "친구 집",
@@ -169,6 +170,9 @@ it("집들이는 로그인 후 방문 버튼을 눌러야 수락하고 텍스트
     "/api/visits/" + token + "/accept",
     "POST",
   );
+  fireEvent.click(screen.getByRole("button",{name:"집 모습 새로고침"}));
+  expect(await screen.findByRole("heading",{name:"새 분위기의 친구 집 집들이"})).toBeTruthy();
+  expect(mocked).toHaveBeenCalledWith("/api/visits/"+token);
   expect(safeInvitePath("/visit/" + token)).toBe("/visit/" + token);
   expect(safeInvitePath("/visit/" + token + "?redirect=evil")).toBeNull();
 });

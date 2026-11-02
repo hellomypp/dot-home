@@ -9,8 +9,8 @@ public final class Api {
     public record DevLogin(@NotBlank @Pattern(regexp="[A-Za-z0-9_-]{2,64}") String accountKey,@NotBlank @Size(max=40) String name) {}
     public record PetInput(@NotBlank @Size(max=40) String name,@NotNull @Pattern(regexp="cat|dog") String kind,@NotNull @Pattern(regexp="cream") String appearance) {}
     public record PetEdit(@NotBlank @Size(max=40) String name,@NotNull @Pattern(regexp="cat|dog") String kind) {}
-    public record CreateHouse(@NotBlank @Size(max=80) String name,@NotBlank @Size(max=40) String memberName,@NotBlank @Size(max=24) String appearance) {}
-    public record Profile(@NotBlank @Size(max=40) String memberName) {}
+    public record CreateHouse(@NotBlank @Size(max=80) String name,@NotBlank @Size(max=40) String memberName,@NotBlank @Size(max=24) String appearance,@Size(max=32) String presetId) {public CreateHouse(String name,String memberName,String appearance){this(name,memberName,appearance,null);}}
+    public record Profile(@NotBlank @Size(max=40) String memberName,@Size(max=24) String appearance) {public Profile(String memberName){this(memberName,null);}}
     public record Accept(@NotBlank @Size(max=40) String memberName,@NotBlank @Size(max=24) String appearance) {}
     public record Status(@NotNull @Pattern(regexp="home|office|school|outside") String place,@NotNull @Size(max=80) String mood,@NotNull @Size(max=80) String food,@NotNull @Size(max=200) String thought,@Min(1) @Max(1440) int expiresInMinutes) {}
     public record CreatePantry(@NotBlank @Size(max=80) String name,@NotBlank @Size(max=40) String location,@PositiveOrZero double quantity,@NotBlank @Size(max=16) String unit,LocalDate expiresOn) {}
@@ -25,7 +25,7 @@ public final class Api {
     public record PetView(String id,String name,String kind,String appearance) {}
     public record PantryView(String id,String name,String location,double quantity,String unit,LocalDate expiresOn,long version,Instant updatedAt) {}
     public record EventView(String id,String type,String message,String authorMemberId,String authorName,Instant createdAt) {}
-    public record World(HouseView household,String meMemberId,long revision,Instant serverTime,List<MemberView> members,List<PetView> pets,List<PantryView> pantryItems,List<EventView> events) {}
+    public record World(HouseView household,String meMemberId,long revision,Instant serverTime,List<MemberView> members,List<PetView> pets,List<PantryView> pantryItems,List<EventView> events,SpaceView design) {}
     public record InvitationView(String id,String token,Instant expiresAt,String url) {}
     public record InvitationPreview(String householdName,Instant expiresAt,boolean available) {}
     public record Signal(String eventId,long revision,String type,Instant serverTime,Object payload) {}

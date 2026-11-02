@@ -1,15 +1,81 @@
 {
-  "version": "m0-2026-11-01",
-  "status": "provisional-art-direction",
-  "source": "apps/web/src/game/art.ts",
-  "origin": "Original programmatic pixel art authored for this project; no extracted game assets or reference HTML artwork reused.",
-  "logicalScene": [640, 448],
-  "navigationGrid": 8,
-  "avatarFrame": [32, 48],
-  "avatarDirections": ["down", "up", "left", "right"],
-  "walkFramesPerDirection": 4,
-  "petFrame": [34, 28],
-  "feetCollisionRadius": 7,
-  "palettes": ["warm", "dusk"],
-  "rendering": "nearest-neighbor; foot-Y depth; React state never updated per frame"
+  "version": "v6.2-integration",
+  "status": "local-tested-owner-art-approval-pending",
+  "home": {
+    "source": "user-provided dot-home-v6.2",
+    "manifest": "apps/web/public/art/v62/manifest.json",
+    "sourceManifest": "apps/web/public/art/v62/source-manifest.json",
+    "catalogue": "assets/space-catalog.json",
+    "scene": [
+      448,
+      320
+    ],
+    "viewport": [
+      320,
+      224
+    ],
+    "tile": [
+      16,
+      16
+    ],
+    "humanFrame": [
+      24,
+      40
+    ],
+    "directions": [
+      "down",
+      "left",
+      "right",
+      "up"
+    ],
+    "walk": [
+      1,
+      2,
+      3,
+      2
+    ],
+    "frameMs": 150,
+    "origin": [
+      0.5,
+      1
+    ],
+    "rendering": "integer nearest-neighbor",
+    "exceptions": [
+      "cat retains provisional code asset",
+      "fridge variations use authored pixel magnet decoration"
+    ],
+    "approval": "Owner aesthetic and distribution-rights confirmation pending"
+  },
+  "legacyOtherPlaces": {
+    "version": "m0-2026-11-01",
+    "status": "provisional-art-direction",
+    "source": "apps/web/src/game/art.ts",
+    "origin": "Original programmatic pixel art authored for this project; no extracted game assets or reference HTML artwork reused.",
+    "logicalScene": [
+      640,
+      448
+    ],
+    "navigationGrid": 8,
+    "avatarFrame": [
+      32,
+      48
+    ],
+    "avatarDirections": [
+      "down",
+      "up",
+      "left",
+      "right"
+    ],
+    "walkFramesPerDirection": 4,
+    "petFrame": [
+      34,
+      28
+    ],
+    "feetCollisionRadius": 7,
+    "palettes": [
+      "warm",
+      "dusk"
+    ],
+    "rendering": "nearest-neighbor; foot-Y depth; React state never updated per frame"
+  }
 }

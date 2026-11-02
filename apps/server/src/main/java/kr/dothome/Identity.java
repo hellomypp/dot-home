@@ -51,7 +51,7 @@ class SecurityConfiguration {
     @Bean CsrfTokenRepository csrfRepository() { return new HttpSessionCsrfTokenRepository(); }
     @Bean SecurityFilterChain security(HttpSecurity http,CsrfTokenRepository csrfRepository,ObjectProvider<ClientRegistrationRepository> clients,IdentityService identity,Environment environment,SocketRegistry sockets,GoogleIdentity google,@org.springframework.beans.factory.annotation.Value("${app.origin}") String appOrigin) throws Exception {
         validateProfiles(environment);
-        http.authorizeHttpRequests(a -> a.requestMatchers(org.springframework.http.HttpMethod.GET,"/","/index.html","/login","/onboarding","/settings","/home/*","/invite/*","/visit/*","/assets/**","/favicon.ico","/healthz").permitAll()
+        http.authorizeHttpRequests(a -> a.requestMatchers(org.springframework.http.HttpMethod.GET,"/","/index.html","/login","/onboarding","/settings","/home/*","/invite/*","/visit/*","/assets/**","/art/**","/favicon.ico","/healthz").permitAll()
             .requestMatchers("/api/auth/csrf","/api/auth/config","/api/invitations/*","/oauth2/**","/login/**","/error").permitAll()
             .requestMatchers("/api/auth/dev").access((auth, context) -> new org.springframework.security.authorization.AuthorizationDecision(environment.matchesProfiles("dev") && localRequest(context.getRequest())))
             .anyRequest().authenticated());

@@ -35,7 +35,7 @@ class HomeService {
     }
     void owner(Household household,String userId) { if(!household.ownerId.equals(userId)) throw ApiException.forbidden(); }
     Api.World create(String userId,Api.CreateHouse input) {
-        Household household=new Household(); household.name=input.name().strip();household.ownerId=userId;household.revision=1;
+        Household household=new Household(); household.name=input.name().strip();household.ownerId=userId;household.revision=1;household.presetId=input.presetId()==null?"garden_home":input.presetId();Spaces.validate(household.presetId,Map.of());
         households.save(household);
         Member me=member(household.id,userId,input.memberName(),input.appearance(),"OWNER"); members.save(me);
         return snapshot(household,me.id);
@@ -44,6 +44,13 @@ class HomeService {
         Member member=new Member();member.householdId=householdId;member.userId=userId;member.name=name.strip();member.appearance=appearance;member.role=role; return member;
     }
     Api.World world(String householdId,String userId) { Household household=lock(householdId,userId); return snapshot(household,requireMember(householdId,userId).id); }
+    SpaceView design(String id,String user){return Spaces.view(lock(id,user));}
+    Api.World design(String id,String user,SpaceInput input){
+        Household h=lock(id,user);owner(h,user);Spaces.validate(input.presetId(),input.variants());
+        if(h.designVersion!=input.version())throw ApiException.conflict("다른 기기에서 집 분위기를 바꿨어요. 최신 설정을 확인해 주세요.");
+        h.presetId=input.presetId();try{h.objectVariants=Spaces.JSON.writeValueAsString(new TreeMap<>(input.variants()));}catch(Exception e){throw ApiException.invalid("가구 외형을 확인해 주세요.");}
+        h.designVersion++;emit(h,"SPACE_DESIGN_CHANGED",Spaces.view(h));return snapshot(h,requireMember(id,user).id);
+    }
     static String petName(String value) {
         if(value==null||value.strip().isBlank()||value.length()>40||value.codePoints().anyMatch(Character::isISOControl))throw ApiException.invalid("반려동물 이름은 줄바꿈 없이 1~40자로 입력해 주세요.");
         return value.strip();
@@ -93,8 +100,8 @@ class HomeService {
         available(invitation);
         Optional<Member> existing=members.findByHouseholdIdAndUserIdAndActiveTrue(household.id,userId);
         if(existing.isPresent()) return snapshot(household,existing.get().id);
-        Member member=member(household.id,userId,input.memberName(),input.appearance(),"MEMBER");members.save(member);
-        invitation.acceptedBy=userId;invitation.acceptedAt=Instant.now();emit(household,"MEMBER_JOINED",memberView(member));return snapshot(household,member.id);
+        Member member=member(household.id,userId,input.memberName(),input.appearance(),"MEMBER");var spawn=Spaces.map(household.presetId).get("spawns").get((int)(members.countByHouseholdIdAndActiveTrue(household.id)%3));member.x=spawn.get(0).asDouble();member.y=spawn.get(1).asDouble();members.save(member);
+        invitation.acceptedBy=userId;invitation.acceptedAt=Instant.now();emit(household,"MEMBER_JOINED",memberView(member,household.presetId));return snapshot(household,member.id);
     }
     Invitation invitation(String token) { if(token==null || !token.matches("[A-Za-z0-9_-]{43}")) throw gone(); return invitations.findByTokenHash(hash(token)).orElseThrow(HomeService::gone); }
     static void available(Invitation i) { if(i.cancelled || i.acceptedBy!=null || !i.expiresAt.isAfter(Instant.now())) throw gone(); }
@@ -105,14 +112,16 @@ class HomeService {
         String name=input.memberName()==null?"":input.memberName().strip();
         if(name.isBlank()||name.length()>40||name.codePoints().anyMatch(Character::isISOControl))throw ApiException.invalid("닉네임은 줄바꿈 없이 1~40자로 입력해 주세요.");
         Member me=requireMember(householdId,userId);
-        if(!me.name.equals(name)){me.name=name;emit(household,"MEMBER_PROFILE_CHANGED",memberView(me));}
+        if(input.appearance()!=null&&!input.appearance().matches("v2:(adult_female|adult_male|child)"))throw ApiException.invalid("캐릭터 스타일을 확인해 주세요.");
+        boolean changed=input.appearance()!=null&&!input.appearance().equals(me.appearance);if(changed)me.appearance=input.appearance();
+        if(!me.name.equals(name)||changed){me.name=name;emit(household,"MEMBER_PROFILE_CHANGED",memberView(me,household.presetId));}
         return snapshot(household,me.id);
     }
     Api.World status(String householdId,String userId,Api.Status input) {
         Household household=lock(householdId,userId);Member me=requireMember(householdId,userId);
-        if(!me.place.equals(input.place())) { me.x=320;me.y=288;me.action="idle";me.avatarUpdatedAt=Instant.now(); }
+        if(!me.place.equals(input.place())) { me.x=input.place().equals("home")?224:320;me.y=input.place().equals("home")?272:288;me.avatarSpace="v62";me.action="idle";me.avatarUpdatedAt=Instant.now(); }
         me.place=input.place();me.mood=input.mood().strip();me.food=input.food().strip();me.thought=input.thought().strip();me.statusUpdatedAt=Instant.now();me.statusExpiresAt=me.statusUpdatedAt.plus(Duration.ofMinutes(input.expiresInMinutes()));
-        emit(household,"STATUS_CHANGED",memberView(me));return snapshot(household,me.id);
+        emit(household,"STATUS_CHANGED",memberView(me,household.presetId));return snapshot(household,me.id);
     }
     List<Api.PantryView> pantry(String householdId,String userId) { requireMember(householdId,userId);return pantry.findByHouseholdIdOrderByName(householdId).stream().map(HomeService::pantryView).toList(); }
     Api.PantryView addPantry(String householdId,String userId,Api.CreatePantry input) {
@@ -141,9 +150,10 @@ class HomeService {
     }
     void emit(Household household,String type,Object payload) { household.revision++;publisher.publishEvent(new CommittedSignal(household.id,new Api.Signal(UUID.randomUUID().toString(),household.revision,type,Instant.now(),payload))); }
     Api.World snapshot(Household household,String meId) {
-        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,Instant.now(),members.findByHouseholdIdAndActiveTrueOrderById(household.id).stream().map(HomeService::memberView).toList(),pets.findByHouseholdIdOrderById(household.id).stream().map(p->new Api.PetView(p.id,p.name,p.kind,p.appearance)).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),events.findTop100ByHouseholdIdOrderByCreatedAtDesc(household.id).stream().map(HomeService::eventView).toList());
+        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,Instant.now(),members.findByHouseholdIdAndActiveTrueOrderById(household.id).stream().map(m->memberView(m,household.presetId)).toList(),pets.findByHouseholdIdOrderById(household.id).stream().map(p->new Api.PetView(p.id,p.name,p.kind,p.appearance)).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),events.findTop100ByHouseholdIdOrderByCreatedAtDesc(household.id).stream().map(HomeService::eventView).toList(),Spaces.view(household));
     }
-    static Api.MemberView memberView(Member m) { boolean current=m.statusExpiresAt!=null && m.statusExpiresAt.isAfter(Instant.now());return new Api.MemberView(m.id,m.userId,m.name,m.appearance,m.role,m.place,current?m.mood:"",current?m.food:"",current?m.thought:"",m.statusExpiresAt,m.statusUpdatedAt,m.x,m.y,m.action); }
+    static Api.MemberView memberView(Member m){return memberView(m,"garden_home");}
+    static Api.MemberView memberView(Member m,String preset) {double[] p="home".equals(m.place)?Spaces.position(m,preset):new double[]{m.x,m.y}; boolean current=m.statusExpiresAt!=null && m.statusExpiresAt.isAfter(Instant.now());return new Api.MemberView(m.id,m.userId,m.name,m.appearance,m.role,m.place,current?m.mood:"",current?m.food:"",current?m.thought:"",m.statusExpiresAt,m.statusUpdatedAt,p[0],p[1],m.action); }
     static Api.PantryView pantryView(PantryItem p) { return new Api.PantryView(p.id,p.name,p.location,p.quantity,p.unit,p.expiresOn,p.version,p.updatedAt); }
     static Api.EventView eventView(LifeEvent e) { return new Api.EventView(e.id,e.type,e.message,e.authorMemberId,e.authorName,e.createdAt); }
 }

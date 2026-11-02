@@ -1,3 +1,4 @@
+import {mountNativeWorld} from './nativeWorld';
 import Phaser from 'phaser';
 import { makeHouse, makeOtherPlace, makeFurniture, makeAvatar, makeCat, makeDog, type Direction } from './art';
 import { findPath, walkable, nearestWalkable, HOME_SOLIDS, OTHER_SOLIDS, type Point } from './navigation';
@@ -76,9 +77,14 @@ class HomeScene extends Phaser.Scene {
   }
 }
 
-export function mountWorld(parent:HTMLElement,initial:WorldView,onEvent:(event:WorldEvent)=>void):WorldHandle {
+function mountLegacyWorld(parent:HTMLElement,initial:WorldView,onEvent:(event:WorldEvent)=>void):WorldHandle {
   const scene=new HomeScene(initial,onEvent);
   const game=new Phaser.Game({type:Phaser.AUTO,parent,width:parent.clientWidth||640,height:parent.clientHeight||448,backgroundColor:'#ede9dc',pixelArt:true,roundPixels:true,antialias:false,scene,scale:{mode:Phaser.Scale.RESIZE},fps:{target:30},audio:{noAudio:true},render:{preserveDrawingBuffer:true}});
   const observer=new ResizeObserver(()=>{if(game.isBooted)game.scale.resize(parent.clientWidth,parent.clientHeight);});observer.observe(parent);
   return {update:view=>scene.setView(view),destroy:()=>{observer.disconnect();game.destroy(true);}};
+}
+
+export function mountWorld(parent:HTMLElement,initial:WorldView,onEvent:(event:WorldEvent)=>void):WorldHandle{
+ let home=initial.place==='home',current=home?mountNativeWorld(parent,initial,onEvent):mountLegacyWorld(parent,initial,onEvent);
+ return {update:view=>{const next=view.place==='home';if(home!==next){current.destroy();home=next;current=home?mountNativeWorld(parent,view,onEvent):mountLegacyWorld(parent,view,onEvent);}else current.update(view);},destroy:()=>current.destroy()};
 }

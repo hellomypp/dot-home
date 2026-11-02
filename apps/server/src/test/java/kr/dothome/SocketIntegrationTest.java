@@ -31,6 +31,7 @@ class SocketIntegrationTest {
             visits.enter(visits.create(h,owner.user).url().substring(7),visitor.user);
             try(var connected=socket(family)){
                 subscribe(connected,h);
+                homes.design(h,owner.user,new SpaceInput("sunny_apartment",0,Map.of("sofa","leather")));connected.take("SPACE_DESIGN_CHANGED");
                 var created=homes.addPet(h,owner.user,new Api.PetInput("모카","cat","cream"));connected.take("PETS_CHANGED");
                 String pet=created.pets().getFirst().id();
                 homes.editPet(h,owner.user,pet,new Api.PetEdit("보리","dog"));connected.take("PETS_CHANGED");
@@ -61,7 +62,7 @@ class SocketIntegrationTest {
     }
     @Test void topicPublishAndForgedActorAreRejected()throws Exception{
         try(var owner=login()){var home=homes.create(owner.user,new Api.CreateHouse("보안 집","가온","sage"));String id=home.household().id();try(var socket=socket(owner)){socket.send("SEND\ndestination:/topic/households/"+id+"/events\n\n{}");socket.take("CLOSED");}
-            try(var socket=socket(owner)){socket.send("SUBSCRIBE\nid:errors\ndestination:/user/queue/errors\n\n");subscribe(socket,id);socket.send("SEND\ndestination:/app/households/"+id+"/actions\ncontent-type:application/json\n\n{\"requestId\":\"forged\",\"kind\":\"MOVE_INTENT\",\"scene\":\"home\",\"x\":320,\"y\":320,\"memberId\":\"other\"}");socket.take("ACTION_DENIED");assertEquals(288,homes.world(id,owner.user).members().getFirst().y());}
+            try(var socket=socket(owner)){socket.send("SUBSCRIBE\nid:errors\ndestination:/user/queue/errors\n\n");subscribe(socket,id);socket.send("SEND\ndestination:/app/households/"+id+"/actions\ncontent-type:application/json\n\n{\"requestId\":\"forged\",\"kind\":\"MOVE_INTENT\",\"scene\":\"home\",\"x\":320,\"y\":320,\"memberId\":\"other\"}");socket.take("ACTION_DENIED");assertEquals(272,homes.world(id,owner.user).members().getFirst().y());}
         }
     }
     @Test void latestTabControlsCharacterAndLogoutClosesSockets()throws Exception{
@@ -90,7 +91,7 @@ class SocketIntegrationTest {
             var forgedNote=owner.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/households/"+h+"/objects/fridge/notes")).header("Content-Type","application/json").header("X-CSRF-TOKEN",owner.csrf).POST(HttpRequest.BodyPublishers.ofString("{\"body\":\"x\",\"authorMemberId\":\"other\",\"householdId\":\"other\"}")).build(),HttpResponse.BodyHandlers.ofString());assertEquals(400,forgedNote.statusCode());
             var forgedCalendar=owner.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/households/"+h+"/calendar-events")).header("Content-Type","application/json").header("X-CSRF-TOKEN",owner.csrf).POST(HttpRequest.BodyPublishers.ofString("{\"title\":\"x\",\"description\":\"\",\"category\":\"GENERAL\",\"allDay\":true,\"startDate\":\"2026-11-03\",\"endDate\":\"2026-11-03\",\"timeZone\":\"Asia/Seoul\",\"createdByMemberId\":\"other\"}")).build(),HttpResponse.BodyHandlers.ofString());assertEquals(400,forgedCalendar.statusCode());
             var forgedGuest=visitor.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/visits/"+link+"/guestbook")).header("Content-Type","application/json").header("X-CSRF-TOKEN",visitor.csrf).POST(HttpRequest.BodyPublishers.ofString("{\"message\":\"x\",\"requestId\":\"forged\",\"visitorAccountId\":\"other\"}")).build(),HttpResponse.BodyHandlers.ofString());assertEquals(400,forgedGuest.statusCode());
-            var publicResponse=visitor.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/visits/"+link)).GET().build(),HttpResponse.BodyHandlers.ofString());assertEquals(200,publicResponse.statusCode());var publicJson=json.readTree(publicResponse.body());assertEquals(3,publicJson.size());assertFalse(publicJson.has("members"));assertFalse(publicJson.has("pantryItems"));
+            var publicResponse=visitor.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/visits/"+link)).GET().build(),HttpResponse.BodyHandlers.ofString());assertEquals(200,publicResponse.statusCode());var publicJson=json.readTree(publicResponse.body());assertEquals(4,publicJson.size());assertFalse(publicJson.has("members"));assertFalse(publicJson.has("pantryItems"));
         }
     }
 }

@@ -116,3 +116,23 @@ Google 인증한 방문자:
 - 목록은 기존 `GET /api/households/{id}/world`의 pets로 조회한다. 모든 활성 가족 조회 가능, 등록/수정은 대표만. 타 가구 petId·방문자·비대표는 403, 인증/CSRF/알 수 없는 필드 검증 유지.
 - 성공 커밋 후 `PETS_CHANGED` 이벤트와 revision 갱신. 서버 응답/이벤트의 World로 사이드바와 Phaser를 갱신하며 새로고침을 요구하지 않는다.
 - 삭제 API는 제공하지 않는다. 구형 POST households의 plannedPeople/pets는 제거된 계약이며 400이다. 계획 인원 PATCH는 제거했다.
+
+## v0.7 공유 집 디자인 (v6.2 자산)
+
+`POST /api/households`는 기존 name/memberName/appearance 외에 선택적 presetId를 받는다. 생략 시 garden_home. 허용 프리셋은 garden_home, sunny_apartment, brick_loft이며 classic_home은 기존 집 호환 별칭이다. 신규 appearance는 v2:adult_female, v2:adult_male, v2:child; 기존 v1:HTBA와 옛 값의 저장을 변경하지 않는다.
+
+`GET /api/households/{id}/design` → `{presetId,version,variants}`. 활성 가족만 조회한다.
+
+`PATCH /api/households/{id}/design` → 갱신된 World. 대표만 수정한다. 본문 예:
+
+```json
+{"presetId":"sunny_apartment","version":0,"variants":{"sofa":"blue","table":"round","fridge":"leaf"}}
+```
+
+variants의 키/값은 fridge=original|leaf|star, sofa=sage|blue|leather, table=wood|round다. 생략한 키는 선택 프리셋의 기본 외형이다. 클라이언트는 프리셋 변경 시 명시적 override를 유지해 전체 variants를 보낸다. version은 별도 디자인 버전이며 World.revision과 다르다. 401 미인증, 403 비대표/비가족/CSRF, 400 알 수 없는 값·위조 필드·음수 버전, 409 오래된 디자인 버전. 성공한 커밋 이후 SPACE_DESIGN_CHANGED 이벤트로 가족이 World를 재조회한다.
+
+World에는 design을 추가했다. 기존 방문 전용 DTO도 householdName/theme/guestbook에 design만 추가한다. Membership, pantry, notes, calendar 등 비공개 world는 반환하지 않는다. 방문자는 가족 design API 또는 가족 STOMP에 접근할 수 없다.
+
+`PATCH /api/households/{id}/me/profile`는 기존 memberName 외에 선택적 appearance(v2의 세 스타일만)를 받는다. 생략 시 기존 외형을 유지한다. 서버 principal로 본인의 Membership만 수정하며 MEMBER_PROFILE_CHANGED 커밋 후 이벤트를 유지한다. Google 내부 Account/sub는 변경하지 않는다.
+
+home 좌표는 448×320 map의 발 중앙이며 서버와 웹이 같은 collision 카탈로그를 사용한다. 구형 좌표는 응답에서 안전한 spawn으로 투영하고 첫 새 이동 전까지 DB 원본을 보존한다. 다른 공간의 좌표 규칙은 유지한다. [상세](V62_INTEGRATION.md).

@@ -1,9 +1,10 @@
+import type {SpaceDesign} from '../game/spaces';
+import {SpacePreview} from './SpacePreview';
 import { useRef, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api, type Identity } from "../lib/api";
 import { SessionBar } from "./SessionBar";
-import { PixelScene } from "../onboarding/PixelScene";
 interface Entry {
   id: string;
   visitorName: string;
@@ -14,6 +15,7 @@ interface Entry {
 interface Visit {
   householdName: string;
   theme: string;
+  design:SpaceDesign;
   guestbook: Entry[];
 }
 export function VisitPage() {
@@ -43,6 +45,10 @@ export function VisitPage() {
       setBusy(false);
       lock.current = false;
     }
+  }
+  async function reloadView() {
+    if(lock.current)return;lock.current=true;setBusy(true);setError("");
+    try{setVisit(await api<Visit>(root));}catch(e){setError((e as Error).message);}finally{lock.current=false;setBusy(false);}
   }
   async function write(e: FormEvent) {
     e.preventDefault();
@@ -98,10 +104,11 @@ export function VisitPage() {
           </button>
         ) : (
           <>
-            <PixelScene kind="room" showAvatar={false} />
+            <SpacePreview design={visit.design}/>
             <p className="muted">
               공개된 집 내부 풍경이에요. 가족의 비공개 활동은 표시하지 않아요.
             </p>
+            <button type="button" className="button secondary" disabled={busy} onClick={()=>void reloadView()}>집 모습 새로고침</button>
             <h2>방명록</h2>
             {visit.guestbook.length ? (
               visit.guestbook.map((e) => (

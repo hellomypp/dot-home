@@ -1,5 +1,16 @@
 # 미해결 이슈
 
+## v6.2 통합 후 남은 검증
+
+- MySQL 8.4 테스트는 Docker 엔진이 없어 시작 실패했다. 기존 CI의 성공을 이번 변경의 성공으로 간주하지 않는다.
+- 실제 iPhone Safari, 외부 HTTPS/Google 인증, Docker 이미지 빌드 및 새 배포는 미검증이다.
+- 고양이는 제공 팩에 없어 기존 임시 자산을 유지한다. 사람 sit/meal 자산은 없으며 강아지 sit/sleep은 정적 자세다.
+- 원본 미적 승인과 최종 자산 배포 권리 확인은 별도다.
+- 새 native XY/v2 appearance를 저장한 후 구형 바이너리로 단순 롤백하면 표시 호환이 보장되지 않는다.
+
+[V62_INTEGRATION.md](V62_INTEGRATION.md)에 현재 범위와 증거를 기록했다. 아래 기존 이력은 보존한다.
+
+
 ## DH-001: MySQL 초대 동시성 테스트 2건 실패 — 수정 검증 완료
 
 - 근거: [첫 GitHub Actions 실행](https://github.com/hellomypp/dot-home/actions/runs/41309300876).

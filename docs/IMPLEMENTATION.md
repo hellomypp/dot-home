@@ -1,5 +1,10 @@
 # 도트홈 — 웹게임 개발 전달서 v0.5
 
+## v6.2 / v0.7 구현
+
+공유 카탈로그 → Spaces/SpaceController와 nativeWorld/spaces/SpacePreview를 연결했다. SpaceSettings는 미리보기/취소 후 명시적 저장, design_version 잠금 비교, post-commit 이벤트를 사용한다. V8은 additive이며 legacy XY를 응답에서만 새 spawn으로 투영한다. [상세 구조와 호환성](V62_INTEGRATION.md).
+
+
 작성일 / 최종 수정일: 2026-10-31 (Asia/Seoul). 상태: 진행 중 — 개발 명세 작성, 제품 구현 전. 분류: 개발 > 개발 도구 및 생산성. 태그: 바이브코딩, AI.
 
 ## 1. 목표와 범위

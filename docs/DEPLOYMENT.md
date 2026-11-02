@@ -1,5 +1,10 @@
 # Railway 외부 베타 배포
 
+## v6.2 변경의 배포 전 조건
+
+이번 작업은 push/배포하지 않는다. V8 additive 스키마와 native 좌표·v2 외형을 추가했다. 프로덕션 DB 백업/복구 시험, MySQL 8.4 테스트, Docker 이미지 빌드 및 실기기 확인 후 별도 배포한다. Docker 두 빌드 단계에 공유 space-catalog.json을 포함하고 Gradle spaceCatalogue 속성으로 컨테이너 경로를 지정한다. 기존 JAR로의 단순 롤백은 새 좌표 표시를 보장하지 않는다. [호환성 기록](V62_INTEGRATION.md).
+
+
 2026-11-02 기준. **배포용 코드와 실제 Docker/MySQL 검증은 완료했지만 Railway 리소스·공개 URL·배포 도메인의 Google 인증은 아직 없다.** Railway 웹 로그인 및 비용 승인이 필요하다. Mac/Tailscale 미리보기와 독립적인 환경이며 로컬 H2 데이터는 이관하지 않는다.
 
 ## 구조와 저장소 산출물
