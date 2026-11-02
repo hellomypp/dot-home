@@ -147,3 +147,5 @@ V1~V6 SQL 원본은 변경하지 않았다. V7은 legacy planned_people의 DEFAU
 375/390/430/768/1280 CSS px에서 집 정보·캐릭터·반려동물 관리·게임을 캡처/측정했다. 가로 넘침 없고 온보딩 CTA 52px, 반려동물 등록 CTA 약 44.8px. 캡처는 로컬 `.tools/family-pets-qa/screenshots/`(Git 제외), 실제 iPhone Safari·키보드·Google 계정 E2E를 직접 수행한 것은 아니다. 과거 v0.6 구현·검증 이력은 위에 보존했다.
 
 현재 정책의 대표 캡처: [집 설정 390px](screenshots/family-pets/house-390.png), [반려동물 관리 390px](screenshots/family-pets/pets-390.png), [다른 가족에게 실시간 반영](screenshots/family-pets/family-realtime.png), [20개 화면 측정](screenshots/family-pets/viewport-checks.json).
+
+최종 67건 서버/42건 프런트와 배포 이미지·MySQL 회귀 검사는 [PR #4의 Required checks](https://github.com/hellomypp/dot-home/pull/4/checks)에서 확인한다. 초기 CI와 최종 소스의 검사를 구분한다.
