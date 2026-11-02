@@ -289,9 +289,7 @@ export function OnboardingExperience({
             <div className="step-copy">
               <span className="chapter">01 / A PLACE TO CALL OURS</span>
               <h1 ref={heading} tabIndex={-1}>
-                우리 집의 기본 정보를
-                <br />
-                알려주세요
+                어떤 집에서 시작할까요?
               </h1>
               <p>함께할 일상을 담을 공간이에요.</p>
             </div>

@@ -14,6 +14,7 @@ export interface WorldMember {
 }
 export interface WorldPet { id: string; name: string; kind?: string; color?: string }
 export interface WorldView {
+  closeView?:boolean;
   design?:SpaceDesign;
   objectNotes?: {id:string;objectId:string}[];
   place: Place;

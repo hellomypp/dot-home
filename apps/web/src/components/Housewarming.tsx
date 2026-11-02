@@ -1,5 +1,6 @@
-import type {SpaceDesign} from '../game/spaces';
-import {SpacePreview} from './SpacePreview';
+import { ShareLink } from "./ShareLink";
+import type { SpaceDesign } from "../game/spaces";
+import { SpacePreview } from "./SpacePreview";
 import { useRef, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
@@ -15,7 +16,7 @@ interface Entry {
 interface Visit {
   householdName: string;
   theme: string;
-  design:SpaceDesign;
+  design: SpaceDesign;
   guestbook: Entry[];
 }
 export function VisitPage() {
@@ -47,8 +48,18 @@ export function VisitPage() {
     }
   }
   async function reloadView() {
-    if(lock.current)return;lock.current=true;setBusy(true);setError("");
-    try{setVisit(await api<Visit>(root));}catch(e){setError((e as Error).message);}finally{lock.current=false;setBusy(false);}
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      setVisit(await api<Visit>(root));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
   }
   async function write(e: FormEvent) {
     e.preventDefault();
@@ -104,11 +115,18 @@ export function VisitPage() {
           </button>
         ) : (
           <>
-            <SpacePreview design={visit.design}/>
+            <SpacePreview design={visit.design} />
             <p className="muted">
               공개된 집 내부 풍경이에요. 가족의 비공개 활동은 표시하지 않아요.
             </p>
-            <button type="button" className="button secondary" disabled={busy} onClick={()=>void reloadView()}>집 모습 새로고침</button>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={busy}
+              onClick={() => void reloadView()}
+            >
+              집 모습 새로고침
+            </button>
             <h2>방명록</h2>
             {visit.guestbook.length ? (
               visit.guestbook.map((e) => (
@@ -202,14 +220,9 @@ export function HousewarmingPanel({ householdId }: { householdId: string }) {
         className="button primary"
         onClick={() => void action("/housewarming-invitations", "POST")}
       >
-        집들이 링크 만들기
+        {busy ? "처리 중…" : "집들이 링크 만들기"}
       </button>
-      {url && (
-        <label>
-          새 집들이 링크
-          <input readOnly value={url} onFocus={(e) => e.target.select()} />
-        </label>
-      )}
+      {url && <ShareLink url={url} label="새 집들이 링크" />}
       {links.data?.map((i) => (
         <article className="calendar-entry" key={i.id}>
           <p>
@@ -230,6 +243,11 @@ export function HousewarmingPanel({ householdId }: { householdId: string }) {
         </article>
       ))}
       <h3>다녀간 친구들</h3>
+      {visitors.data?.length === 0 && (
+        <p className="empty-text">
+          아직 다녀간 친구가 없어요. 집들이 링크로 초대해 보세요.
+        </p>
+      )}
       {visitors.data?.map((v, i) => (
         <p key={i}>
           {v.name} · {new Date(v.visitedAt).toLocaleString("ko-KR")}

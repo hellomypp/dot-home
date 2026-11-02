@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 export interface CalendarEvent {
@@ -46,6 +46,7 @@ export function occurs(event: CalendarEvent, date: string) {
         ) >= date;
 }
 export function FamilyCalendar({ householdId }: { householdId: string }) {
+  const titleField = useRef<HTMLInputElement>(null);
   const today = seoulDate(),
     [month, setMonth] = useState(today.slice(0, 7)),
     [day, setDay] = useState(today),
@@ -70,6 +71,12 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
     queryFn: () =>
       api<CalendarEvent[]>(`${root}?from=${month}-01&to=${month}-${days}`),
   });
+  useEffect(() => {
+    if (form) {
+      titleField.current?.focus({ preventScroll: true });
+      titleField.current?.scrollIntoView?.({ block: "nearest" });
+    }
+  }, [form]);
   function shift(delta: number) {
     const d = new Date(Date.UTC(year, mon - 1 + delta, 1));
     const next = d.toISOString().slice(0, 7);
@@ -131,7 +138,9 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
   }
   return (
     <section className="family-calendar">
-      <p className="muted">Asia/Seoul · 가족이 함께 쓰는 달력</p>
+      <p className="muted">
+        가족이 함께 쓰는 달력이에요. 시간은 한국 시간을 기준으로 표시해요.
+      </p>
       <nav className="calendar-nav" aria-label="달력 탐색">
         <button
           className="button secondary"
@@ -193,7 +202,15 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
               );
             })}
           </div>
-          <h3>{day} 일정</h3>
+          <h3>
+            {new Date(day + "T12:00:00+09:00").toLocaleDateString("ko-KR", {
+              month: "long",
+              day: "numeric",
+              weekday: "long",
+              timeZone: "Asia/Seoul",
+            })}{" "}
+            일정
+          </h3>
           {query.data?.filter((e) => occurs(e, day)).length ? (
             query.data
               .filter((e) => occurs(e, day))
@@ -242,12 +259,17 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
         일정 등록
       </button>
       {form && (
-        <form className="calendar-form" onSubmit={submit}>
+        <form
+          aria-label={edit ? "일정 수정" : "새 일정"}
+          className="calendar-form"
+          onSubmit={submit}
+        >
           <h3>{edit ? "일정 수정" : "새 일정"}</h3>
           <label>
             제목
             <input
               required
+              ref={titleField}
               maxLength={120}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -313,7 +335,7 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
               취소
             </button>
             <button disabled={busy} className="button primary">
-              일정 저장
+              {busy ? "저장 중…" : "일정 저장"}
             </button>
           </div>
         </form>

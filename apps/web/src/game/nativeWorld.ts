@@ -559,14 +559,9 @@ class NativeHome extends Phaser.Scene {
         ),
       );
     }
-    const target = this.actors.get(
-      this.view.observedMemberId || this.view.ownMemberId,
-    );
-    if (target)
-      this.cameras.main.setScroll(
-        Phaser.Math.Clamp(Math.round(target.sprite.x - 160), 0, 128),
-        Phaser.Math.Clamp(Math.round(target.sprite.y - 112), 0, 96),
-      );
+    const target = this.actors.get(this.view.observedMemberId || this.view.ownMemberId);
+    this.cameras.main.setZoom(this.view.closeView ? 2 : 1);
+    if(target)this.cameras.main.centerOn(Math.round(target.sprite.x),Math.round(target.sprite.y));
   }
 }
 export function mountNativeWorld(

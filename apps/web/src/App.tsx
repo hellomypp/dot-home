@@ -1,116 +1,1767 @@
-import {SpaceSettings} from './components/SpaceSettings';
-import {CharacterStyleForm,CharacterChoices} from './components/CharacterStyleForm';
-import {PetManager} from './components/PetManager';
-import {NicknameForm} from './components/NicknameForm';
-import {VisitPage,HousewarmingPanel} from './components/Housewarming';
-import {FamilyCalendar} from './components/FamilyCalendar';
-import {ObjectNotes,type ObjectNote} from './components/ObjectNotes';
-import {Onboarding,OnboardingPreview} from './onboarding/Onboarding';
-export {Onboarding} from './onboarding/Onboarding';
-import {gameAppearance} from './lib/appearance';
-import {clearDrafts} from './onboarding/draft';
-import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, Navigate, Route, Routes, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, ArrowLeft, ArrowRight, Bell, Check, ChevronRight, CircleHelp, Coffee, DoorOpen, Home, Leaf, LogOut, MessageCircle, Package, Plus, Refrigerator, Send, Settings2, Sun, Users, Utensils, X } from 'lucide-react';
-import { SessionBar } from './components/SessionBar';
-import { Portrait } from './components/Portrait';
-import { Modal } from './components/Modal';
-const WorldCanvas=lazy(()=>import('./components/WorldCanvas').then(module=>({default:module.WorldCanvas})));
-import { api, ApiError, login, logout, places, statusText, type Identity, type Snapshot, type PantryItem } from './lib/api';
-import { safeInvitePath, googleLoginUrl, localDevLoginVisible, type AuthConfig } from './lib/auth';
-import { connectWorld, type ConnectionState } from './lib/realtime';
-import type { Place, WorldEvent, WorldView } from './game/types';
+import { AccountSettings } from "./components/AccountSettings";
+import { ShareLink } from "./components/ShareLink";
+import { SpaceSettings } from "./components/SpaceSettings";
+import { CharacterChoices } from "./components/CharacterStyleForm";
+import { PetManager } from "./components/PetManager";
+import { VisitPage, HousewarmingPanel } from "./components/Housewarming";
+import { FamilyCalendar } from "./components/FamilyCalendar";
+import { ObjectNotes, type ObjectNote } from "./components/ObjectNotes";
+import { Onboarding, OnboardingPreview } from "./onboarding/Onboarding";
+export { Onboarding } from "./onboarding/Onboarding";
+import { gameAppearance } from "./lib/appearance";
+import { clearDrafts } from "./onboarding/draft";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import {
+  Link,
+  Navigate,
+  Route,
+  Routes,
+  useNavigate,
+  useParams,
+  useLocation,
+} from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  CalendarDays,
+  ArrowLeft,
+  ArrowRight,
+  Bell,
+  Check,
+  ChevronRight,
+  CircleHelp,
+  PawPrint,
+  ZoomIn,
+  ZoomOut,
+  Coffee,
+  DoorOpen,
+  Home,
+  Leaf,
+  LogOut,
+  MessageCircle,
+  Package,
+  Plus,
+  Refrigerator,
+  Send,
+  Settings2,
+  Sun,
+  Users,
+  Utensils,
+  X,
+} from "lucide-react";
+import { SessionBar } from "./components/SessionBar";
+import { Portrait } from "./components/Portrait";
+import { Modal } from "./components/Modal";
+const WorldCanvas = lazy(() =>
+  import("./components/WorldCanvas").then((module) => ({
+    default: module.WorldCanvas,
+  })),
+);
+import {
+  api,
+  ApiError,
+  login,
+  logout,
+  places,
+  statusText,
+  type Identity,
+  type Snapshot,
+  type PantryItem,
+} from "./lib/api";
+import {
+  safeInvitePath,
+  googleLoginUrl,
+  localDevLoginVisible,
+  type AuthConfig,
+} from "./lib/auth";
+import { connectWorld, type ConnectionState } from "./lib/realtime";
+import type { Place, WorldEvent, WorldView } from "./game/types";
 
-const now=new Date().toISOString();
-const fixture:Snapshot={household:{id:'studio',name:'느린 오후의 집',ownerId:'a'},meMemberId:'a',revision:0,serverTime:now,members:[
-  {id:'a',userId:'a',name:'하늘',appearance:'sage',role:'OWNER',place:'home',mood:'편안해요',food:'따뜻한 수프',thought:'오늘은 조금 느긋하게',statusExpiresAt:null,statusUpdatedAt:now,x:306,y:318,action:'idle'},
-  {id:'b',userId:'b',name:'서윤',appearance:'rose',role:'MEMBER',place:'home',mood:'좋아요',food:'',thought:'같이 차 마실래?',statusExpiresAt:null,statusUpdatedAt:now,x:430,y:326,action:'idle'}],pets:[{id:'p',name:'모카',kind:'cat',appearance:'cream'}],pantryItems:[{id:'milk',name:'우유',location:'냉장',quantity:2,unit:'개',expiresOn:null,version:0,updatedAt:now},{id:'egg',name:'달걀',location:'냉장',quantity:6,unit:'개',expiresOn:null,version:0,updatedAt:now}],events:[]};
-const placeIcons:Record<Place,ReactNode>={home:<Home size={17}/>,office:<Coffee size={17}/>,school:<span className="school-icon">▤</span>,outside:<Leaf size={17}/>};
-const eventTypes:Record<string,{label:string;icon:ReactNode;message:string}>={ARRIVED_HOME:{label:'귀가',icon:<Home size={18}/>,message:'집에 도착했어요'},LEFT_WORK:{label:'퇴근',icon:<DoorOpen size={18}/>,message:'오늘 일을 마쳤어요'},PARCEL_ARRIVED:{label:'택배',icon:<Package size={18}/>,message:'택배가 도착했어요'},NOTE:{label:'한마디',icon:<MessageCircle size={18}/>,message:''}};
+const now = new Date().toISOString();
+const fixture: Snapshot = {
+  household: { id: "studio", name: "느린 오후의 집", ownerId: "a" },
+  meMemberId: "a",
+  revision: 0,
+  serverTime: now,
+  members: [
+    {
+      id: "a",
+      userId: "a",
+      name: "하늘",
+      appearance: "sage",
+      role: "OWNER",
+      place: "home",
+      mood: "편안해요",
+      food: "따뜻한 수프",
+      thought: "오늘은 조금 느긋하게",
+      statusExpiresAt: null,
+      statusUpdatedAt: now,
+      x: 306,
+      y: 318,
+      action: "idle",
+    },
+    {
+      id: "b",
+      userId: "b",
+      name: "서윤",
+      appearance: "rose",
+      role: "MEMBER",
+      place: "home",
+      mood: "좋아요",
+      food: "",
+      thought: "같이 차 마실래?",
+      statusExpiresAt: null,
+      statusUpdatedAt: now,
+      x: 430,
+      y: 326,
+      action: "idle",
+    },
+  ],
+  pets: [{ id: "p", name: "모카", kind: "cat", appearance: "cream" }],
+  pantryItems: [
+    {
+      id: "milk",
+      name: "우유",
+      location: "냉장",
+      quantity: 2,
+      unit: "개",
+      expiresOn: null,
+      version: 0,
+      updatedAt: now,
+    },
+    {
+      id: "egg",
+      name: "달걀",
+      location: "냉장",
+      quantity: 6,
+      unit: "개",
+      expiresOn: null,
+      version: 0,
+      updatedAt: now,
+    },
+  ],
+  events: [],
+};
+const placeIcons: Record<Place, ReactNode> = {
+  home: <Home size={17} />,
+  office: <Coffee size={17} />,
+  school: <span className="school-icon">▤</span>,
+  outside: <Leaf size={17} />,
+};
+const eventTypes: Record<
+  string,
+  { label: string; icon: ReactNode; message: string }
+> = {
+  ARRIVED_HOME: {
+    label: "귀가",
+    icon: <Home size={18} />,
+    message: "집에 도착했어요",
+  },
+  LEFT_WORK: {
+    label: "퇴근",
+    icon: <DoorOpen size={18} />,
+    message: "오늘 일을 마쳤어요",
+  },
+  PARCEL_ARRIVED: {
+    label: "택배",
+    icon: <Package size={18} />,
+    message: "택배가 도착했어요",
+  },
+  NOTE: { label: "한마디", icon: <MessageCircle size={18} />, message: "" },
+};
 
-function Brand(){return <Link to="/" className="brand"><span className="brand-mark"><Home size={22}/></span><span>도트홈<small>OUR LITTLE EVERYDAY</small></span></Link>;}
-function ErrorMessage({message}:{message:string}){return message?<p className="error-message" role="alert">{message}</p>:null;}
-function Loading(){return <div className="loading-page"><Brand/><span className="loading-dot"/><p>우리 집으로 가는 중이에요.</p></div>;}
-function BackLink(){return <Link className="back-link" to="/"><ArrowLeft size={16}/> 처음으로</Link>;}
-export function LoginPage(){
-  const nav=useNavigate(),location=useLocation(),qc=useQueryClient();
-  const identity=useQuery({queryKey:['me'],queryFn:()=>api<Identity>('/api/me'),retry:false});
-  const [key,setKey]=useState(''),[name,setName]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
-  const auth=useQuery({queryKey:['auth-config'],queryFn:()=>api<AuthConfig>('/api/auth/config'),retry:false});
-  const params=new URLSearchParams(location.search);
-  const next=safeInvitePath(params.get('next'));
-  const authError=params.has('error')?'Google 로그인을 완료하지 못했어요. 취소했다면 다시 시작해 주세요.':'';
-  const destination=next?next:identity.data?.memberships[0]?`/home/${identity.data.memberships[0].householdId}`:'/onboarding';
-  if(identity.isPending)return <Loading/>;
-  if(identity.data)return <Navigate to={destination} replace/>;
-  async function enter(e:FormEvent){e.preventDefault();setBusy(true);setError('');try{const me=await login(key,name);qc.setQueryData(['me'],me);nav(next?next:me.memberships[0]?`/home/${me.memberships[0].householdId}`:'/onboarding');}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
-  return <div className="welcome-page"><header><Brand/>{import.meta.env.DEV&&<Link to="/studio" className="text-link">아트 시안 둘러보기 <ArrowRight size={16}/></Link>}</header><main className="welcome-layout"><section className="welcome-copy"><span className="eyebrow"><Leaf size={14}/> 일상에 작은 다정함을</span><h1>각자의 하루가<br/>모이는 작은 집.</h1><p>함께 사는 사람들과 반려동물,<br/>말하지 못한 오늘의 기분까지.<br/>우리의 일상을 도트홈에서 만나보세요.</p>{import.meta.env.DEV&&<Link className="button secondary" to="/studio">움직이는 집 구경하기 <ArrowRight size={17}/></Link>}<div className="welcome-note"><span>01</span> 집을 만들고 <i>·</i><span>02</span> 함께할 사람을 초대해요</div></section><section className="entry-card"><div className="entry-illustration"><Home size={48} strokeWidth={1}/><span className="mini-leaf"><Leaf size={26}/></span></div><span className="eyebrow">WELCOME HOME</span><h2>우리 집에 들어가기</h2><p>인증한 계정으로 나의 캐릭터를 만나요.</p>{auth.data?.googleEnabled?<a className="button primary google-login" href={googleLoginUrl(next)} onClick={()=>setBusy(true)}>{busy?'Google 로그인으로 이동 중…':'Google로 시작하기'}</a>:<><button className="button primary google-login" disabled>Google로 시작하기</button><div className="provider-note">{auth.isPending?'로그인 설정을 확인하고 있어요.':'Google 로그인 연결을 준비하고 있어요. 잠시 후 다시 시도해 주세요.'}</div></>}
+function Brand() {
+  return (
+    <Link to="/" className="brand">
+      <span className="brand-mark">
+        <Home size={22} />
+      </span>
+      <span>
+        도트홈<small>OUR LITTLE EVERYDAY</small>
+      </span>
+    </Link>
+  );
+}
+function ErrorMessage({ message }: { message: string }) {
+  return message ? (
+    <p className="error-message" role="alert">
+      {message}
+    </p>
+  ) : null;
+}
+function Loading() {
+  return (
+    <div className="loading-page">
+      <Brand />
+      <span className="loading-dot" />
+      <p>우리 집으로 가는 중이에요.</p>
+    </div>
+  );
+}
+function BackLink() {
+  return (
+    <Link className="back-link" to="/">
+      <ArrowLeft size={16} /> 처음으로
+    </Link>
+  );
+}
+export function LoginPage() {
+  const nav = useNavigate(),
+    location = useLocation(),
+    qc = useQueryClient();
+  const identity = useQuery({
+    queryKey: ["me"],
+    queryFn: () => api<Identity>("/api/me"),
+    retry: false,
+  });
+  const [key, setKey] = useState(""),
+    [name, setName] = useState(""),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  const auth = useQuery({
+    queryKey: ["auth-config"],
+    queryFn: () => api<AuthConfig>("/api/auth/config"),
+    retry: false,
+  });
+  const params = new URLSearchParams(location.search);
+  const next = safeInvitePath(params.get("next"));
+  const authError = params.has("error")
+    ? "Google 로그인을 완료하지 못했어요. 취소했다면 다시 시작해 주세요."
+    : "";
+  const destination = next
+    ? next
+    : identity.data?.memberships[0]
+      ? `/home/${identity.data.memberships[0].householdId}`
+      : "/onboarding";
+  if (identity.isPending) return <Loading />;
+  if (identity.data) return <Navigate to={destination} replace />;
+  async function enter(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const me = await login(key, name);
+      qc.setQueryData(["me"], me);
+      nav(
+        next
+          ? next
+          : me.memberships[0]
+            ? `/home/${me.memberships[0].householdId}`
+            : "/onboarding",
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="welcome-page">
+      <header>
+        <Brand />
+        {import.meta.env.DEV && (
+          <Link to="/studio" className="text-link">
+            아트 시안 둘러보기 <ArrowRight size={16} />
+          </Link>
+        )}
+      </header>
+      <main className="welcome-layout">
+        <section className="welcome-copy">
+          <span className="eyebrow">
+            <Leaf size={14} /> 일상에 작은 다정함을
+          </span>
+          <h1>
+            각자의 하루가
+            <br />
+            모이는 작은 집.
+          </h1>
+          <p>
+            함께 사는 사람들과 반려동물,
+            <br />
+            말하지 못한 오늘의 기분까지.
+            <br />
+            우리의 일상을 도트홈에서 만나보세요.
+          </p>
+          {import.meta.env.DEV && (
+            <Link className="button secondary" to="/studio">
+              움직이는 집 구경하기 <ArrowRight size={17} />
+            </Link>
+          )}
+          <div className="welcome-note">
+            <span>01</span> 집을 만들고 <i>·</i>
+            <span>02</span> 함께할 사람을 초대해요
+          </div>
+        </section>
+        <section className="entry-card">
+          <div className="entry-illustration">
+            <Home size={48} strokeWidth={1} />
+            <span className="mini-leaf">
+              <Leaf size={26} />
+            </span>
+          </div>
+          <span className="eyebrow">WELCOME HOME</span>
+          <h2>우리 집에 들어가기</h2>
+          <p>인증한 계정으로 나의 캐릭터를 만나요.</p>
+          {auth.data?.googleEnabled ? (
+            <a
+              className="button primary google-login"
+              href={googleLoginUrl(next)}
+              onClick={() => setBusy(true)}
+            >
+              {busy ? "Google 로그인으로 이동 중…" : "Google로 시작하기"}
+            </a>
+          ) : (
+            <>
+              <button className="button primary google-login" disabled>
+                Google로 시작하기
+              </button>
+              <div className="provider-note">
+                {auth.isPending
+                  ? "로그인 설정을 확인하고 있어요."
+                  : "Google 로그인 연결을 준비하고 있어요. 잠시 후 다시 시도해 주세요."}
+              </div>
+              {!auth.isPending && (
+                <button
+                  className="button secondary"
+                  onClick={() => void auth.refetch()}
+                >
+                  로그인 연결 다시 확인
+                </button>
+              )}
+            </>
+          )}
 
-  {localDevLoginVisible(window.location.hostname,import.meta.env.DEV,auth.data?.devEnabled===true)&&<form onSubmit={enter} className="login-form"><div className="dev-label">로컬 개발용 로그인</div><label>계정 키<input required value={key} onChange={e=>setKey(e.target.value)} placeholder="예: haneul-test" autoComplete="username" pattern="[A-Za-z0-9_-]{2,64}" title="영문·숫자·밑줄·하이픈 2~64자" maxLength={64}/></label><label>내 이름<input required value={name} onChange={e=>setName(e.target.value)} placeholder="집에서 부를 이름" maxLength={30} autoComplete="nickname"/></label><button className="button primary" disabled={busy}>{busy?'들어가는 중…':'시작하기'}<ArrowRight size={17}/></button><small className="muted">비밀번호가 없는 로컬 검증용 인증입니다. 실제 계정 정보를 입력하지 마세요.</small></form>}
-  <ErrorMessage message={error||authError}/>{identity.error&&!(identity.error instanceof ApiError&&identity.error.status===401)&&<p className="muted">개발 서버 연결 대기 중 · 아트 시안은 바로 볼 수 있어요.</p>}</section></main><footer className="welcome-footer">서두르지 않아도 괜찮은, 우리의 작은 세계.<span>DOT HOME · v0.6 개발 중</span></footer></div>;
+          {localDevLoginVisible(
+            window.location.hostname,
+            import.meta.env.DEV,
+            auth.data?.devEnabled === true,
+          ) && (
+            <form onSubmit={enter} className="login-form">
+              <div className="dev-label">로컬 개발용 로그인</div>
+              <label>
+                계정 키
+                <input
+                  required
+                  value={key}
+                  onChange={(e) => setKey(e.target.value)}
+                  placeholder="예: haneul-test"
+                  autoComplete="username"
+                  pattern="[A-Za-z0-9_-]{2,64}"
+                  title="영문·숫자·밑줄·하이픈 2~64자"
+                  maxLength={64}
+                />
+              </label>
+              <label>
+                내 이름
+                <input
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="집에서 부를 이름"
+                  maxLength={30}
+                  autoComplete="nickname"
+                />
+              </label>
+              <button className="button primary" disabled={busy}>
+                {busy ? "들어가는 중…" : "시작하기"}
+                <ArrowRight size={17} />
+              </button>
+              <small className="muted">
+                비밀번호가 없는 로컬 검증용 인증입니다. 실제 계정 정보를
+                입력하지 마세요.
+              </small>
+            </form>
+          )}
+          <ErrorMessage message={error || authError} />
+          {identity.error &&
+            !(
+              identity.error instanceof ApiError &&
+              identity.error.status === 401
+            ) && (
+              <p className="muted">
+                개발 서버 연결 대기 중 · 아트 시안은 바로 볼 수 있어요.
+              </p>
+            )}
+        </section>
+      </main>
+      <footer className="welcome-footer">
+        서두르지 않아도 괜찮은, 우리의 작은 세계.
+        <span>우리의 작은 일상 · 도트홈</span>
+      </footer>
+    </div>
+  );
 }
 
-
-function InvitePage(){const {token}=useParams(),nav=useNavigate();const [name,setName]=useState(''),[appearance,setAppearance]=useState('v2:adult_male'),[busy,setBusy]=useState(false),[error,setError]=useState('');const invite=useQuery({queryKey:['invite',token],queryFn:()=>api<{householdName:string;expiresAt:string}>(`/api/invitations/${encodeURIComponent(token!)}`),retry:false});const me=useQuery({queryKey:['me'],queryFn:()=>api<Identity>('/api/me'),retry:false});async function accept(e:FormEvent){e.preventDefault();setBusy(true);try{const data=await api<Snapshot>(`/api/invitations/${encodeURIComponent(token!)}/accept`,'POST',{memberName:name||me.data?.user.name,appearance});nav(`/home/${data.household.id}`);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
-  return <div className="form-page"><Brand/><div className="onboard-card invite-card">{me.data&&<SessionBar name={me.data.user.name}/>}<span className="invite-art"><DoorOpen size={42}/></span><span className="eyebrow">YOU'RE INVITED</span><h1>{invite.data?`${invite.data.householdName}에 초대받았어요.`:invite.error?'초대를 사용할 수 없어요.':'초대를 확인하고 있어요.'}</h1><p>인증한 뒤 직접 수락해야 집에 입주해요.<br/>링크를 열기만 해서는 캐릭터가 생기지 않아요.</p><ErrorMessage message={invite.error?.message||error}/>{invite.data&&(me.data?<form onSubmit={accept}><label>집에서 부를 내 이름<input required value={name} onChange={e=>setName(e.target.value)} maxLength={30} placeholder={me.data.user.name}/></label><CharacterChoices value={appearance} onChange={setAppearance} disabled={busy}/><button className="button primary" disabled={busy}>초대 수락하고 입주하기 <ArrowRight size={17}/></button></form>:<Link className="button primary" to={`/login?next=${encodeURIComponent(`/invite/${token}`)}`}>로그인하고 초대 확인하기</Link>)}<BackLink/></div></div>;
+function InvitePage() {
+  const { token } = useParams(),
+    nav = useNavigate();
+  const [name, setName] = useState(""),
+    [appearance, setAppearance] = useState("v2:adult_male"),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const invite = useQuery({
+    queryKey: ["invite", token],
+    queryFn: () =>
+      api<{ householdName: string; expiresAt: string }>(
+        `/api/invitations/${encodeURIComponent(token!)}`,
+      ),
+    retry: false,
+  });
+  const me = useQuery({
+    queryKey: ["me"],
+    queryFn: () => api<Identity>("/api/me"),
+    retry: false,
+  });
+  async function accept(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const data = await api<Snapshot>(
+        `/api/invitations/${encodeURIComponent(token!)}/accept`,
+        "POST",
+        { memberName: name || me.data?.user.name, appearance },
+      );
+      nav(`/home/${data.household.id}`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="form-page">
+      <Brand />
+      <div className="onboard-card invite-card">
+        {me.data && <SessionBar name={me.data.user.name} />}
+        <span className="invite-art">
+          <DoorOpen size={42} />
+        </span>
+        <span className="eyebrow">YOU'RE INVITED</span>
+        <h1>
+          {invite.data
+            ? `${invite.data.householdName}에 초대받았어요.`
+            : invite.error
+              ? "초대를 사용할 수 없어요."
+              : "초대를 확인하고 있어요."}
+        </h1>
+        <p>
+          인증한 뒤 직접 수락해야 집에 입주해요.
+          <br />
+          링크를 열기만 해서는 캐릭터가 생기지 않아요.
+        </p>
+        <ErrorMessage message={invite.error?.message || error} />
+        {invite.data &&
+          (me.data ? (
+            <form onSubmit={accept}>
+              <label>
+                집에서 부를 내 이름
+                <input
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={30}
+                  placeholder={me.data.user.name}
+                />
+              </label>
+              <CharacterChoices
+                value={appearance}
+                onChange={setAppearance}
+                disabled={busy}
+              />
+              <button className="button primary" disabled={busy}>
+                초대 수락하고 입주하기 <ArrowRight size={17} />
+              </button>
+            </form>
+          ) : (
+            <Link
+              className="button primary"
+              to={`/login?next=${encodeURIComponent(`/invite/${token}`)}`}
+            >
+              로그인하고 초대 확인하기
+            </Link>
+          ))}
+        <BackLink />
+      </div>
+    </div>
+  );
 }
 
-type Panel='story'|'pantry'|'event'|'invite'|'settings'|'calendar'|'housewarming'|'pets'|'design'|null;
-function GamePage({studio=false}:{studio?:boolean}) {
-  const {id}=useParams(),nav=useNavigate(),qc=useQueryClient();
-  const query=useQuery({queryKey:['world',id],queryFn:()=>api<Snapshot>(`/api/households/${id}/world`),enabled:!studio,retry:false,refetchInterval:30_000});
-  const [fridgeTab,setFridgeTab]=useState<'food'|'notes'>('food');
-  const attachedNotes=useQuery({queryKey:['object-notes',id,false],queryFn:()=>api<ObjectNote[]>(`/api/households/${id}/objects/fridge/notes`),enabled:!studio&&Boolean(query.data)});
-  const [sample,setSample]=useState(fixture),[place,setPlace]=useState<Place>('home'),[observed,setObserved]=useState(''),[panel,setPanel]=useState<Panel>(null),[connection,setConnection]=useState<ConnectionState>('connecting'),[activity,setActivity]=useState('잠깐 쉬어가도 좋은 오후예요.'),[error,setError]=useState(''),[toast,setToast]=useState(''),[palette,setPalette]=useState<'warm'|'dusk'>('warm'),[reduced,setReduced]=useState(()=>matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const [tick,setTick]=useState(0);
-  const live=useRef<ReturnType<typeof connectWorld>|null>(null);
-  const snapshot=studio?sample:query.data,own=snapshot?.members.find(m=>m.id===snapshot.meMemberId);
-  useEffect(()=>{const interval=setInterval(()=>setTick(v=>v+1),30_000);return()=>clearInterval(interval);},[]);
-  const followedPlace=snapshot?.members.find(m=>m.id===observed)?.place;
-  useEffect(()=>{if(followedPlace)setPlace(followedPlace);},[followedPlace]);
-  useEffect(()=>{if(own){setObserved(own.id);setPlace(own.place);}},[own?.id]);
-  useEffect(()=>{if(own&&observed===own.id)setPlace(own.place);},[own?.place]);
-  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(''),4200);return()=>clearTimeout(timer);},[toast]);
-  useEffect(()=>{if(studio||!id||!query.data)return;live.current=connectWorld(id,async()=>{const data=await api<Snapshot>(`/api/households/${id}/world`);qc.setQueryData(['world',id],data);await Promise.all([qc.invalidateQueries({queryKey:['object-notes',id]}),qc.invalidateQueries({queryKey:['calendar',id]})]);return data.revision;},setConnection,setError);return()=>{live.current?.destroy();live.current=null;};},[id,studio,Boolean(query.data)]);
-  async function refresh(){if(!studio)await query.refetch();}
-  async function leave(){try{live.current?.destroy();await logout();clearDrafts();qc.clear();nav('/login');}catch(e){setError((e as Error).message);}}
-  function event(e:WorldEvent){if(e.type==='activity')setActivity(e.text);if(e.type==='interact'){if(e.target==='fridge'){setFridgeTab(e.label==='냉장고 쪽지'?'notes':'food');setPanel('pantry');}else if(e.target==='calendar')setPanel('calendar');else if(e.target==='entrance')setPanel('invite');else if(e.target==='pet_rest')setPanel('pets');else if(e.target==='table')setPanel('story');else setToast(e.target==='pet'?'반려동물의 움직임은 가상 연출이에요.':e.label);}if(e.type==='visibility-resume')void refresh();if(e.type==='move-intent'&&!studio)live.current?.send({requestId:crypto.randomUUID(),kind:'MOVE_INTENT',scene:own?.place,x:e.x,y:e.y});}
-  if(!snapshot||!own){if(query.error)return <div className="form-page"><Brand/><div className="onboard-card"><h1>집에 들어갈 수 없어요.</h1><ErrorMessage message={query.error.message}/><button className="button secondary" onClick={()=>void query.refetch()}>다시 연결</button><Link to="/login" className="button primary">로그인으로</Link></div></div>;return <Loading/>;}
-  const view:WorldView={design:snapshot.design,objectNotes:attachedNotes.data?.map(n=>({id:n.id,objectId:n.objectId})),place,ownMemberId:own.id,observedMemberId:observed,members:snapshot.members.map(m=>({id:m.id,name:m.name,place:m.place,characterStyle:m.appearance,appearance:gameAppearance(m.appearance),status:statusText(m),...(!studio?{x:m.x,y:m.y,action:m.action}:{})})),pets:snapshot.pets.map(p=>({...p,color:'#c79765'})),palette,reducedMotion:reduced};
+type Panel =
+  | "story"
+  | "pantry"
+  | "event"
+  | "invite"
+  | "settings"
+  | "calendar"
+  | "housewarming"
+  | "pets"
+  | "design"
+  | null;
+function GamePage({ studio = false }: { studio?: boolean }) {
+  const { id } = useParams(),
+    nav = useNavigate(),
+    qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ["world", id],
+    queryFn: () => api<Snapshot>(`/api/households/${id}/world`),
+    enabled: !studio,
+    retry: false,
+    refetchInterval: 30_000,
+  });
+  const [fridgeTab, setFridgeTab] = useState<"food" | "notes">("food");
+  const attachedNotes = useQuery({
+    queryKey: ["object-notes", id, false],
+    queryFn: () =>
+      api<ObjectNote[]>(`/api/households/${id}/objects/fridge/notes`),
+    enabled: !studio && Boolean(query.data),
+  });
+  const [sample, setSample] = useState(fixture),
+    [place, setPlace] = useState<Place>("home"),
+    [observed, setObserved] = useState(""),
+    [panel, setPanel] = useState<Panel>(null),
+    [connection, setConnection] = useState<ConnectionState>("connecting"),
+    [activity, setActivity] = useState("잠깐 쉬어가도 좋은 오후예요."),
+    [error, setError] = useState(""),
+    [toast, setToast] = useState(""),
+    [palette, setPalette] = useState<"warm" | "dusk">("warm"),
+    [closeView, setCloseView] = useState(false),
+    [reduced, setReduced] = useState(() => {
+      try {
+        const saved = localStorage.getItem("dot-home:reduced-motion");
+        if (saved !== null) return saved === "true";
+      } catch {}
+      return (
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || false
+      );
+    });
+  useEffect(() => {
+    try {
+      localStorage.setItem("dot-home:reduced-motion", String(reduced));
+    } catch {}
+  }, [reduced]);
+  const [tick, setTick] = useState(0);
+  const live = useRef<ReturnType<typeof connectWorld> | null>(null);
+  const snapshot = studio ? sample : query.data,
+    own = snapshot?.members.find((m) => m.id === snapshot.meMemberId);
+  useEffect(() => {
+    const interval = setInterval(() => setTick((v) => v + 1), 30_000);
+    return () => clearInterval(interval);
+  }, []);
+  const followedPlace = snapshot?.members.find((m) => m.id === observed)?.place;
+  useEffect(() => {
+    if (followedPlace) setPlace(followedPlace);
+  }, [followedPlace]);
+  useEffect(() => {
+    if (own) {
+      setObserved(own.id);
+      setPlace(own.place);
+    }
+  }, [own?.id]);
+  useEffect(() => {
+    if (own && observed === own.id) setPlace(own.place);
+  }, [own?.place]);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(""), 4200);
+    return () => clearTimeout(timer);
+  }, [toast]);
+  useEffect(() => {
+    if (studio || !id || !query.data) return;
+    live.current = connectWorld(
+      id,
+      async () => {
+        const data = await api<Snapshot>(`/api/households/${id}/world`);
+        qc.setQueryData(["world", id], data);
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["object-notes", id] }),
+          qc.invalidateQueries({ queryKey: ["calendar", id] }),
+        ]);
+        return data.revision;
+      },
+      setConnection,
+      setError,
+    );
+    return () => {
+      live.current?.destroy();
+      live.current = null;
+    };
+  }, [id, studio, Boolean(query.data)]);
+  async function refresh() {
+    if (!studio) await query.refetch();
+  }
+  async function leave() {
+    try {
+      live.current?.destroy();
+      await logout();
+      clearDrafts();
+      qc.clear();
+      nav("/login");
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  function event(e: WorldEvent) {
+    if (e.type === "activity") setActivity(e.text);
+    if (e.type === "interact") {
+      if (e.target === "fridge") {
+        setFridgeTab(e.label === "냉장고 쪽지" ? "notes" : "food");
+        setPanel("pantry");
+      } else if (e.target === "calendar") setPanel("calendar");
+      else if (e.target === "entrance") setPanel("invite");
+      else if (e.target === "pet_rest") setPanel("pets");
+      else if (e.target === "table") setPanel("story");
+      else
+        setToast(
+          e.target === "pet" ? "반려동물의 움직임은 가상 연출이에요." : e.label,
+        );
+    }
+    if (e.type === "visibility-resume") void refresh();
+    if (e.type === "move-intent" && !studio)
+      live.current?.send({
+        requestId: crypto.randomUUID(),
+        kind: "MOVE_INTENT",
+        scene: own?.place,
+        x: e.x,
+        y: e.y,
+      });
+  }
+  if (!snapshot || !own) {
+    if (query.error)
+      return (
+        <div className="form-page">
+          <Brand />
+          <div className="onboard-card">
+            <h1>집에 들어갈 수 없어요.</h1>
+            <ErrorMessage message={query.error.message} />
+            <button
+              className="button secondary"
+              onClick={() => void query.refetch()}
+            >
+              다시 연결
+            </button>
+            <Link to="/onboarding" className="button primary">
+              새로운 시작 화면으로
+            </Link>
+          </div>
+        </div>
+      );
+    return <Loading />;
+  }
+  const view: WorldView = {
+    closeView,
+    design: snapshot.design,
+    objectNotes: attachedNotes.data?.map((n) => ({
+      id: n.id,
+      objectId: n.objectId,
+    })),
+    place,
+    ownMemberId: own.id,
+    observedMemberId: observed,
+    members: snapshot.members.map((m) => ({
+      id: m.id,
+      name: m.name,
+      place: m.place,
+      characterStyle: m.appearance,
+      appearance: gameAppearance(m.appearance),
+      status: statusText(m),
+      ...(!studio ? { x: m.x, y: m.y, action: m.action } : {}),
+    })),
+    pets: snapshot.pets.map((p) => ({ ...p, color: "#c79765" })),
+    palette,
+    reducedMotion: reduced,
+  };
   void tick;
-  const observedMember=snapshot.members.find(m=>m.id===observed)||own;
-  return <div className="game-app"><header className="app-header"><Brand/><div className="header-center"><span className="tiny-star">✧</span> 오늘도, 우리답게.</div><div className="account-menu"><span className={`connection ${connection}`}><i/>{studio?'아트 스튜디오':connection==='online'?'연결됨':connection==='connecting'?'연결 중':'다시 연결 중'}</span><button className="account-button" onClick={()=>setPanel('settings')} aria-label="내 계정과 보기 설정"><Portrait appearance={own.appearance} small/><span>{own.name}<small>내 계정</small></span></button></div></header>
-  {studio&&<div className="studio-strip"><span><span className="studio-dot"/> M0 아트 시안 · 두 사람과 반려동물은 임시 데이터예요. 변경은 저장되지 않아요.</span><Link to="/login">실제 우리 집 만들기 <ArrowRight size={14}/></Link></div>}
-  <div className="game-layout"><aside className="family-sidebar"><div className="house-label"><span className="eyebrow">OUR HOME</span><h2>{snapshot.household.name}</h2><span className="house-meta">함께 사는 사람 {snapshot.members.length}명 · 반려동물 {snapshot.pets.length}마리</span></div><div className="sidebar-heading">함께하는 사람들 <span>{snapshot.members.length}</span></div><div className="member-list">{snapshot.members.map(m=><button key={m.id} className={`member-card ${observed===m.id?'active':''}`} onClick={()=>{setObserved(m.id);setPlace(m.place);}}><Portrait appearance={m.appearance}/><span className="member-description"><strong>{m.name}{m.id===own.id&&<em>나</em>}</strong><small>{places[m.place]}</small></span><ChevronRight size={15}/></button>)}</div><p className="observation-hint">얼굴을 누르면 그 사람의<br/>가상 공간을 둘러볼 수 있어요.</p><button className="button secondary" onClick={()=>setPanel('pets')}>반려동물 {own.role==='OWNER'?'등록 · 관리':'목록 보기'}</button>{snapshot.pets.length>0&&<><div className="sidebar-heading pets-heading">작은 동거인들</div>{snapshot.pets.map(p=><div className="pet-card" key={p.id}><span className="pet-face">{p.kind==='dog'?'🐕':'🐈'}</span><span><strong>{p.name}</strong><small>집에서 쉬는 중 · 가상 연출</small></span></div>)}</>}
-  <button className="invite-tile" onClick={()=>setPanel('invite')}><span className="invite-plus"><Plus size={17}/></span><span>우리 집에 초대하기<small>현재 가족 {snapshot.members.length}명</small></span><ChevronRight size={16}/></button><div className="sidebar-footer"><Leaf size={18}/><p>특별한 일 없는 하루도<br/>함께라서 좋아요.</p></div></aside>
-  <main className="game-main"><div className="page-heading"><div><span className="eyebrow">A LITTLE MOMENT TOGETHER</span><h1>{observed!==own.id?`${observedMember.name}의 공간`:'어서 와요, 우리 집에.'}</h1><p>{observed!==own.id?'둘러보는 중이에요. 내 계정과 작성자는 바뀌지 않아요.':'작은 일상을 나누고, 각자의 하루를 함께해요.'}</p></div><div className="day-chip"><Sun size={22}/><span>{new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})}<small>우리의 일상이 쌓이는 곳</small></span></div></div>
-  <div className="main-columns"><section className="world-section"><div className="scene-card"><div className="scene-topbar"><nav className="place-tabs" aria-label="가상 공간 둘러보기">{(Object.keys(places) as Place[]).map(p=><button key={p} className={place===p?'selected':''} onClick={()=>setPlace(p)}>{placeIcons[p]}<span>{places[p]}</span></button>)}</nav><button className="my-view" aria-label="내 화면으로" onClick={()=>{setObserved(own.id);setPlace(own.place);}}><Home size={14}/><span>내 화면으로</span></button></div><div className={`scene-wrap ${palette}`}><span className="scene-caption"><i/> {places[place]} <span>· {palette==='warm'?'포근한 오후':'차분한 저녁'}</span></span><Suspense fallback={<div className="world-canvas" role="status">우리 집을 그리고 있어요…</div>}><WorldCanvas view={view} onEvent={event}/></Suspense><div className="scene-caption bottom"><Leaf size={13}/> {activity}</div></div><div className="scene-footer"><span><span className="keycap">↔</span> 방향키 또는 바닥을 눌러 이동</span><span className="virtual-tag">가상 공간 · 실제 위치와 달라요</span></div></div>
-  <div className="action-bar"><button onClick={()=>setPanel('calendar')}><span className="action-icon"><CalendarDays size={20}/></span><span><strong>가족 달력</strong><small>함께할 하루</small></span></button><button onClick={()=>setPanel('story')}><span className="action-icon peach"><MessageCircle size={22}/></span><span><strong>내 이야기</strong><small>지금 내 마음은</small></span><ChevronRight size={16}/></button><button onClick={()=>setPanel('pantry')}><span className="action-icon green"><Refrigerator size={22}/></span><span><strong>우리 집 냉장고</strong><small>함께 채우는 일상</small></span><ChevronRight size={16}/></button><button onClick={()=>setPanel('event')}><span className="action-icon sand"><Bell size={22}/></span><span><strong>생활 기록</strong><small>소소한 소식 남기기</small></span><ChevronRight size={16}/></button></div>
-  <div className="gentle-tip"><CircleHelp size={15}/><span>장소 탭은 둘러보기예요. 내 공유 장소는 ‘내 이야기’에서 바꿀 수 있어요.</span><button onClick={()=>setPanel('settings')} aria-label="보기 설정"><Settings2 size={16}/></button></div></section>
-  <aside className="daily-panel"><section className="daily-card"><div className="card-heading"><h2>오늘의 마음</h2><span className="small-leaf"><Leaf size={16}/></span></div>{snapshot.members.map(m=><div className="thought-row" key={m.id}><Portrait appearance={m.appearance} small/><div><strong>{m.name} <span>{m.id===own.id?'나':''}</span></strong><p>{statusText(m)||'아직 남긴 이야기가 없어요.'}</p><small>{statusText(m)?'직접 공유한 이야기':'기다리는 마음도 다정하게'}</small></div></div>)}<button className="soft-button" onClick={()=>setPanel('story')}><Plus size={15}/> 내 마음 남기기</button></section>
-  <section className="daily-card news-card"><div className="card-heading"><h2>우리 집 소식</h2><button aria-label="생활 소식 추가" onClick={()=>setPanel('event')}><Plus size={18}/></button></div>{snapshot.events.length?snapshot.events.slice(0,5).map(e=><div className="news-item" key={e.id}><span className="news-icon">{eventTypes[e.type]?.icon||<MessageCircle size={16}/>}</span><div><p>{e.message}</p><small>{e.authorName} · {new Date(e.createdAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</small></div></div>):<div className="empty-news"><span><Coffee size={28} strokeWidth={1.3}/></span><p>아직은 조용한 우리 집</p><small>귀가, 퇴근, 택배 소식을<br/>가볍게 남겨보세요.</small></div>}<button className="soft-button" onClick={()=>setPanel('event')}>소식 남기기 <ArrowRight size={14}/></button></section><div className="aside-note"><span>✧</span><p>작은 안부 하나가<br/>하루를 따뜻하게 만들어요.</p></div></aside></div>
-  <footer className="game-footer"><span>DOT HOME <i>·</i> 우리의 작은 일상</span><button onClick={()=>setPanel('settings')}>보기 설정 <Settings2 size={13}/></button></footer></main></div>
-  {error&&<div className="floating-error" role="alert">{error}<button aria-label="오류 닫기" onClick={()=>setError('')}><X size={16}/></button></div>}{toast&&<div className="toast" role="status"><Check size={16}/>{toast}</div>}
-  {panel&&<Modal title={{story:'지금, 내 이야기',pantry:'우리 집 냉장고',event:'작은 소식 남기기',invite:'우리 집에 초대하기',housewarming:'집들이 · 친구 방문',calendar:'가족 공유 캘린더',design:'우리 집 설정 · 집 분위기',pets:'우리 집 반려동물',settings:'내 계정과 보기 설정'}[panel]} onClose={()=>setPanel(null)}>{panel==='design'?(studio?<p>집 분위기 설정은 실제 집에서 사용할 수 있어요.</p>:<SpaceSettings snapshot={snapshot} onSaved={data=>qc.setQueryData(['world',id],data)}/>):panel==='pets'?(studio?<p>반려동물 관리는 실제 집에서 사용할 수 있어요.</p>:<PetManager snapshot={snapshot} onSaved={data=>qc.setQueryData(['world',id],data)}/>):panel==='housewarming'?(studio?<p>집들이는 실제 집에서 사용할 수 있어요.</p>:<HousewarmingPanel householdId={snapshot.household.id}/>):panel==='calendar'?(studio?<p>일정은 실제 가족의 집에서 사용할 수 있어요.</p>:<FamilyCalendar householdId={snapshot.household.id}/>):panel==='story'?<StoryForm snapshot={snapshot} studio={studio} onSaved={async data=>{if(studio)setSample(data);else await refresh();setPanel(null);setToast(studio?'시안에 반영했어요. 저장되지는 않아요.':'내 이야기를 공유했어요.');}}/>:panel==='pantry'?<><nav className="fridge-tabs" aria-label="냉장고 기능"><button className="button secondary" onClick={()=>setFridgeTab('food')}>식료품 보기</button><button className="button secondary" onClick={()=>setFridgeTab('notes')}>쪽지 보기 / 붙이기</button></nav>{fridgeTab==='food'?<PantryPanel snapshot={snapshot} studio={studio} onChanged={async data=>{if(studio)setSample(data);else await refresh();}}/>:studio?<p>쪽지는 실제 가족의 집에서 사용할 수 있어요.</p>:<ObjectNotes householdId={snapshot.household.id} members={snapshot.members} memberId={own.id} isOwner={own.role==='OWNER'}/>}</>:panel==='event'?<EventForm snapshot={snapshot} studio={studio} onSaved={async data=>{if(studio)setSample(data);else await refresh();setPanel(null);setToast(studio?'시안에 소식을 남겼어요.':'우리 집에 소식을 남겼어요.');}}/>:panel==='invite'?<InvitePanel snapshot={snapshot} studio={studio}/>:<div className="settings-panel"><button className="button secondary" onClick={()=>setPanel('design')}>우리 집 설정 · 집 분위기</button>{!studio&&<CharacterStyleForm snapshot={snapshot} onSaved={data=>qc.setQueryData(['world',id],data)}/>}{own.role==='OWNER'&&<button className="button secondary" onClick={()=>setPanel('housewarming')}>집들이 · 친구 방문</button>}<div className="settings-account"><Portrait appearance={own.appearance}/><div><strong>{own.name}</strong><p>로그인한 내 구성원 · {own.role==='OWNER'?'집 대표':'구성원'}</p></div></div>{!studio&&<NicknameForm key={own.id} householdId={snapshot.household.id} nickname={own.name} onSaved={data=>qc.setQueryData(['world',id],data)}/>}<button className="button secondary" onClick={()=>setPanel('invite')}><Users size={16}/>초대 관리</button>{place!=='home'&&<label>외부 공간 시안<select value={palette} onChange={e=>setPalette(e.target.value as 'warm'|'dusk')}><option value="warm">A. 포근한 목재와 세이지</option><option value="dusk">B. 차분한 저녁</option></select></label>}<label className="checkbox-label"><input type="checkbox" checked={reduced} onChange={e=>setReduced(e.target.checked)}/> 자율 움직임 줄이기</label><p className="muted">집 그래픽은 v6.2 에셋을 사용합니다. 관찰 대상과 관계없이 모든 기록의 작성자는 {own.name}이에요.</p>{studio?<Link className="button primary" to="/login">실제 우리 집 시작하기</Link>:<button className="button secondary" onClick={()=>void leave()}><LogOut size={16}/> 로그아웃</button>}</div>}</Modal>}
-  </div>;
+  const observedMember = snapshot.members.find((m) => m.id === observed) || own;
+  return (
+    <div className="game-app">
+      <header className="app-header">
+        <Brand />
+        <div className="header-center">
+          <span className="tiny-star">✧</span> 오늘도, 우리답게.
+        </div>
+        <div className="account-menu">
+          <span className={`connection ${connection}`}>
+            <i />
+            {studio
+              ? "아트 스튜디오"
+              : connection === "online"
+                ? "연결됨"
+                : connection === "connecting"
+                  ? "연결 중"
+                  : "다시 연결 중"}
+          </span>
+          <button
+            className="account-button"
+            onClick={() => setPanel("settings")}
+            aria-label="내 계정과 보기 설정"
+          >
+            <Portrait appearance={own.appearance} small />
+            <span>
+              {own.name}
+              <small>내 계정</small>
+            </span>
+          </button>
+        </div>
+      </header>
+      {studio && (
+        <div className="studio-strip">
+          <span>
+            <span className="studio-dot" /> M0 아트 시안 · 두 사람과 반려동물은
+            임시 데이터예요. 변경은 저장되지 않아요.
+          </span>
+          <Link to="/login">
+            실제 우리 집 만들기 <ArrowRight size={14} />
+          </Link>
+        </div>
+      )}
+      <div className="game-layout">
+        <aside className="family-sidebar">
+          <div className="house-label">
+            <span className="eyebrow">OUR HOME</span>
+            <h2>{snapshot.household.name}</h2>
+            <span className="house-meta">
+              함께 사는 사람 {snapshot.members.length}명 · 반려동물{" "}
+              {snapshot.pets.length}마리
+            </span>
+          </div>
+          <div className="sidebar-heading">
+            함께하는 사람들 <span>{snapshot.members.length}</span>
+          </div>
+          <div className="member-list">
+            {snapshot.members.map((m) => (
+              <button
+                key={m.id}
+                className={`member-card ${observed === m.id ? "active" : ""}`}
+                onClick={() => {
+                  setObserved(m.id);
+                  setPlace(m.place);
+                }}
+              >
+                <Portrait appearance={m.appearance} />
+                <span className="member-description">
+                  <strong>
+                    {m.name}
+                    {m.id === own.id && <em>나</em>}
+                  </strong>
+                  <small>{places[m.place]}</small>
+                </span>
+                <ChevronRight size={15} />
+              </button>
+            ))}
+          </div>
+          <p className="observation-hint">
+            얼굴을 누르면 그 사람의
+            <br />
+            가상 공간을 둘러볼 수 있어요.
+          </p>
+          <div className="sidebar-tools">
+            <button
+              className="button secondary family-invite-compact"
+              onClick={() => setPanel("invite")}
+            >
+              <Users size={16} />
+              가족 초대
+            </button>
+            <button
+              className="button secondary sidebar-pet"
+              aria-label={
+                own.role === "OWNER"
+                  ? "반려동물 등록 · 관리"
+                  : "반려동물 목록 보기"
+              }
+              onClick={() => setPanel("pets")}
+            >
+              <PawPrint size={16} />
+              <span>반려동물</span>
+            </button>
+          </div>
+          {snapshot.pets.length > 0 && (
+            <>
+              <div className="sidebar-heading pets-heading">작은 동거인들</div>
+              {snapshot.pets.map((p) => (
+                <div className="pet-card" key={p.id}>
+                  <span className="pet-face">
+                    {p.kind === "dog" ? "🐕" : "🐈"}
+                  </span>
+                  <span>
+                    <strong>{p.name}</strong>
+                    <small>집에서 쉬는 중 · 가상 연출</small>
+                  </span>
+                </div>
+              ))}
+            </>
+          )}
+          <button className="invite-tile" onClick={() => setPanel("invite")}>
+            <span className="invite-plus">
+              <Plus size={17} />
+            </span>
+            <span>
+              우리 집에 초대하기
+              <small>현재 가족 {snapshot.members.length}명</small>
+            </span>
+            <ChevronRight size={16} />
+          </button>
+          <div className="sidebar-footer">
+            <Leaf size={18} />
+            <p>
+              특별한 일 없는 하루도
+              <br />
+              함께라서 좋아요.
+            </p>
+          </div>
+        </aside>
+        <main className="game-main">
+          <div className="page-heading">
+            <div>
+              <span className="eyebrow">A LITTLE MOMENT TOGETHER</span>
+              <h1>
+                {observed !== own.id
+                  ? `${observedMember.name}의 공간`
+                  : snapshot.household.name}
+              </h1>
+              <p>
+                {observed !== own.id
+                  ? "둘러보는 중이에요. 내 계정과 작성자는 바뀌지 않아요."
+                  : "작은 일상을 나누고, 각자의 하루를 함께해요."}
+              </p>
+            </div>
+            <div className="day-chip">
+              <Sun size={22} />
+              <span>
+                {new Date().toLocaleDateString("ko-KR", {
+                  month: "long",
+                  day: "numeric",
+                  weekday: "short",
+                })}
+                <small>우리의 일상이 쌓이는 곳</small>
+              </span>
+            </div>
+          </div>
+          <div className="main-columns">
+            <section className="world-section">
+              <div className="scene-card">
+                <div className="scene-topbar">
+                  <nav className="place-tabs" aria-label="가상 공간 둘러보기">
+                    {(Object.keys(places) as Place[]).map((p) => (
+                      <button
+                        key={p}
+                        className={place === p ? "selected" : ""}
+                        onClick={() => setPlace(p)}
+                      >
+                        {placeIcons[p]}
+                        <span>{places[p]}</span>
+                      </button>
+                    ))}
+                  </nav>
+                  <button
+                    className="my-view"
+                    aria-label="내 화면으로"
+                    onClick={() => {
+                      setObserved(own.id);
+                      setPlace(own.place);
+                    }}
+                  >
+                    <Home size={14} />
+                    <span>내 화면으로</span>
+                  </button>
+                </div>
+                <div className={`scene-wrap ${palette}`}>
+                  <span className="scene-caption" aria-hidden="true">
+                    <i /> {places[place]}{" "}
+                    <span>
+                      · {palette === "warm" ? "포근한 오후" : "차분한 저녁"}
+                    </span>
+                  </span>
+                  <Suspense
+                    fallback={
+                      <div className="world-canvas" role="status">
+                        우리 집을 그리고 있어요…
+                      </div>
+                    }
+                  >
+                    <WorldCanvas view={view} onEvent={event} />
+                  </Suspense>
+                </div>
+                <div className="scene-footer">
+                  <p>
+                    <span className="desktop-hint">방향키 또는 </span>바닥을
+                    눌러 이동
+                    <span className="interaction-hint">
+                      {" "}
+                      · 사물을 눌러 사용
+                    </span>
+                  </p>
+                  {place === "home" && (
+                    <button
+                      className="scene-zoom"
+                      aria-pressed={closeView}
+                      onClick={() => setCloseView(!closeView)}
+                    >
+                      {closeView ? <ZoomOut size={17} /> : <ZoomIn size={17} />}{" "}
+                      {closeView ? "넓게 보기" : "가까이 보기"}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="action-bar">
+                <button onClick={() => setPanel("calendar")}>
+                  <span className="action-icon">
+                    <CalendarDays size={20} />
+                  </span>
+                  <span>
+                    <strong>가족 달력</strong>
+                    <small>함께할 하루</small>
+                  </span>
+                </button>
+                <button onClick={() => setPanel("story")}>
+                  <span className="action-icon peach">
+                    <MessageCircle size={22} />
+                  </span>
+                  <span>
+                    <strong>내 이야기</strong>
+                    <small>지금 내 마음은</small>
+                  </span>
+                  <ChevronRight size={16} />
+                </button>
+                <button onClick={() => setPanel("pantry")}>
+                  <span className="action-icon green">
+                    <Refrigerator size={22} />
+                  </span>
+                  <span>
+                    <strong>우리 집 냉장고</strong>
+                    <small>함께 채우는 일상</small>
+                  </span>
+                  <ChevronRight size={16} />
+                </button>
+                <button onClick={() => setPanel("event")}>
+                  <span className="action-icon sand">
+                    <Bell size={22} />
+                  </span>
+                  <span>
+                    <strong>생활 기록</strong>
+                    <small>소소한 소식 남기기</small>
+                  </span>
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              <div className="gentle-tip">
+                <CircleHelp size={15} />
+                <span>
+                  장소 탭은 둘러보기예요. 내 공유 장소는 ‘내 이야기’에서 바꿀 수
+                  있어요.
+                </span>
+                <button
+                  onClick={() => setPanel("settings")}
+                  aria-label="보기 설정"
+                >
+                  <Settings2 size={16} />
+                </button>
+              </div>
+            </section>
+            <aside className="daily-panel">
+              <section className="daily-card">
+                <div className="card-heading">
+                  <h2>오늘의 마음</h2>
+                  <span className="small-leaf">
+                    <Leaf size={16} />
+                  </span>
+                </div>
+                {snapshot.members.map((m) => (
+                  <div className="thought-row" key={m.id}>
+                    <Portrait appearance={m.appearance} small />
+                    <div>
+                      <strong>
+                        {m.name} <span>{m.id === own.id ? "나" : ""}</span>
+                      </strong>
+                      <p>{statusText(m) || "아직 남긴 이야기가 없어요."}</p>
+                      <small>
+                        {statusText(m)
+                          ? "직접 공유한 이야기"
+                          : "기다리는 마음도 다정하게"}
+                      </small>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  className="soft-button"
+                  onClick={() => setPanel("story")}
+                >
+                  <Plus size={15} /> 내 마음 남기기
+                </button>
+              </section>
+              <section className="daily-card news-card">
+                <div className="card-heading">
+                  <h2>우리 집 소식</h2>
+                  <button
+                    aria-label="생활 소식 추가"
+                    onClick={() => setPanel("event")}
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
+                {snapshot.events.length ? (
+                  snapshot.events.slice(0, 5).map((e) => (
+                    <div className="news-item" key={e.id}>
+                      <span className="news-icon">
+                        {eventTypes[e.type]?.icon || (
+                          <MessageCircle size={16} />
+                        )}
+                      </span>
+                      <div>
+                        <p>{e.message}</p>
+                        <small>
+                          {e.authorName} ·{" "}
+                          {new Date(e.createdAt).toLocaleTimeString("ko-KR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </small>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-news">
+                    <span>
+                      <Coffee size={28} strokeWidth={1.3} />
+                    </span>
+                    <p>아직은 조용한 우리 집</p>
+                    <small>
+                      귀가, 퇴근, 택배 소식을
+                      <br />
+                      가볍게 남겨보세요.
+                    </small>
+                  </div>
+                )}
+                <button
+                  className="soft-button"
+                  onClick={() => setPanel("event")}
+                >
+                  소식 남기기 <ArrowRight size={14} />
+                </button>
+              </section>
+              <div className="aside-note">
+                <span>✧</span>
+                <p>
+                  작은 안부 하나가
+                  <br />
+                  하루를 따뜻하게 만들어요.
+                </p>
+              </div>
+            </aside>
+          </div>
+          <footer className="game-footer">
+            <span>
+              DOT HOME <i>·</i> 우리의 작은 일상
+            </span>
+            <button onClick={() => setPanel("settings")}>
+              보기 설정 <Settings2 size={13} />
+            </button>
+          </footer>
+        </main>
+      </div>
+      {error && (
+        <div className="floating-error" role="alert">
+          {error}
+          <button aria-label="오류 닫기" onClick={() => setError("")}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+      {toast && (
+        <div className="toast" role="status">
+          <Check size={16} />
+          {toast}
+        </div>
+      )}
+      {panel && (
+        <Modal
+          title={
+            {
+              story: "지금, 내 이야기",
+              pantry: "우리 집 냉장고",
+              event: "작은 소식 남기기",
+              invite: "우리 집에 초대하기",
+              housewarming: "집들이 · 친구 방문",
+              calendar: "가족 공유 캘린더",
+              design: "우리 집 설정 · 집 분위기",
+              pets: "우리 집 반려동물",
+              settings: "내 계정과 보기 설정",
+            }[panel]
+          }
+          onClose={() => setPanel(null)}
+        >
+          {panel === "design" ? (
+            studio ? (
+              <p>집 분위기 설정은 실제 집에서 사용할 수 있어요.</p>
+            ) : (
+              <SpaceSettings
+                snapshot={snapshot}
+                onSaved={(data) => qc.setQueryData(["world", id], data)}
+              />
+            )
+          ) : panel === "pets" ? (
+            studio ? (
+              <p>반려동물 관리는 실제 집에서 사용할 수 있어요.</p>
+            ) : (
+              <PetManager
+                snapshot={snapshot}
+                onSaved={(data) => qc.setQueryData(["world", id], data)}
+              />
+            )
+          ) : panel === "housewarming" ? (
+            studio ? (
+              <p>집들이는 실제 집에서 사용할 수 있어요.</p>
+            ) : (
+              <HousewarmingPanel householdId={snapshot.household.id} />
+            )
+          ) : panel === "calendar" ? (
+            studio ? (
+              <p>일정은 실제 가족의 집에서 사용할 수 있어요.</p>
+            ) : (
+              <FamilyCalendar householdId={snapshot.household.id} />
+            )
+          ) : panel === "story" ? (
+            <StoryForm
+              snapshot={snapshot}
+              studio={studio}
+              onSaved={async (data) => {
+                if (studio) setSample(data);
+                else await refresh();
+                setPanel(null);
+                setToast(
+                  studio
+                    ? "시안에 반영했어요. 저장되지는 않아요."
+                    : "내 이야기를 공유했어요.",
+                );
+              }}
+            />
+          ) : panel === "pantry" ? (
+            <>
+              <nav className="fridge-tabs" aria-label="냉장고 기능">
+                <button
+                  aria-pressed={fridgeTab === "food"}
+                  className="button secondary"
+                  onClick={() => setFridgeTab("food")}
+                >
+                  식료품 보기
+                </button>
+                <button
+                  aria-pressed={fridgeTab === "notes"}
+                  className="button secondary"
+                  onClick={() => setFridgeTab("notes")}
+                >
+                  쪽지 보기 / 붙이기
+                </button>
+              </nav>
+              {fridgeTab === "food" ? (
+                <PantryPanel
+                  snapshot={snapshot}
+                  studio={studio}
+                  onChanged={async (data) => {
+                    if (studio) setSample(data);
+                    else await refresh();
+                  }}
+                />
+              ) : studio ? (
+                <p>쪽지는 실제 가족의 집에서 사용할 수 있어요.</p>
+              ) : (
+                <ObjectNotes
+                  householdId={snapshot.household.id}
+                  members={snapshot.members}
+                  memberId={own.id}
+                  isOwner={own.role === "OWNER"}
+                />
+              )}
+            </>
+          ) : panel === "event" ? (
+            <EventForm
+              snapshot={snapshot}
+              studio={studio}
+              onSaved={async (data) => {
+                if (studio) setSample(data);
+                else await refresh();
+                setPanel(null);
+                setToast(
+                  studio
+                    ? "시안에 소식을 남겼어요."
+                    : "우리 집에 소식을 남겼어요.",
+                );
+              }}
+            />
+          ) : panel === "invite" ? (
+            <InvitePanel snapshot={snapshot} studio={studio} />
+          ) : (
+            <AccountSettings
+              snapshot={snapshot}
+              studio={studio}
+              place={place}
+              palette={palette}
+              reduced={reduced}
+              onPalette={setPalette}
+              onReduced={setReduced}
+              onOpen={setPanel}
+              onSaved={(data) => qc.setQueryData(["world", id], data)}
+              onLogout={() => void leave()}
+            />
+          )}
+        </Modal>
+      )}
+    </div>
+  );
 }
 
-function StoryForm({snapshot,studio,onSaved}:{snapshot:Snapshot;studio:boolean;onSaved:(data:Snapshot)=>void}){const own=snapshot.members.find(m=>m.id===snapshot.meMemberId)!;const [place,setPlace]=useState(own.place),[mood,setMood]=useState(own.mood),[food,setFood]=useState(own.food),[thought,setThought]=useState(own.thought),[minutes,setMinutes]=useState(60),[error,setError]=useState(''),[busy,setBusy]=useState(false);async function submit(e:FormEvent){e.preventDefault();setBusy(true);try{const body={place,mood,food,thought,expiresInMinutes:minutes};const data=studio?{...snapshot,members:snapshot.members.map(m=>m.id===own.id?{...m,...body,statusExpiresAt:new Date(Date.now()+minutes*60000).toISOString()}:m)}:await api<Snapshot>(`/api/households/${snapshot.household.id}/me/status`,'PATCH',body);onSaved(data);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
-  return <form onSubmit={submit}><p className="form-intro">{own.name}의 이야기로 공유해요. 직접 고른 상태는 캐릭터 머리 위에도 나타나요.</p><label>내가 공유할 장소<select value={place} onChange={e=>setPlace(e.target.value as Place)}>{Object.entries(places).map(([key,label])=><option value={key} key={key}>{label}</option>)}</select></label><label>지금 기분<input value={mood} onChange={e=>setMood(e.target.value)} maxLength={60} placeholder="편안해요, 조금 피곤해요…"/></label><div className="mood-chips">{['편안해요','신나요','쉬고 싶어요'].map(text=><button type="button" key={text} onClick={()=>setMood(text)}>{text}</button>)}</div><label>먹고 싶은 음식<input value={food} onChange={e=>setFood(e.target.value)} maxLength={60} placeholder="오늘은 따뜻한 수프"/></label><label>머리 위에 띄울 한마디<input value={thought} onChange={e=>setThought(e.target.value)} maxLength={100} placeholder="오늘도 수고했어"/></label><label>이야기를 보여줄 시간<select value={minutes} onChange={e=>setMinutes(Number(e.target.value))}><option value="30">30분</option><option value="60">1시간</option><option value="180">3시간</option><option value="1440">하루</option></select></label><ErrorMessage message={error}/><div className="form-actions"><button className="button secondary" type="button" onClick={()=>{setMood('');setFood('');setThought('');}}>내용 지우기</button><button className="button primary" disabled={busy}><Send size={16}/>{studio?'시안에 반영':'공유하기'}</button></div></form>;
+function StoryForm({
+  snapshot,
+  studio,
+  onSaved,
+}: {
+  snapshot: Snapshot;
+  studio: boolean;
+  onSaved: (data: Snapshot) => void;
+}) {
+  const own = snapshot.members.find((m) => m.id === snapshot.meMemberId)!;
+  const [place, setPlace] = useState(own.place),
+    [mood, setMood] = useState(own.mood),
+    [food, setFood] = useState(own.food),
+    [thought, setThought] = useState(own.thought),
+    [minutes, setMinutes] = useState(60),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const body = { place, mood, food, thought, expiresInMinutes: minutes };
+      const data = studio
+        ? {
+            ...snapshot,
+            members: snapshot.members.map((m) =>
+              m.id === own.id
+                ? {
+                    ...m,
+                    ...body,
+                    statusExpiresAt: new Date(
+                      Date.now() + minutes * 60000,
+                    ).toISOString(),
+                  }
+                : m,
+            ),
+          }
+        : await api<Snapshot>(
+            `/api/households/${snapshot.household.id}/me/status`,
+            "PATCH",
+            body,
+          );
+      onSaved(data);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form onSubmit={submit}>
+      <p className="form-intro">
+        {own.name}의 이야기로 공유해요. 직접 고른 상태는 캐릭터 머리 위에도
+        나타나요.
+      </p>
+      <label>
+        내가 공유할 장소
+        <select
+          value={place}
+          onChange={(e) => setPlace(e.target.value as Place)}
+        >
+          {Object.entries(places).map(([key, label]) => (
+            <option value={key} key={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        지금 기분
+        <input
+          value={mood}
+          onChange={(e) => setMood(e.target.value)}
+          maxLength={60}
+          placeholder="편안해요, 조금 피곤해요…"
+        />
+      </label>
+      <div className="mood-chips">
+        {["편안해요", "신나요", "쉬고 싶어요"].map((text) => (
+          <button type="button" key={text} onClick={() => setMood(text)}>
+            {text}
+          </button>
+        ))}
+      </div>
+      <label>
+        먹고 싶은 음식
+        <input
+          value={food}
+          onChange={(e) => setFood(e.target.value)}
+          maxLength={60}
+          placeholder="오늘은 따뜻한 수프"
+        />
+      </label>
+      <label>
+        머리 위에 띄울 한마디
+        <input
+          value={thought}
+          onChange={(e) => setThought(e.target.value)}
+          maxLength={100}
+          placeholder="오늘도 수고했어"
+        />
+      </label>
+      <label>
+        이야기를 보여줄 시간
+        <select
+          value={minutes}
+          onChange={(e) => setMinutes(Number(e.target.value))}
+        >
+          <option value="30">30분</option>
+          <option value="60">1시간</option>
+          <option value="180">3시간</option>
+          <option value="1440">하루</option>
+        </select>
+      </label>
+      <ErrorMessage message={error} />
+      <div className="form-actions">
+        <button
+          className="button secondary"
+          type="button"
+          onClick={() => {
+            setMood("");
+            setFood("");
+            setThought("");
+          }}
+        >
+          내용 지우기
+        </button>
+        <button className="button primary" disabled={busy}>
+          <Send size={16} />
+          {studio ? "시안에 반영" : "공유하기"}
+        </button>
+      </div>
+    </form>
+  );
 }
 
-function PantryPanel({snapshot,studio,onChanged}:{snapshot:Snapshot;studio:boolean;onChanged:(data:Snapshot)=>void}){const [name,setName]=useState(''),[quantity,setQuantity]=useState(1),[location,setLocation]=useState('냉장'),[expiresOn,setExpiresOn]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);async function add(e:FormEvent){e.preventDefault();setBusy(true);setError('');try{const body={name,quantity,location,unit:'개',expiresOn:expiresOn||null};if(studio)onChanged({...snapshot,pantryItems:[...snapshot.pantryItems,{...body,id:crypto.randomUUID(),version:0,updatedAt:now}]});else{await api(`/api/households/${snapshot.household.id}/pantry-items`,'POST',body);await onChanged(snapshot);}setName('');}catch(e){setError((e as Error).message);}finally{setBusy(false);}}async function consume(item:PantryItem){setBusy(true);setError('');try{if(studio)onChanged({...snapshot,pantryItems:snapshot.pantryItems.map(p=>p.id===item.id?{...p,quantity:p.quantity-1,version:p.version+1}:p)});else{await api(`/api/households/${snapshot.household.id}/pantry-items/${item.id}`,'PATCH',{quantity:item.quantity-1,version:item.version});await onChanged(snapshot);}}catch(e){setError(e instanceof ApiError&&e.status===409?'다른 구성원이 먼저 바꿨어요. 최신 수량을 확인하고 다시 눌러주세요.':(e as Error).message);await onChanged(snapshot);}finally{setBusy(false);}}
- return <div><p className="form-intro">실제로 사용한 뒤 기록해 주세요. 캐릭터의 행동은 재고를 바꾸지 않아요.</p><div className="pantry-list">{snapshot.pantryItems.length?snapshot.pantryItems.map(item=><div className="pantry-row" key={item.id}><span className="pantry-icon"><Utensils size={19}/></span><div><strong>{item.name}</strong><small>{item.location}{item.expiresOn?` · ${item.expiresOn}까지`:''}</small></div><b>{item.quantity}<small>{item.unit}</small></b><button className="small-button" disabled={busy||item.quantity<1} onClick={()=>void consume(item)}>1개 사용</button></div>):<p className="empty-text">냉장고에 첫 식료품을 기록해보세요.</p>}</div><form onSubmit={add} className="add-pantry"><h3>식료품 추가</h3><label>품목 이름<input required value={name} onChange={e=>setName(e.target.value)} maxLength={80} placeholder="예: 우유"/></label><div className="form-columns"><label>수량<input type="number" min="0" step="1" required value={quantity} onChange={e=>setQuantity(Number(e.target.value))}/></label><label>보관 위치<select value={location} onChange={e=>setLocation(e.target.value)}><option>냉장</option><option>냉동</option><option>실온</option></select></label></div><label>소비기한 <small>선택</small><input type="date" value={expiresOn} onChange={e=>setExpiresOn(e.target.value)}/></label><ErrorMessage message={error}/><button className="button primary" disabled={busy}><Plus size={16}/>{studio?'시안에 추가':'냉장고에 기록하기'}</button></form></div>;
+function PantryPanel({
+  snapshot,
+  studio,
+  onChanged,
+}: {
+  snapshot: Snapshot;
+  studio: boolean;
+  onChanged: (data: Snapshot) => void;
+}) {
+  const [name, setName] = useState(""),
+    [quantity, setQuantity] = useState(1),
+    [location, setLocation] = useState("냉장"),
+    [expiresOn, setExpiresOn] = useState(""),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  async function add(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const body = {
+        name,
+        quantity,
+        location,
+        unit: "개",
+        expiresOn: expiresOn || null,
+      };
+      if (studio)
+        onChanged({
+          ...snapshot,
+          pantryItems: [
+            ...snapshot.pantryItems,
+            { ...body, id: crypto.randomUUID(), version: 0, updatedAt: now },
+          ],
+        });
+      else {
+        await api(
+          `/api/households/${snapshot.household.id}/pantry-items`,
+          "POST",
+          body,
+        );
+        await onChanged(snapshot);
+      }
+      setName("");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function consume(item: PantryItem) {
+    setBusy(true);
+    setError("");
+    try {
+      if (studio)
+        onChanged({
+          ...snapshot,
+          pantryItems: snapshot.pantryItems.map((p) =>
+            p.id === item.id
+              ? { ...p, quantity: p.quantity - 1, version: p.version + 1 }
+              : p,
+          ),
+        });
+      else {
+        await api(
+          `/api/households/${snapshot.household.id}/pantry-items/${item.id}`,
+          "PATCH",
+          { quantity: item.quantity - 1, version: item.version },
+        );
+        await onChanged(snapshot);
+      }
+    } catch (e) {
+      setError(
+        e instanceof ApiError && e.status === 409
+          ? "다른 구성원이 먼저 바꿨어요. 최신 수량을 확인하고 다시 눌러주세요."
+          : (e as Error).message,
+      );
+      await onChanged(snapshot);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div>
+      <p className="form-intro">
+        실제로 사용한 뒤 기록해 주세요. 캐릭터의 행동은 재고를 바꾸지 않아요.
+      </p>
+      <div className="pantry-list">
+        {snapshot.pantryItems.length ? (
+          snapshot.pantryItems.map((item) => (
+            <div className="pantry-row" key={item.id}>
+              <span className="pantry-icon">
+                <Utensils size={19} />
+              </span>
+              <div>
+                <strong>{item.name}</strong>
+                <small>
+                  {item.location}
+                  {item.expiresOn ? ` · ${item.expiresOn}까지` : ""}
+                </small>
+              </div>
+              <b>
+                {item.quantity}
+                <small>{item.unit}</small>
+              </b>
+              <button
+                className="small-button"
+                disabled={busy || item.quantity < 1}
+                onClick={() => void consume(item)}
+              >
+                1개 사용
+              </button>
+            </div>
+          ))
+        ) : (
+          <p className="empty-text">냉장고에 첫 식료품을 기록해보세요.</p>
+        )}
+      </div>
+      <form onSubmit={add} className="add-pantry">
+        <h3>식료품 추가</h3>
+        <label>
+          품목 이름
+          <input
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={80}
+            placeholder="예: 우유"
+          />
+        </label>
+        <div className="form-columns">
+          <label>
+            수량
+            <input
+              type="number"
+              min="0"
+              step="1"
+              required
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value))}
+            />
+          </label>
+          <label>
+            보관 위치
+            <select
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            >
+              <option>냉장</option>
+              <option>냉동</option>
+              <option>실온</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          소비기한 <small>선택</small>
+          <input
+            type="date"
+            value={expiresOn}
+            onChange={(e) => setExpiresOn(e.target.value)}
+          />
+        </label>
+        <ErrorMessage message={error} />
+        <button className="button primary" disabled={busy}>
+          <Plus size={16} />
+          {busy ? "기록 중…" : studio ? "시안에 추가" : "냉장고에 기록하기"}
+        </button>
+      </form>
+    </div>
+  );
 }
 
-function EventForm({snapshot,studio,onSaved}:{snapshot:Snapshot;studio:boolean;onSaved:(data:Snapshot)=>void}){const [type,setType]=useState('ARRIVED_HOME'),[message,setMessage]=useState('집에 도착했어요'),[busy,setBusy]=useState(false),[error,setError]=useState('');const request=useRef<{body:string;id:string}|null>(null);async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError('');const body=JSON.stringify({type,message});if(request.current?.body!==body)request.current={body,id:crypto.randomUUID()};try{if(studio){const own=snapshot.members.find(m=>m.id===snapshot.meMemberId)!;onSaved({...snapshot,events:[{id:request.current.id,type,message,authorName:own.name,authorMemberId:own.id,createdAt:new Date().toISOString()},...snapshot.events]});}else{await api(`/api/households/${snapshot.household.id}/events`,'POST',{requestId:request.current.id,type,message});onSaved(snapshot);}}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- return <form onSubmit={submit}><p className="form-intro">직접 확인한 생활 소식을 남겨요. 자동 위치 감지나 배송 조회가 아닙니다.</p><div className="event-choices">{Object.entries(eventTypes).map(([key,value])=><button type="button" aria-pressed={type===key} className={type===key?'selected':''} key={key} onClick={()=>{setType(key);setMessage(value.message);}}>{value.icon}{value.label}</button>)}</div><label>함께 나눌 소식<textarea required value={message} maxLength={300} onChange={e=>setMessage(e.target.value)}/></label><ErrorMessage message={error}/><button className="button primary" disabled={busy}><Send size={16}/>{studio?'시안에 남기기':'소식 남기기'}</button>{snapshot.events.length>0&&<div className="event-history"><h3>최근 소식</h3>{snapshot.events.map(event=><div key={event.id}><p>{event.message}</p><small>{event.authorName} · {new Date(event.createdAt).toLocaleString('ko-KR')}</small></div>)}</div>}</form>;
+function EventForm({
+  snapshot,
+  studio,
+  onSaved,
+}: {
+  snapshot: Snapshot;
+  studio: boolean;
+  onSaved: (data: Snapshot) => void;
+}) {
+  const [type, setType] = useState("ARRIVED_HOME"),
+    [message, setMessage] = useState("집에 도착했어요"),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const request = useRef<{ body: string; id: string } | null>(null);
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    const body = JSON.stringify({ type, message });
+    if (request.current?.body !== body)
+      request.current = { body, id: crypto.randomUUID() };
+    try {
+      if (studio) {
+        const own = snapshot.members.find((m) => m.id === snapshot.meMemberId)!;
+        onSaved({
+          ...snapshot,
+          events: [
+            {
+              id: request.current.id,
+              type,
+              message,
+              authorName: own.name,
+              authorMemberId: own.id,
+              createdAt: new Date().toISOString(),
+            },
+            ...snapshot.events,
+          ],
+        });
+      } else {
+        await api(`/api/households/${snapshot.household.id}/events`, "POST", {
+          requestId: request.current.id,
+          type,
+          message,
+        });
+        onSaved(snapshot);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form onSubmit={submit}>
+      <p className="form-intro">
+        직접 확인한 생활 소식을 남겨요. 자동 위치 감지나 배송 조회가 아닙니다.
+      </p>
+      <div className="event-choices">
+        {Object.entries(eventTypes).map(([key, value]) => (
+          <button
+            type="button"
+            aria-pressed={type === key}
+            className={type === key ? "selected" : ""}
+            key={key}
+            onClick={() => {
+              setType(key);
+              setMessage(value.message);
+            }}
+          >
+            {value.icon}
+            {value.label}
+          </button>
+        ))}
+      </div>
+      <label>
+        함께 나눌 소식
+        <textarea
+          required
+          value={message}
+          maxLength={300}
+          onChange={(e) => setMessage(e.target.value)}
+        />
+      </label>
+      <ErrorMessage message={error} />
+      <button className="button primary" disabled={busy}>
+        <Send size={16} />
+        {studio ? "시안에 남기기" : "소식 남기기"}
+      </button>
+      {snapshot.events.length > 0 && (
+        <div className="event-history">
+          <h3>최근 소식</h3>
+          {snapshot.events.map((event) => (
+            <div key={event.id}>
+              <p>{event.message}</p>
+              <small>
+                {event.authorName} ·{" "}
+                {new Date(event.createdAt).toLocaleString("ko-KR")}
+              </small>
+            </div>
+          ))}
+        </div>
+      )}
+    </form>
+  );
 }
 
-function InvitePanel({snapshot,studio}:{snapshot:Snapshot;studio:boolean}){const [invite,setInvite]=useState<{id:string;url:string;expiresAt:string}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[copied,setCopied]=useState(false);const own=snapshot.members.find(m=>m.id===snapshot.meMemberId)!;async function create(){if(busy)return;setBusy(true);setError('');setCopied(false);try{setInvite(await api(`/api/households/${snapshot.household.id}/invitations`,'POST'));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}async function cancel(){if(!invite)return;setBusy(true);try{await api(`/api/households/${snapshot.household.id}/invitations/${invite.id}`,'DELETE');setInvite(null);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- if(studio)return <div className="invitation-explainer"><Users size={42}/><h3>진짜 함께 사는 사람을 초대해요.</h3><p>이곳은 그래픽과 움직임을 확인하는 시안입니다.<br/>실제 집에서 초대 링크를 만들고, 인증과 수락을 거쳐 구성원으로 참여할 수 있어요.</p><Link className="button primary" to="/login">내 집 만들러 가기 <ArrowRight size={16}/></Link></div>;
- return <div><p className="form-intro">현재 {snapshot.members.length}명 입주. 인증과 초대 수락을 마친 사람만 나타나요.</p>{own.role==='OWNER'?<>{invite?<><label>초대 링크<input readOnly value={new URL(invite.url,location.origin).href} onFocus={e=>e.target.select()}/></label><p className="muted">한 사람만 수락할 수 있어요. 만료: {new Date(invite.expiresAt).toLocaleString('ko-KR')}</p><div className="form-actions"><button className="button secondary" disabled={busy} onClick={()=>void cancel()}>초대 취소</button><button className="button primary" onClick={async()=>{try{await navigator.clipboard.writeText(new URL(invite.url,location.origin).href);setCopied(true);}catch{setError('링크를 선택해 직접 복사해 주세요.');}}}>{copied?'복사했어요':'링크 복사'}</button></div></>:<button className="button primary" disabled={busy} onClick={()=>void create()}><Plus size={16}/>초대 링크 만들기</button>}</>:<p>초대 링크는 집 대표가 만들 수 있어요.</p>}<ErrorMessage message={error}/></div>;
+function InvitePanel({
+  snapshot,
+  studio,
+}: {
+  snapshot: Snapshot;
+  studio: boolean;
+}) {
+  const [invite, setInvite] = useState<{
+      id: string;
+      url: string;
+      expiresAt: string;
+    } | null>(null),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  const own = snapshot.members.find((m) => m.id === snapshot.meMemberId)!;
+  async function create() {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      setInvite(
+        await api(
+          `/api/households/${snapshot.household.id}/invitations`,
+          "POST",
+        ),
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function cancel() {
+    if (!invite) return;
+    setBusy(true);
+    try {
+      await api(
+        `/api/households/${snapshot.household.id}/invitations/${invite.id}`,
+        "DELETE",
+      );
+      setInvite(null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (studio)
+    return (
+      <div className="invitation-explainer">
+        <Users size={42} />
+        <h3>진짜 함께 사는 사람을 초대해요.</h3>
+        <p>
+          이곳은 그래픽과 움직임을 확인하는 시안입니다.
+          <br />
+          실제 집에서 초대 링크를 만들고, 인증과 수락을 거쳐 구성원으로 참여할
+          수 있어요.
+        </p>
+        <Link className="button primary" to="/login">
+          내 집 만들러 가기 <ArrowRight size={16} />
+        </Link>
+      </div>
+    );
+  return (
+    <div>
+      <p className="form-intro">
+        현재 {snapshot.members.length}명 입주. 인증과 초대 수락을 마친 사람만
+        나타나요.
+      </p>
+      {own.role === "OWNER" ? (
+        <>
+          {invite ? (
+            <>
+              <ShareLink url={new URL(invite.url, location.origin).href} />
+              <p className="muted">
+                한 사람만 수락할 수 있어요. 만료:{" "}
+                {new Date(invite.expiresAt).toLocaleString("ko-KR")}
+              </p>
+              <button
+                className="button secondary"
+                disabled={busy}
+                onClick={() => void cancel()}
+              >
+                {busy ? "취소 중…" : "초대 취소"}
+              </button>
+            </>
+          ) : (
+            <button
+              className="button primary"
+              disabled={busy}
+              onClick={() => void create()}
+            >
+              <Plus size={16} />
+              {busy ? "링크 만드는 중…" : "초대 링크 만들기"}
+            </button>
+          )}
+        </>
+      ) : (
+        <p>초대 링크는 집 대표가 만들 수 있어요.</p>
+      )}
+      <ErrorMessage message={error} />
+    </div>
+  );
 }
 
-export default function App(){return <Routes><Route path="/" element={<LoginPage/>}/><Route path="/login" element={<LoginPage/>}/><Route path="/onboarding" element={<Onboarding/>}/><Route path="/visit/:token" element={<VisitPage/>}/><Route path="/invite/:token" element={<InvitePage/>}/><Route path="/home/:id" element={<GamePage/>}/>{import.meta.env.DEV&&<Route path="/studio/onboarding" element={<OnboardingPreview/>}/>}{import.meta.env.DEV&&<Route path="/studio" element={<GamePage studio/>}/>}<Route path="/settings" element={<Navigate to="/" replace/>}/><Route path="*" element={<div className="form-page"><Brand/><h1>이 길에는 아직 집이 없어요.</h1><BackLink/></div>}/></Routes>;}
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<LoginPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/visit/:token" element={<VisitPage />} />
+      <Route path="/invite/:token" element={<InvitePage />} />
+      <Route path="/home/:id" element={<GamePage />} />
+      {import.meta.env.DEV && (
+        <Route path="/studio/onboarding" element={<OnboardingPreview />} />
+      )}
+      {import.meta.env.DEV && (
+        <Route path="/studio" element={<GamePage studio />} />
+      )}
+      <Route path="/settings" element={<Navigate to="/" replace />} />
+      <Route
+        path="*"
+        element={
+          <div className="form-page">
+            <Brand />
+            <h1>이 길에는 아직 집이 없어요.</h1>
+            <BackLink />
+          </div>
+        }
+      />
+    </Routes>
+  );
+}
