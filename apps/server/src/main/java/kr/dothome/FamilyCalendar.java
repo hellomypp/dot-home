@@ -8,6 +8,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.*;
 import org.springframework.web.bind.annotation.*;
 
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+
 import java.security.Principal;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
@@ -21,6 +25,8 @@ class HouseholdCalendarEvent extends Row {
     @Column(nullable=false,length=20) String category;
     @Column(nullable=false,length=24) String eventScope="HOUSEHOLD";
     Instant hiddenAt;
+    @Column(columnDefinition="TEXT") String targetIds;
+    Integer reminderMinutesBefore;
     boolean allDay;
     LocalDate startDate,endDate;
     Instant startAt,endAt;
@@ -48,20 +54,43 @@ interface CalendarEvents extends JpaRepository<HouseholdCalendarEvent,String> {
     List<HouseholdCalendarEvent> range(String h,String memberId,boolean moderation,LocalDate fromDate,LocalDate toDate,Instant since,Instant until);
 }
 
+enum AttendanceStatus { ACCEPTED, DECLINED, TENTATIVE }
+@Entity @Table(name="calendar_attendance")
+class CalendarAttendance extends Row {
+    @Column(nullable=false,length=36) String eventId;
+    @Column(nullable=false,length=36) String memberId;
+    @Enumerated(EnumType.STRING) @Column(nullable=false,length=16) AttendanceStatus attendanceStatus;
+    @Column(nullable=false) Instant updatedAt;
+    long version;
+}
+interface CalendarAttendances extends JpaRepository<CalendarAttendance,String> {
+    Optional<CalendarAttendance> findByEventIdAndMemberId(String eventId,String memberId);
+    List<CalendarAttendance> findByEventIdIn(Collection<String> eventIds);
+    List<CalendarAttendance> findByEventId(String eventId);
+}
+record AttendanceInput(@NotNull AttendanceStatus status,@NotNull @Min(0) Long version) {}
+record AttendanceView(AttendanceStatus status,long version) {}
+
 record CalendarInput(@NotBlank @Size(max=120) String title,@NotNull @Size(max=2000) String description,
     @NotNull @Pattern(regexp="GENERAL|BIRTHDAY|ANNIVERSARY|CARE") String category,boolean allDay,
     LocalDate startDate,LocalDate endDate,Instant startAt,Instant endAt,
     @NotBlank @Size(max=64) String timeZone,@Min(0) long version,
-    @Pattern(regexp="HOUSEHOLD|PERSONAL_SHARED") String scope) {
+    @Pattern(regexp="HOUSEHOLD|PERSONAL_SHARED") String scope,
+    List<@NotBlank @Size(max=36) String> targetIds,JsonNode reminderMinutesBefore) {
     CalendarInput(String title,String description,String category,boolean allDay,LocalDate startDate,LocalDate endDate,
         Instant startAt,Instant endAt,String timeZone,long version){
-        this(title,description,category,allDay,startDate,endDate,startAt,endAt,timeZone,version,null);
+        this(title,description,category,allDay,startDate,endDate,startAt,endAt,timeZone,version,null,null,null);
+    }
+    CalendarInput(String title,String description,String category,boolean allDay,LocalDate startDate,LocalDate endDate,
+        Instant startAt,Instant endAt,String timeZone,long version,String scope){
+        this(title,description,category,allDay,startDate,endDate,startAt,endAt,timeZone,version,scope,null,null);
     }
 }
 record HiddenCalendarEvent(String id,Instant hiddenAt,long version) {}
 record CalendarView(String id,String title,String description,String category,boolean allDay,LocalDate startDate,
     LocalDate endDate,Instant startAt,Instant endAt,String timeZone,String createdByMemberId,String updatedByMemberId,
-    Instant createdAt,Instant updatedAt,long version,String scope,Instant hiddenAt,boolean canEdit,boolean canHide) {}
+    Instant createdAt,Instant updatedAt,long version,String scope,Instant hiddenAt,boolean canEdit,boolean canHide,List<String> targetIds,
+    Integer reminderMinutesBefore,boolean canRespond,AttendanceView myRsvp,Map<AttendanceStatus,Long> rsvpCounts) {}
 
 @Service @Transactional(isolation=Isolation.READ_COMMITTED)
 class CalendarService {
@@ -69,8 +98,11 @@ class CalendarService {
     final HomeService homes;
     final CalendarEvents events;
     final Members members;
-    CalendarService(HomeService homes,CalendarEvents events,Members members){
-        this.homes=homes;this.events=events;this.members=members;
+    final Pets pets;
+    final CalendarAttendances attendance;
+    final ObjectMapper json;
+    CalendarService(HomeService homes,CalendarEvents events,Members members,Pets pets,CalendarAttendances attendance,ObjectMapper json){
+        this.homes=homes;this.events=events;this.members=members;this.pets=pets;this.attendance=attendance;this.json=json;
     }
     static void validate(CalendarInput input){
         if(input.title().strip().isEmpty())throw ApiException.invalid("일정 제목을 입력해 주세요.");
@@ -93,7 +125,14 @@ class CalendarService {
     }
     List<CalendarView> range(String h,String u,LocalDate from,LocalDate to,String timeZone){
         Member me=homes.requireMember(h,u);
-        return rows(h,me.id,false,from,to,timeZone).stream().map(event->view(event,me)).toList();
+        var rows=rows(h,me.id,false,from,to,timeZone);
+        if(rows.isEmpty())return List.of();
+        var active=activeMembers(h);
+        var byEvent=new HashMap<String,List<CalendarAttendance>>();
+        for(var response:attendance.findByEventIdIn(rows.stream().map(e->e.id).toList())){
+            if(active.contains(response.memberId))byEvent.computeIfAbsent(response.eventId,k->new ArrayList<>()).add(response);
+        }
+        return rows.stream().map(event->view(event,me,byEvent.getOrDefault(event.id,List.of()))).toList();
     }
     List<HiddenCalendarEvent> hidden(String h,String u,LocalDate from,LocalDate to){
         Member me=homes.requireMember(h,u);
@@ -123,6 +162,25 @@ class CalendarService {
             event.createdByMemberId=me.id;
             if(input.scope()!=null)event.eventScope=input.scope();
         }
+        if(input.targetIds()!=null){
+            var targets=input.targetIds().stream().distinct().sorted().toList();
+            var previous=targets(event);
+            validateTargets(h,targets.stream().filter(target->!previous.contains(target)).toList());
+            event.targetIds=json.writeValueAsString(targets);
+            if(id!=null&&!targets.isEmpty()){
+                attendance.deleteAll(attendance.findByEventId(id).stream()
+                    .filter(response->!targets.contains(response.memberId)).toList());
+            }
+        }
+        if(input.reminderMinutesBefore()!=null){
+            var reminder=input.reminderMinutesBefore();
+            if(reminder.isNull())event.reminderMinutesBefore=null;
+            else{
+                if(!reminder.isIntegralNumber()||!reminder.canConvertToInt()||!Set.of(0,10,30,60,1440).contains(reminder.asInt()))
+                    throw ApiException.invalid("일정 알림 시간은 0·10·30·60·1440분 중 선택해 주세요.");
+                event.reminderMinutesBefore=reminder.asInt();
+            }
+        }
         event.householdId=h;
         event.title=input.title().strip();
         event.description=input.description().strip();
@@ -137,7 +195,8 @@ class CalendarService {
         event.updatedAt=Instant.now();
         events.saveAndFlush(event);
         homes.emit(house,"CALENDAR_EVENT_CHANGED",event.id);
-        return view(event,me);
+        var active=activeMembers(h);
+        return view(event,me,attendance.findByEventId(event.id).stream().filter(r->active.contains(r.memberId)).toList());
     }
     void delete(String h,String u,String id,long version){
         Household house=homes.lock(h,u);
@@ -145,6 +204,8 @@ class CalendarService {
         HouseholdCalendarEvent event=scoped(h,id);
         if(!canEdit(event,me))throw ApiException.forbidden();
         checkVersion(event,version);
+        attendance.deleteAll(attendance.findByEventId(id));
+        attendance.flush();
         events.delete(event);
         events.flush();
         homes.emit(house,"CALENDAR_EVENT_CHANGED",id);
@@ -163,6 +224,43 @@ class CalendarService {
         events.flush();
         homes.emit(house,"CALENDAR_EVENT_CHANGED",id);
     }
+    AttendanceView respond(String h,String u,String id,AttendanceInput input){
+        Household house=homes.lock(h,u);
+        Member member=homes.requireMember(h,u);
+        HouseholdCalendarEvent event=scoped(h,id);
+        var targets=targets(event);
+        if(event.hiddenAt!=null||!targets.isEmpty()&&!targets.contains(member.id)||
+            "PERSONAL_SHARED".equals(event.eventScope)&&members.findById(event.createdByMemberId).filter(creator->creator.active).isEmpty())
+            throw ApiException.forbidden();
+        var response=attendance.findByEventIdAndMemberId(event.id,member.id).orElse(null);
+        long current=response==null?0:response.version;
+        if(current!=input.version())throw ApiException.conflict("참석 응답이 변경됐어요. 최신 내용을 확인해 주세요.");
+        if(response!=null&&response.attendanceStatus==input.status())return new AttendanceView(response.attendanceStatus,response.version);
+        if(response==null){
+            response=new CalendarAttendance();
+            response.eventId=id;response.memberId=member.id;
+        }
+        response.attendanceStatus=input.status();
+        response.updatedAt=Instant.now();
+        response.version=current+1;
+        attendance.save(response);
+        homes.emit(house,"CALENDAR_EVENT_CHANGED",id);
+        return new AttendanceView(response.attendanceStatus,response.version);
+    }
+    private Set<String> activeMembers(String h){
+        var active=new HashSet<String>();
+        for(var member:members.findByHouseholdIdAndActiveTrueOrderById(h))active.add(member.id);
+        return active;
+    }
+    private void validateTargets(String h,List<String> targets){
+        if(targets.isEmpty())return;
+        var allowed=activeMembers(h);
+        for(var pet:pets.findByHouseholdIdOrderById(h))allowed.add(pet.id);
+        if(!allowed.containsAll(targets))throw ApiException.invalid("이 집의 가족과 반려동물만 일정 대상으로 선택할 수 있어요.");
+    }
+    private List<String> targets(HouseholdCalendarEvent event){
+        return event.targetIds==null?List.of():json.readValue(event.targetIds,new TypeReference<List<String>>(){});
+    }
     HouseholdCalendarEvent scoped(String h,String id){
         return events.findById(id).filter(e->e.householdId.equals(h)).orElseThrow(ApiException::forbidden);
     }
@@ -175,10 +273,22 @@ class CalendarService {
     private static boolean canHide(HouseholdCalendarEvent event,Member me){
         return "PERSONAL_SHARED".equals(event.eventScope)&&"OWNER".equals(me.role);
     }
-    static CalendarView view(HouseholdCalendarEvent event,Member me){
+    private CalendarView view(HouseholdCalendarEvent event,Member me,List<CalendarAttendance> responses){
+        var targets=targets(event);
+        var counts=new EnumMap<AttendanceStatus,Long>(AttendanceStatus.class);
+        AttendanceView mine=null;
+        if(event.hiddenAt==null){
+            for(var response:responses){
+                if(!targets.isEmpty()&&!targets.contains(response.memberId))continue;
+                counts.merge(response.attendanceStatus,1L,Long::sum);
+                if(response.memberId.equals(me.id))mine=new AttendanceView(response.attendanceStatus,response.version);
+            }
+        }
+        boolean canRespond=event.hiddenAt==null&&(targets.isEmpty()||targets.contains(me.id));
         return new CalendarView(event.id,event.title,event.description,event.category,event.allDay,event.startDate,event.endDate,
             event.startAt,event.endAt,event.timeZone,event.createdByMemberId,event.updatedByMemberId,event.createdAt,event.updatedAt,
-            event.version,event.eventScope,event.hiddenAt,canEdit(event,me),canHide(event,me));
+            event.version,event.eventScope,event.hiddenAt,canEdit(event,me),canHide(event,me),targets,event.reminderMinutesBefore,
+            canRespond,mine,counts);
     }
 }
 
@@ -204,6 +314,10 @@ class CalendarController {
     @DeleteMapping("/{id}") @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     void delete(@PathVariable String h,@PathVariable String id,@RequestParam long version,Principal p){
         service.delete(h,p.getName(),id,version);
+    }
+    @PutMapping("/{id}/rsvp") AttendanceView respond(@PathVariable String h,@PathVariable String id,Principal p,
+            @Valid @RequestBody AttendanceInput input){
+        return service.respond(h,p.getName(),id,input);
     }
     @PostMapping("/{id}/hide") @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     void hide(@PathVariable String h,@PathVariable String id,Principal p,@Valid @RequestBody CalendarVersion input){

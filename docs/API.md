@@ -69,6 +69,10 @@
 - 생성 시 `scope`는 `HOUSEHOLD`(기본) 또는 `PERSONAL_SHARED`다. 공동 일정은 작성자와 집 대표, 개인 공유 일정은 작성자만 수정·삭제한다. 등록 후 공유 종류는 고정한다. `CARE` 유형을 지원한다.
 - 집 대표만 `POST /{id}/hide` 또는 `/unhide`에 `{version}`을 보내 개인 일정을 숨김·복원할 수 있다. `GET /moderation?from=…&to=…`는 숨긴 일정의 ID·숨김 시각·버전만 반환한다. 숨긴 일정은 작성자만 원문을 읽을 수 있고, 작성자가 비활성 상태이면 다른 가족에게 개인 일정이 노출되지 않는다.
 
+- 선택 사항인 `targetIds`는 같은 집의 활성 가족과 등록 반려동물 ID 목록이다. 생략하면 이전 값 유지, 빈 배열은 모든 가족을 뜻한다. 반려동물은 돌봄 일정의 대상이며 참석 응답을 보내는 계정은 실제 가족뿐이다.
+- `PUT /api/households/{h}/calendar-events/{id}/rsvp`의 본문은 `{status,version}`이다. 상태는 `ACCEPTED|DECLINED|TENTATIVE`, 최초 버전은 0이다. 서버가 응답자를 식별하며 대상이 아닌 가족은 403, 버전 충돌은 409를 받는다. 달력은 본인 응답 `myRsvp`와 가족 합계 `rsvpCounts`를 제공한다.
+- `reminderMinutesBefore`는 선택 사항이며 허용값은 0·10·30·60·1440분이다. 명시적 null로 해제한다. 이 값의 저장과 실제 알림 발송은 별개다.
+
 ## v0.9 생활 요청
 
 - `GET /api/households/{h}/requests` → `{items,nextCursor}`. `state`는 쉼표로 분리한 상태, `limit` 기본 20·최대 100, `cursor`는 앞 페이지의 nextCursor다. 생성 시각과 ID 내림차순.

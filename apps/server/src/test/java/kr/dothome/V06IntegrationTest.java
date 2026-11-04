@@ -10,7 +10,7 @@ import java.util.concurrent.*;
 
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT) @ActiveProfiles({"dev","test"})
 class V06IntegrationTest {
- @Autowired HomeService homes;@Autowired IdentityService identity;@Autowired ObjectNoteService notes;@Autowired ObjectNotes noteRows;@Autowired CalendarService calendar;@Autowired HousewarmingService visits;@Autowired HousewarmingInvitations links;@Autowired Members members;
+ @Autowired HomeService homes;@Autowired IdentityService identity;@Autowired ObjectNoteService notes;@Autowired ObjectNotes noteRows;@Autowired CalendarService calendar;@Autowired HousewarmingService visits;@Autowired HousewarmingInvitations links;@Autowired Members members;@Autowired tools.jackson.databind.ObjectMapper json;
  String user(){return identity.resolve("test",UUID.randomUUID().toString(),"테스트 가족").id;}
  String house(String u){return homes.create(u,new Api.CreateHouse("공유 집","가족","sage")).household().id();}
  String join(String h,String owner){String u=user();homes.accept(homes.invite(h,owner).token(),u,new Api.Accept("다른 가족","blue"));return u;}
@@ -109,6 +109,29 @@ class V06IntegrationTest {
   assertEquals(Set.of(timed.id(),allDay.id()),calendar.range(h,owner,date,date).stream().map(CalendarView::id).collect(java.util.stream.Collectors.toSet()));
   assertEquals(List.of(allDay.id()),calendar.range(h,owner,date,date,"America/New_York").stream().map(CalendarView::id).toList());
   assertEquals(List.of(timed.id()),calendar.range(h,owner,date.minusDays(1),date.minusDays(1),"America/New_York").stream().map(CalendarView::id).toList());
+ }
+ @Test void attendanceIsVersionedPerMemberAndOnlyActiveTargetsCanRespond(){
+  String owner=user(),h=house(owner),guest=join(h,owner),other=join(h,owner);
+  String target=homes.requireMember(h,guest).id;
+  var pet=homes.addPet(h,owner,new Api.PetInput("모카","cat","cream")).pets().getFirst();
+  LocalDate date=LocalDate.of(2026,11,3);
+  var event=calendar.save(h,owner,null,new CalendarInput("돌봄","", "CARE",true,date,date,null,null,"Asia/Seoul",0,
+      "HOUSEHOLD",List.of(target,pet.id()),json.readTree("30")));
+  assertEquals(30,event.reminderMinutesBefore());
+  assertFalse(event.canRespond());
+  assertEquals(403,assertThrows(ApiException.class,()->calendar.respond(h,other,event.id(),new AttendanceInput(AttendanceStatus.ACCEPTED,0L))).status.value());
+  var accepted=calendar.respond(h,guest,event.id(),new AttendanceInput(AttendanceStatus.ACCEPTED,0L));
+  assertEquals(1,accepted.version());
+  assertEquals(409,assertThrows(ApiException.class,()->calendar.respond(h,guest,event.id(),new AttendanceInput(AttendanceStatus.DECLINED,0L))).status.value());
+  var family=calendar.range(h,guest,date,date).getFirst();
+  assertEquals(accepted,family.myRsvp());
+  assertEquals(Map.of(AttendanceStatus.ACCEPTED,1L),family.rsvpCounts());
+  assertNull(calendar.range(h,owner,date,date).getFirst().myRsvp());
+  var legacy=calendar.save(h,owner,event.id(),new CalendarInput("수정","", "CARE",true,date,date,null,null,"Asia/Seoul",event.version()));
+  assertEquals(Set.of(target,pet.id()),Set.copyOf(legacy.targetIds()));
+  assertEquals(30,legacy.reminderMinutesBefore());
+  calendar.delete(h,owner,event.id(),legacy.version());
+  assertTrue(calendar.range(h,guest,date,date).isEmpty());
  }
  @Test void timedCalendarUsesUtcAndSeoulRange(){String a=user(),h=house(a);var i=new CalendarInput("자정 약속","","GENERAL",false,null,null,Instant.parse("2026-11-02T15:00:00Z"),Instant.parse("2026-11-02T16:00:00Z"),"Asia/Seoul",0);calendar.save(h,a,null,i);assertTrue(calendar.range(h,a,LocalDate.of(2026,11,2),LocalDate.of(2026,11,2)).isEmpty());assertEquals(1,calendar.range(h,a,LocalDate.of(2026,11,3),LocalDate.of(2026,11,3)).size());assertThrows(ApiException.class,()->CalendarService.validate(new CalendarInput("거꾸로","","GENERAL",false,null,null,i.endAt(),i.startAt(),"Asia/Seoul",0)));assertThrows(ApiException.class,()->CalendarService.validate(new CalendarInput("혼합","","GENERAL",true,LocalDate.now(),LocalDate.now(),Instant.now(),null,"Asia/Seoul",0)));}
  @Test void visitsNeverCreateFamilyMembershipAndRevocationRemovesAccess(){String a=user(),h=house(a),guest=user();var link=visits.create(h,a);String token=token(link);assertNotEquals(token,links.findById(link.id()).orElseThrow().tokenHash);assertThrows(ApiException.class,()->visits.world(token,guest));assertEquals("공유 집",visits.enter(token,guest).householdName());visits.enter(token,guest);assertTrue(members.findByUserIdAndActiveTrue(guest).isEmpty());assertEquals(1,homes.world(h,a).members().size());assertThrows(ApiException.class,()->homes.world(h,guest));assertThrows(ApiException.class,()->notes.list(h,guest,"fridge"));assertThrows(ApiException.class,()->calendar.range(h,guest,LocalDate.now(),LocalDate.now()));assertThrows(ApiException.class,()->visits.create(h,guest));visits.revoke(h,a,link.id());assertThrows(ApiException.class,()->visits.world(token,guest));assertThrows(ApiException.class,()->visits.enter(token,guest));}

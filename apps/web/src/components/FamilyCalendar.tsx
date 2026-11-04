@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
+type AttendanceStatus = "ACCEPTED" | "DECLINED" | "TENTATIVE";
+const attendanceLabels: Record<AttendanceStatus, string> = {
+  ACCEPTED: "참석", DECLINED: "불참", TENTATIVE: "미정",
+};
+
 export interface CalendarEvent {
   id: string;
   title: string;
@@ -17,6 +22,10 @@ export interface CalendarEvent {
   hiddenAt?: string | null;
   canEdit?: boolean;
   canHide?: boolean;
+  targetIds?: string[];
+  canRespond?: boolean;
+  myRsvp?: { status: AttendanceStatus; version: number } | null;
+  rsvpCounts?: Partial<Record<AttendanceStatus, number>>;
 }
 export function seoulDate(value = new Date()) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -49,7 +58,10 @@ export function occurs(event: CalendarEvent, date: string) {
           ),
         ) >= date;
 }
-export function FamilyCalendar({ householdId, isOwner = false }: { householdId: string; isOwner?: boolean }) {
+export function FamilyCalendar({ householdId, isOwner = false, participants = [] }: {
+  householdId: string; isOwner?: boolean;
+  participants?: { id: string; name: string; pet?: boolean }[];
+}) {
   const titleField = useRef<HTMLInputElement>(null);
   const today = seoulDate(),
     [month, setMonth] = useState(today.slice(0, 7)),
@@ -57,6 +69,7 @@ export function FamilyCalendar({ householdId, isOwner = false }: { householdId: 
     [edit, setEdit] = useState<CalendarEvent | null>(null),
     [form, setForm] = useState(false),
     [showHidden, setShowHidden] = useState(false),
+    [targets, setTargets] = useState<string[]>([]),
     [scope, setScope] = useState<NonNullable<CalendarEvent["scope"]>>("HOUSEHOLD"),
     [title, setTitle] = useState(""),
     [description, setDescription] = useState(""),
@@ -103,6 +116,7 @@ export function FamilyCalendar({ householdId, isOwner = false }: { householdId: 
     setDescription(e?.description || "");
     setCategory(e?.category || "GENERAL");
     setScope(e?.scope ?? "HOUSEHOLD");
+    setTargets(e?.targetIds ?? []);
     setAllDay(e?.allDay ?? true);
     setStart(e ? (e.allDay ? e.startDate! : seoulTime(e.startAt!)) : day);
     setEnd(e ? (e.allDay ? e.endDate! : seoulTime(e.endAt!)) : day);
@@ -116,6 +130,8 @@ export function FamilyCalendar({ householdId, isOwner = false }: { householdId: 
     setBusy(true);
     setError("");
     try {
+      const previousTargets = edit?.targetIds ?? [];
+      const targetsChanged = targets.length !== previousTargets.length || targets.some((id) => !previousTargets.includes(id));
       await api(root + (edit ? "/" + edit.id : ""), edit ? "PATCH" : "POST", {
         title,
         description,
@@ -128,6 +144,7 @@ export function FamilyCalendar({ householdId, isOwner = false }: { householdId: 
         timeZone: edit?.timeZone ?? "Asia/Seoul",
         version: edit?.version || 0,
         ...(!edit && scope !== "HOUSEHOLD" ? { scope } : {}),
+        ...(targetsChanged ? { targetIds: targets } : {}),
       });
       setForm(false);
       await client.invalidateQueries({ queryKey: ["calendar", householdId] });
@@ -159,6 +176,22 @@ export function FamilyCalendar({ householdId, isOwner = false }: { householdId: 
     setError("");
     try {
       await api(root + "/" + event.id + (hide ? "/hide" : "/unhide"), "POST", { version: event.version });
+      await client.invalidateQueries({ queryKey: ["calendar", householdId] });
+    } catch (e) {
+      setError((e as Error).message);
+      void client.invalidateQueries({ queryKey: ["calendar", householdId] });
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  async function respond(event: CalendarEvent, status: AttendanceStatus) {
+    if (lock.current || event.myRsvp?.status === status) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await api(root + "/" + event.id + "/rsvp", "PUT", { status, version: event.myRsvp?.version ?? 0 });
       await client.invalidateQueries({ queryKey: ["calendar", householdId] });
     } catch (e) {
       setError((e as Error).message);
@@ -266,6 +299,23 @@ export function FamilyCalendar({ householdId, isOwner = false }: { householdId: 
                     {e.hiddenAt ? " · 가족 화면에서 숨김" : ""}
                   </small>
                   <p>{e.description}</p>
+                  {!!e.targetIds?.length && (
+                    <small>일정 대상 · {e.targetIds.map((id) => participants.find((p) => p.id === id)?.name ?? "이전 대상").join(", ")}</small>
+                  )}
+                  {e.canRespond && (
+                    <div className="calendar-rsvp" role="group" aria-label={e.title + " 참석 응답"}>
+                      {(Object.keys(attendanceLabels) as AttendanceStatus[]).map((status) => (
+                        <button type="button" className="button secondary" key={status} disabled={busy}
+                          aria-pressed={e.myRsvp?.status === status} onClick={() => void respond(e, status)}>
+                          {attendanceLabels[status]}{e.rsvpCounts?.[status] ? ` · ${e.rsvpCounts[status]}` : ""}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!e.canRespond && Object.keys(e.rsvpCounts ?? {}).length > 0 && (
+                    <small>참석 응답 · {Object.entries(e.rsvpCounts ?? {}).map(([status, count]) =>
+                      `${attendanceLabels[status as AttendanceStatus]} ${count}명`).join(" · ")}</small>
+                  )}
                   <div>
                     {e.canEdit !== false && (
                       <>
@@ -351,6 +401,21 @@ export function FamilyCalendar({ householdId, isOwner = false }: { householdId: 
               <option value="CARE">돌봄</option>
             </select>
           </label>
+          {participants.length > 0 && (
+            <fieldset className="calendar-targets">
+              <legend>일정 대상 · 선택</legend>
+              <p className="muted">선택하지 않으면 모든 가족이 응답할 수 있어요. 반려동물은 일정 대상에만 포함돼요.</p>
+              {participants.map((participant) => (
+                <label className="checkbox-label" key={participant.id}>
+                  <input type="checkbox" checked={targets.includes(participant.id)} onChange={(e) => {
+                    const checked = e.target.checked;
+                    setTargets((current) => checked ? [...current, participant.id] : current.filter((id) => id !== participant.id));
+                  }} />
+                  {participant.name}{participant.pet && " · 반려동물"}
+                </label>
+              ))}
+            </fieldset>
+          )}
           <label className="checkbox-label">
             <input
               type="checkbox"

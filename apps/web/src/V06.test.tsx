@@ -163,6 +163,19 @@ it("개인 공유 일정은 대표에게 내용 수정 대신 숨기기를 제�
     "/api/households/h/calendar-events/p/hide", "POST", { version: 3 },
   ));
 });
+it("일정 참석 응답은 본인 버전만 API에 보낸다", async () => {
+  const today = seoulDate();
+  mocked.mockResolvedValue([{
+    id: "rsvp", title: "가족 식사", description: "", category: "GENERAL", allDay: true,
+    startDate: today, endDate: today, canEdit: false, canRespond: true,
+    myRsvp: { status: "TENTATIVE", version: 2 },
+  }] as never);
+  show(<FamilyCalendar householdId="h" />);
+  fireEvent.click(await screen.findByRole("button", { name: /^참석$/ }));
+  await waitFor(() => expect(mocked).toHaveBeenCalledWith(
+    "/api/households/h/calendar-events/rsvp/rsvp", "PUT", { status: "ACCEPTED", version: 2 },
+  ));
+});
 it("UTC 자정 경계와 종일 날짜는 브라우저 로컬 시간대에 의존하지 않는다", () => {
   const timed = {
     allDay: false,
