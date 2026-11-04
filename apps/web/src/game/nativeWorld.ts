@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { makeCat } from "./art";
 import {
   assetBase,
+  assetUrl,
   catalogue,
   mapFor,
   defaultDesign,
@@ -65,11 +66,12 @@ class NativeHome extends Phaser.Scene {
     this.emit = emit;
   }
   preload() {
-    for (const [id, m] of Object.entries(catalogue.maps))
-      this.load.image("terrain:" + id, assetBase + m.tileset);
     const files = new Set<string>();
-    for (const m of Object.values(catalogue.maps))
+    for (const m of Object.values(catalogue.maps)) {
+      if (m.tileset) this.load.image("terrain:" + m.id, assetUrl(m.tileset));
+      if (m.backdrop) files.add(m.backdrop);
       for (const o of m.objects) files.add(o.sprite);
+    }
     for (const name of [
       "sage_sofa",
       "blue_sofa",
@@ -78,7 +80,7 @@ class NativeHome extends Phaser.Scene {
       "round_dining",
     ])
       files.add("assets/objects/" + name + ".png");
-    for (const file of files) this.load.image(file, assetBase + file);
+    for (const file of files) this.load.image(file, assetUrl(file));
     for (const kind of ["adult_female", "adult_male", "child"])
       this.load.spritesheet(
         kind,
@@ -191,7 +193,9 @@ class NativeHome extends Phaser.Scene {
       );
       map.createLayer(0, tiles!, 0, 0)!.setDepth(depth);
     };
-    tile(this.map.ground, -1000);
+    if (this.map.backdrop)
+      this.add.image(0, 0, this.map.backdrop).setOrigin(0, 0).setDepth(-1000);
+    else tile(this.map.ground, -1000);
     const add = (o: MapObject) => {
       const texture = spriteFor(o, design),
         source = this.textures
@@ -253,6 +257,7 @@ class NativeHome extends Phaser.Scene {
                 true,
               );
               if (actor.path.length) actor.after = act;
+              else act();
             } else act();
           },
         );
@@ -269,9 +274,12 @@ class NativeHome extends Phaser.Scene {
       }
     };
     this.map.objects.filter((o) => o.layer === "ground").forEach(add);
-    tile(this.map.architecture, -800);
+    if (this.map.tileset) tile(this.map.architecture, -800);
     this.map.objects.filter((o) => o.layer !== "ground").forEach(add);
-    this.cameras.main.setBounds(0, 0, 448, 320).setRoundPixels(true);
+    this.cameras.main
+      .setBounds(0, 0, 448, 320)
+      .setRoundPixels(true)
+      .setBackgroundColor(this.map.backdrop ? "#e8d9bf" : "#000000");
   }
   actor(
     id: string,
@@ -347,7 +355,8 @@ class NativeHome extends Phaser.Scene {
       const kind = nativeCharacter(m.characterStyle);
       let a = this.actors.get(m.id);
       if (!a) {
-        a = this.actor(m.id, m.name, kind, { x: m.x ?? 224, y: m.y ?? 272 });
+        const [x, y] = this.map.spawns[0];
+        a = this.actor(m.id, m.name, kind, { x: m.x ?? x, y: m.y ?? y });
         this.actors.set(m.id, a);
       }
       a.kind = kind;
@@ -370,7 +379,7 @@ class NativeHome extends Phaser.Scene {
     for (const [i, p] of this.view.pets.entries()) {
       let a = this.pets.get(p.id);
       if (!a) {
-        const rest = this.map.objects.find(
+        const rest = this.map.petSpawn ?? this.map.objects.find(
           (o) => o.id === "pet_rest",
         )!.interactionAnchor!;
         a = this.actor(
@@ -471,6 +480,7 @@ class NativeHome extends Phaser.Scene {
         a.cycle = cycle;
         const goals = [
           ...this.map.spawns,
+          ...(a.pet && this.map.petSpawn ? [this.map.petSpawn] : []),
           ...this.map.objects
             .filter((o) => o.interactive)
             .map((o) => o.interactionAnchor!),

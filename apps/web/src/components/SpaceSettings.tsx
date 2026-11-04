@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { api, type Snapshot } from "../lib/api";
-import { catalogue, defaultDesign, type SpaceDesign } from "../game/spaces";
+import { catalogue, defaultDesign, warmWoodPreset, type SpaceDesign } from "../game/spaces";
 import { SpacePreview } from "./SpacePreview";
 import "./spaces.css";
 export function PresetPicker({
@@ -95,7 +95,7 @@ export function SpaceSettings({
               setSaved(false);
             }}
           />
-          {Object.entries(catalogue.variants).map(([key, values]) => (
+          {Object.entries(catalogue.variants).filter(([key]) => draft.presetId !== warmWoodPreset || key === "fridge").map(([key, values]) => (
             <label key={key}>
               {
                 {

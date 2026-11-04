@@ -298,5 +298,5 @@ it("제공된 캐릭터 스타일을 선택하고 프리셋과 함께 저장한�
 
 it("구형 draft의 인원/반려동물 필드를 무시하고 필요한 값만 복원한다",()=>{
   sessionStorage.setItem("dot-home:onboarding:a",JSON.stringify({updatedAt:Date.now(),draft:{step:2,name:"이전 집",memberName:"이전 이름",appearance:"v1:3212",people:0,petCount:999,pets:[{name:"옛 동물"}],token:"비밀 아님 테스트"}}));
-  expect(readDraft("a","기본")).toEqual({step:2,name:"이전 집",memberName:"이전 이름",appearance:"v1:3212",presetId:"garden_home"});
+  expect(readDraft("a","기본")).toEqual({step:2,name:"이전 집",memberName:"이전 이름",appearance:"v1:3212",presetId:"warm-wood-home"});
 });

@@ -762,7 +762,7 @@ textarea {
   box-shadow: inset 0 0 0 1px #58754d;
 }
 .preset-picker {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin: 4px 0 14px;
 }
@@ -1541,3 +1541,23 @@ textarea {
 .character-bubble{transform:none}.onboarding-shell label{margin-bottom:0}.onboarding-shell .primary{background:#49684e;box-shadow:none}.onboarding-shell .secondary{color:#42583f}.onboarding-shell .story-choice.new-home{border-color:#b5c6a7}
 .family-calendar:has(.calendar-form)>:not(.calendar-form):not(.muted):not(.error-message){display:none}.calendar-form{border-top:0;padding-top:0;margin:14px 0 0}.calendar-form>h3:first-child{margin-top:0}.character-bubble::after{display:none}
 @media(max-width:760px){.my-view{width:44px;min-width:44px}.calendar-grid{gap:1px}}
+
+
+.space-preview.full-room {
+  position: relative;
+  background: #f5e9d6;
+}
+.space-preview.full-room canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+@media (max-width: 650px) {
+  .preset-picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

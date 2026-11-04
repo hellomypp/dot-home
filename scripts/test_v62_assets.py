@@ -18,9 +18,21 @@ class RuntimeAssets(unittest.TestCase):
   a=json.loads((ART/'animation.json').read_text());self.assertEqual(['down','left','right','up'],a['directions']);self.assertEqual([1,2,3,2],a['human']['walk']);self.assertEqual(150,a['human']['msPerFrame'])
  def test_shared_catalogue_is_the_original_runtime_map(self):
   data=json.loads((ROOT/'assets/space-catalog.json').read_text())
-  for name,m in data['maps'].items():
+  for name in ('garden_home','sunny_apartment','brick_loft'):
+   m=data['maps'][name]
    original=json.loads((ART/'maps'/f'{name}.runtime.json').read_text())
    self.assertEqual(original,m)
    self.assertEqual(560,len(m['collision']))
    for obj in m['objects']:self.assertTrue((ART/obj['sprite']).is_file())
+ def test_warm_wood_sprites_match_runtime_dimensions(self):
+  catalog=json.loads((ROOT/'assets/space-catalog.json').read_text())
+  room=catalog['maps']['warm-wood-home']
+  public=ART.parents[1]
+  def size(url):
+   png=(public/url.lstrip('/')).read_bytes()
+   self.assertEqual(b'\x89PNG\r\n\x1a\n',png[:8])
+   return struct.unpack('>II',png[16:24])
+  self.assertEqual((448,320),size(room['backdrop']))
+  for obj in room['objects']:
+   self.assertEqual((obj['width'],obj['height']),size(obj['sprite']))
 if __name__=='__main__':unittest.main()

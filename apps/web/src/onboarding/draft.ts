@@ -1,3 +1,4 @@
+import { catalogue, warmWoodPreset } from "../game/spaces";
 import { decodeOutfit, encodeOutfit } from "../lib/appearance";
 export interface Draft {
   step: 0 | 1 | 2;
@@ -13,7 +14,7 @@ export function emptyDraft(name: string): Draft {
     name: "우리의 작은 집",
     memberName: name,
     appearance: "v2:adult_female",
-    presetId:"garden_home",
+    presetId: warmWoodPreset,
   };
 }
 export function readDraft(id: string, name: string): Draft {
@@ -43,7 +44,7 @@ export function readDraft(id: string, name: string): Draft {
       name: d.name.slice(0, 60),
       memberName: d.memberName.slice(0, 30),
       appearance: /^v2:(adult_female|adult_male|child)$/.test(d.appearance)?d.appearance:encodeOutfit(decodeOutfit(String(d.appearance))),
-      presetId: ["garden_home","sunny_apartment","brick_loft"].includes(d.presetId)?d.presetId:"garden_home",
+      presetId: ["garden_home","sunny_apartment","brick_loft"].includes(d.presetId)?d.presetId: warmWoodPreset,
     };
   } catch {
     return fresh;

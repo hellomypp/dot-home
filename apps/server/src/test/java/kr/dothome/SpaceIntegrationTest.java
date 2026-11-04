@@ -50,6 +50,26 @@ class SpaceIntegrationTest {
         homes.profile(h,owner,new Api.Profile("새 이름","v2:child"));assertEquals("v2:child",homes.world(h,owner).members().getFirst().appearance());
         assertThrows(ApiException.class,()->homes.profile(h,owner,new Api.Profile("새 이름","v2:unknown")));
     }
+    @Test void warmWoodDesignUsesSharedCollisionAndPreservesFamilyAndVisitDesign(){
+        String owner=user(),family=user(),visitor=user(),preset="warm-wood-home";
+        var created=homes.create(owner,new Api.CreateHouse("따뜻한 집","대표","sage",preset));
+        String id=created.household().id();
+        var representative=created.members().getFirst();
+        assertEquals(preset,created.design().presetId());
+        assertEquals(224,representative.x());
+        assertEquals(260,representative.y());
+        assertTrue(Spaces.walkable(representative.x(),representative.y(),preset));
+        assertFalse(Spaces.walkable(338,133,preset));
+        assertTrue(Spaces.walkable(338,148,preset));
+        for(var object:Spaces.map(preset).get("objects"))if(object.get("interactive").asBoolean()){
+            var anchor=object.get("interactionAnchor");
+            assertTrue(Spaces.walkable(anchor.get(0).asDouble(),anchor.get(1).asDouble(),preset));
+        }
+        homes.accept(homes.invite(id,owner).token(),family,new Api.Accept("가족","sage"));
+        assertEquals(2,homes.world(id,family).members().size());
+        var link=visits.create(id,owner).url().substring(7);
+        assertEquals(preset,visits.enter(link,visitor).design().presetId());
+    }
     @Test void canonicalAnchorsAndFootCollisionMatchAllMaps(){
         for(var preset:List.of("garden_home","sunny_apartment","brick_loft")){
             assertTrue(Spaces.walkable(224,272,preset));assertFalse(Spaces.walkable(-1,100,preset));assertFalse(Spaces.walkable(Double.NaN,100,preset));

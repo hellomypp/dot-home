@@ -15,7 +15,7 @@ describe("v6.2 canonical spaces", () => {
     it(`${id}: spawns, every interaction and bookshelf passage are reachable`, () => {
       const m = mapFor(id),
         spawn = { x: m.spawns[0][0], y: m.spawns[0][1] };
-      expect(m.collision).toHaveLength(560);
+      if (!m.walkBounds) expect(m.collision).toHaveLength(560);
       expect(canStand(spawn, m)).toBe(true);
       for (const o of m.objects.filter((o) => o.interactive)) {
         const goal = { x: o.interactionAnchor![0], y: o.interactionAnchor![1] };
@@ -25,6 +25,7 @@ describe("v6.2 canonical spaces", () => {
         expect(route.every((p) => canStand(p, m))).toBe(true);
       }
       const passage: Record<string, number[]> = {
+        "warm-wood-home": [56, 204, 72, 204],
         garden_home: [56, 152, 128, 152],
         sunny_apartment: [344, 224, 416, 224],
         brick_loft: [352, 136, 424, 136],
@@ -35,6 +36,18 @@ describe("v6.2 canonical spaces", () => {
       expect(canStand({ x: NaN, y: 100 }, m)).toBe(false);
     });
   }
+  it("uses native warm-wood sprites, reachable spawns and precise furniture footprints", () => {
+    const m = mapFor("warm-wood-home");
+    for (const [x, y] of m.spawns) expect(canStand({ x, y }, m)).toBe(true);
+    const [x, y] = m.petSpawn!;
+    expect(canStand({ x, y }, m, true)).toBe(true);
+    const fridge = m.objects.find((o) => o.id === "fridge")!;
+    expect(canStand({ x: 338, y: 133 }, m)).toBe(false);
+    expect(canStand({ x: 338, y: 148 }, m)).toBe(true);
+    const sofa = m.objects.find((o) => o.id === "sofa")!;
+    expect(spriteFor(sofa, { ...defaultDesign, presetId: m.id, variants: { sofa: "blue" } })).toBe(sofa.sprite);
+    expect(fridge.sprite).toBe("/art/warm-wood-home/fridge.png");
+  });
   it("occludes only the rear overlap and restores opacity in 160ms", () => {
     const o = mapFor().objects.find((o) => !!o.occlusion)!;
     const rear = {

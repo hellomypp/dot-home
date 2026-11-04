@@ -35,7 +35,11 @@ export interface RuntimeMap {
   objects: MapObject[];
   spawns: number[][];
   visitorSpawn: number[];
-  tileset: string;
+  tileset?: string;
+  backdrop?: string;
+  previewCrop?: [number, number, number, number];
+  walkBounds?: [number, number, number, number];
+  petSpawn?: number[];
 }
 export const catalogue = raw as unknown as {
   maps: Record<string, RuntimeMap>;
@@ -49,6 +53,8 @@ export const defaultDesign: SpaceDesign = {
   variants: {},
 };
 export const assetBase = "/art/v62/";
+export const warmWoodPreset = "warm-wood-home";
+export const assetUrl = (file: string) => file.startsWith("/") ? file : assetBase + file;
 export function mapFor(id = "garden_home") {
   return (
     catalogue.maps[id === "classic_home" ? "garden_home" : id] ||
@@ -59,6 +65,7 @@ export function variantsFor(d: SpaceDesign) {
   return { ...catalogue.defaults[mapFor(d.presetId).id], ...d.variants };
 }
 export function spriteFor(o: MapObject, d: SpaceDesign) {
+  if (d.presetId === warmWoodPreset) return o.sprite;
   const v = variantsFor(d);
   return o.id === "sofa"
     ? `assets/objects/${{ sage: "sage_sofa", blue: "blue_sofa", leather: "leather_sofa" }[v.sofa] || "sage_sofa"}.png`
@@ -88,6 +95,17 @@ export interface Point {
 }
 export function canStand(p: Point, m: RuntimeMap, pet = false) {
   if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
+  if (m.walkBounds) {
+    const left = p.x - (pet ? 5 : 6), right = p.x + (pet ? 5 : 6);
+    const top = p.y - (pet ? 5 : 8), bottom = p.y;
+    const [x, y, width, height] = m.walkBounds;
+    return left >= x && right <= x + width && top >= y && bottom <= y + height &&
+      !m.objects.some(({ collision }) => {
+        if (!collision) return false;
+        const [cx, cy, w, h] = collision;
+        return left < cx + w && right > cx && top < cy + h && bottom > cy;
+      });
+  }
   return (pet ? [-5, 4] : [-6, 5]).every((dx) =>
     (pet ? [-5, -1] : [-8, -1]).every((dy) => {
       const x = Math.floor((p.x + dx) / 16),
@@ -111,7 +129,7 @@ export function nearest(p: Point, m: RuntimeMap, pet = false): Point {
         { x: center.x + r * 4, y: center.y + i * 4 },
       ])
         if (canStand(q, m, pet)) return q;
-  return { x: 224, y: 272 };
+  return { x: m.spawns[0][0], y: m.spawns[0][1] };
 }
 export function path(
   from: Point,
@@ -202,12 +220,15 @@ export function renderPreview(
 ) {
   c.imageSmoothingEnabled = false;
   c.clearRect(0, 0, 448, 320);
-  const tiles = (grid: number[][]) =>
+  if (m.backdrop) c.drawImage(images.get(m.backdrop)!, 0, 0);
+  const tiles = (grid: number[][]) => {
+    if (!m.tileset) return;
+    const terrain = images.get(m.tileset)!;
     grid.forEach((row, y) =>
       row.forEach((gid, x) => {
         if (gid)
           c.drawImage(
-            images.get(m.tileset)!,
+            terrain,
             ((gid - 1) % 8) * 16,
             Math.floor((gid - 1) / 8) * 16,
             16,
@@ -219,6 +240,7 @@ export function renderPreview(
           );
       }),
     );
+  };
   const obj = (o: MapObject) => {
     const image = images.get(spriteFor(o, d))!;
     c.drawImage(image, o.x + Math.round((o.width - image.width) / 2), o.y);

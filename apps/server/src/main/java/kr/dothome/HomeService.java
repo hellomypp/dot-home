@@ -37,11 +37,17 @@ class HomeService {
     Api.World create(String userId,Api.CreateHouse input) {
         Household household=new Household(); household.name=input.name().strip();household.ownerId=userId;household.revision=1;household.presetId=input.presetId()==null?"garden_home":input.presetId();Spaces.validate(household.presetId,Map.of());
         households.save(household);
-        Member me=member(household.id,userId,input.memberName(),input.appearance(),"OWNER"); members.save(me);
+        Member me=member(household.id,userId,input.memberName(),input.appearance(),"OWNER");
+        placeAtSpawn(me,household.presetId,0);
+        members.save(me);
         return snapshot(household,me.id);
     }
     static Member member(String householdId,String userId,String name,String appearance,String role) {
         Member member=new Member();member.householdId=householdId;member.userId=userId;member.name=name.strip();member.appearance=appearance;member.role=role; return member;
+    }
+    private static void placeAtSpawn(Member member,String preset,long index) {
+        var spawn=Spaces.spawn(preset,index);
+        member.x=spawn[0];member.y=spawn[1];
     }
     Api.World world(String householdId,String userId) { Household household=lock(householdId,userId); return snapshot(household,requireMember(householdId,userId).id); }
     SpaceView design(String id,String user){return Spaces.view(lock(id,user));}
@@ -100,7 +106,9 @@ class HomeService {
         available(invitation);
         Optional<Member> existing=members.findByHouseholdIdAndUserIdAndActiveTrue(household.id,userId);
         if(existing.isPresent()) return snapshot(household,existing.get().id);
-        Member member=member(household.id,userId,input.memberName(),input.appearance(),"MEMBER");var spawn=Spaces.map(household.presetId).get("spawns").get((int)(members.countByHouseholdIdAndActiveTrue(household.id)%3));member.x=spawn.get(0).asDouble();member.y=spawn.get(1).asDouble();members.save(member);
+        Member member=member(household.id,userId,input.memberName(),input.appearance(),"MEMBER");
+        placeAtSpawn(member,household.presetId,members.countByHouseholdIdAndActiveTrue(household.id));
+        members.save(member);
         invitation.acceptedBy=userId;invitation.acceptedAt=Instant.now();emit(household,"MEMBER_JOINED",memberView(member,household.presetId));return snapshot(household,member.id);
     }
     Invitation invitation(String token) { if(token==null || !token.matches("[A-Za-z0-9_-]{43}")) throw gone(); return invitations.findByTokenHash(hash(token)).orElseThrow(HomeService::gone); }

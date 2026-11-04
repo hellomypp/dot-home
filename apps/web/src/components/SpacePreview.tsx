@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   defaultDesign,
-  assetBase,
+  assetUrl,
   mapFor,
   renderPreview,
   spriteFor,
@@ -14,12 +14,14 @@ export function SpacePreview({
 }) {
   const ref = useRef<HTMLCanvasElement>(null),
     [error, setError] = useState(false);
+  const m = mapFor(design.presetId);
+  const [x, y, width, height] = m.previewCrop ?? [64, 48, 320, 224];
   useEffect(() => {
     let alive = true;
     setError(false);
-    const m = mapFor(design.presetId);
     const files = new Set([
-      m.tileset,
+      ...(m.tileset ? [m.tileset] : []),
+      ...(m.backdrop ? [m.backdrop] : []),
       ...m.objects.map((o) => spriteFor(o, design)),
     ]);
     const images = new Map<string, HTMLImageElement>();
@@ -33,7 +35,7 @@ export function SpacePreview({
               resolve();
             };
             image.onerror = reject;
-            image.src = assetBase + file;
+            image.src = assetUrl(file);
           }),
       ),
     )
@@ -46,8 +48,8 @@ export function SpacePreview({
         const c = ref.current?.getContext("2d");
         if (c) {
           c.imageSmoothingEnabled = false;
-          c.clearRect(0, 0, 320, 224);
-          c.drawImage(buffer, -64, -48);
+          c.clearRect(0, 0, width, height);
+          c.drawImage(buffer, -x, -y);
         }
       })
       .catch(() => {
@@ -58,14 +60,14 @@ export function SpacePreview({
     };
   }, [design.presetId, JSON.stringify(design.variants)]);
   return (
-    <div className="space-preview">
+    <div className={m.previewCrop ? "space-preview full-room" : "space-preview"}>
       {error ? (
         <p role="alert">집 이미지를 불러오지 못했어요.</p>
       ) : (
         <canvas
           ref={ref}
-          width={320}
-          height={224}
+          width={width}
+          height={height}
           aria-label="실제 게임 맵으로 보는 집 미리보기"
           role="img"
         />

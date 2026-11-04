@@ -2,7 +2,7 @@
 
 ## v6.2 / v0.7 현재 집 규격
 
-집은 제공된 v6.2 PNG와 assets/space-catalog.json을 사용한다. nativeWorld.ts/spaces.ts와 서버 Spaces가 동일한 맵·anchor·충돌을 사용한다. 기존 640×448 직장/학교/밖과 혼동하지 않는다. 구형 외형/좌표는 삭제하지 않고 V8의 avatar_space로 구분한다. 공유 디자인 저장은 대표·version·커밋 후 이벤트 규약을 따른다. 상세 출처·검증·미검증은 docs/V62_INTEGRATION.md를 확인한다. 이번 명세에서는 GitHub push와 배포를 하지 않는다.
+집은 제공된 v6.2 및 따뜻한 나무집 PNG와 assets/space-catalog.json을 사용한다. 온보딩 기본 선택은 따뜻한 나무집이며 기존 집은 저장된 프리셋을 따른다. nativeWorld.ts/spaces.ts와 서버 Spaces가 동일한 맵·anchor·충돌을 사용한다. 기존 640×448 직장/학교/밖과 혼동하지 않는다. 구형 외형/좌표는 삭제하지 않고 V8의 avatar_space로 구분한다. 공유 디자인 저장은 대표·version·커밋 후 이벤트 규약을 따른다. 상세 출처·검증·미검증은 docs/V62_INTEGRATION.md를 확인한다. 이번 명세에서는 GitHub push와 배포를 하지 않는다.
 
 
 도트홈은 URL로 접속하는 쯔꾸루풍 공동생활 웹게임이다. 이 저장소는 실제 구현과 검증 기록을 포함한다. 최신 정책은 집 생성 후 가족 초대·반려동물 등록이며 과거 v0.5의 인원 사전 설정보다 우선한다.
