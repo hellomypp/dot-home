@@ -72,16 +72,16 @@ function BabyForm({ snapshot, profile, onSave, onCancel }: {
       {error && <p role="alert" className="error-message">{error}</p>}
       {confirmArchive ? (
         <>
-          <p>현재 프로필과 새 일정의 대상 목록에서 숨겨요. 기존 일정은 가족 달력에 남아요.</p>
+          <p>새 일정에서는 선택할 수 없어요. 초상 사진과 이름은 책장의 추억 앨범에 남아요.</p>
           <div className="form-actions">
             <button className="button secondary" type="button" disabled={busy} onClick={() => setConfirmArchive(false)}>돌아가기</button>
-            <button className="button secondary" type="button" disabled={busy} onClick={() => void change("archive")}>보관 확인</button>
+            <button className="button secondary" type="button" disabled={busy} onClick={() => void change("archive")}>삭제 확인</button>
           </div>
         </>
       ) : (
         <div className="form-actions">
           {onCancel && <button className="button secondary" type="button" disabled={busy} onClick={onCancel}>취소</button>}
-          {profile && <button className="button secondary" type="button" disabled={busy} onClick={() => setConfirmArchive(true)}>프로필 보관</button>}
+          {profile && <button className="button secondary" type="button" disabled={busy} onClick={() => setConfirmArchive(true)}>프로필 삭제</button>}
           <button className="button primary" disabled={busy}>{busy ? "처리 중…" : profile ? "아기 프로필 저장" : "아기 프로필 추가"}</button>
         </div>
       )}

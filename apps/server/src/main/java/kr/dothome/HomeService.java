@@ -131,7 +131,8 @@ class HomeService {
             throw ApiException.conflict("다른 기기에서 반려동물 정보를 바꿨어요. 최신 정보를 확인해 주세요.");
         pet.archivedAt=Instant.now();
         pets.flush();
-        profileArchived(household,actor,CareProfileType.PET,pet.id);
+        profileArchived(household,actor,CareProfileType.PET,pet.id,
+            Objects.requireNonNullElse(pet.guardianMemberId,actor.id),pet.name,groupFor(pet).appearanceId);
         emit(household,"PETS_CHANGED",Map.of("petId",pet.id));
         return snapshot(household,actor.id);
     }
@@ -292,8 +293,8 @@ class HomeService {
         }
         LifeEvent event=new LifeEvent();event.householdId=householdId;event.authorMemberId=me.id;event.authorName=me.name;event.requestId=input.requestId();event.type=input.type();event.message=input.message().strip();events.save(event);emit(household,"LIFE_EVENT_CREATED",eventView(event));return eventView(event);
     }
-    void profileArchived(Household household,Member actor,CareProfileType type,String id){
-        publisher.publishEvent(new CareProfileArchived(household,actor,type,id));
+    void profileArchived(Household household,Member actor,CareProfileType type,String id,String guardian,String name,String portrait){
+        publisher.publishEvent(new CareProfileArchived(household,actor,type,id,guardian,name,portrait));
     }
     void emit(Household household,String type,Object payload) { household.revision++;publisher.publishEvent(new CommittedSignal(household.id,new Api.Signal(UUID.randomUUID().toString(),household.revision,type,Instant.now(),payload))); }
     Api.World snapshot(Household household,String meId) {

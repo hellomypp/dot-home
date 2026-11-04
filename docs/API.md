@@ -192,6 +192,12 @@ Google 인증한 방문자:
 - `PATCH /api/households/{id}/dependents/{profileId}`는 `{name,guardianMemberId?,version}`, `DELETE /api/households/{id}/dependents/{profileId}?version=…`는 보관이다. 보호자·대표만 실행하고, 보관된 아기는 새 일정에서 선택할 수 없다. 기존 일정과 대상 ID는 보존한다.
 - 가구가 다르거나 집들이 방문자인 경우 접근을 거절한다. 변경 시 `DEPENDENTS_CHANGED`로 가족 화면을 갱신한다.
 
+## 책장 추억 앨범
+
+- 돌봄 프로필 삭제는 활성 목록에서 제외하고 기존 일정 이력을 보존한다. 같은 트랜잭션에서 기존 게임 스프라이트를 기반으로 만든 PNG와 삭제 시점의 이름을 가족 앨범에 저장한다. 이전에 보관된 프로필을 소급해서 추가하지 않는다.
+- `GET /api/households/{id}/care-album?page=0`은 24장씩 `{items,hasMore}`를 반환한다. `DELETE /api/households/{id}/care-album/{photoId}`로 보호자 또는 집 대표가 사진을 삭제한다. 집 대표는 모든 사진을 지울 수 있다. 사진을 삭제하면 다시 만들어지지 않는다.
+- 가족만 앨범을 볼 수 있다. 집 데이터 정리와 복원 시 삭제 로그 재적용에도 앨범이 포함된다.
+
 ## 반복 돌봄
 
 - `GET /api/households/{id}/care-rules`는 활성 예약과 `nextAt`, `version`, `canEdit`를 반환한다. 활성 가족이 읽고 집 대표·대상 보호자가 설정한다.

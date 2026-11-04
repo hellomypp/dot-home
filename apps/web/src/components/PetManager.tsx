@@ -102,16 +102,16 @@ function PetForm({ snapshot, pet, onSaved, onCancel }: {
       {error && <p role="alert" className="error-message">{error}</p>}
       {confirmArchive ? (
         <>
-          <p>집 장면과 새 일정의 대상 목록에서 숨겨요. 기존 일정은 가족 달력에 남아요.</p>
+          <p>집 장면과 새 일정의 대상 목록에서 사라져요. 초상 사진과 이름은 책장의 추억 앨범에 남아요.</p>
           <div className="form-actions">
             <button type="button" className="button secondary" disabled={busy} onClick={() => setConfirmArchive(false)}>돌아가기</button>
-            <button type="button" className="button secondary" disabled={busy} onClick={() => void change(true)}>보관 확인</button>
+            <button type="button" className="button secondary" disabled={busy} onClick={() => void change(true)}>삭제 확인</button>
           </div>
         </>
       ) : (
         <div className="form-actions">
           {onCancel && <button type="button" className="button secondary" disabled={busy} onClick={onCancel}>취소</button>}
-          {pet && <button type="button" className="button secondary" disabled={busy} onClick={() => setConfirmArchive(true)}>프로필 보관</button>}
+          {pet && <button type="button" className="button secondary" disabled={busy} onClick={() => setConfirmArchive(true)}>프로필 삭제</button>}
           <button className="button primary" disabled={busy || needsSlot}>
             {busy ? "처리 중…" : pet ? "반려동물 변경 저장" : "반려동물 등록"}
           </button>
@@ -138,7 +138,7 @@ export function PetManager({ snapshot, onSaved }: { snapshot: Snapshot; onSaved:
               <PetForm snapshot={snapshot} pet={pet} onCancel={() => setEditing(null)} onSaved={(world) => {
                 onSaved(world);
                 setEditing(null);
-                setMessage(world.pets.some((item) => item.id === pet.id) ? "반려동물 정보를 변경했어요." : "반려동물 프로필을 보관했어요.");
+                setMessage(world.pets.some((item) => item.id === pet.id) ? "반려동물 정보를 변경했어요." : "반려동물 프로필을 삭제하고 앨범에 사진을 남겼어요.");
               }} />
             ) : (
               <>

@@ -1723,3 +1723,27 @@ textarea {
     border-radius: 10px;
   }
 }
+
+.care-album-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0;
+}
+.care-album-grid li {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #ddcfb4;
+  border-radius: 12px;
+  background: #f4ead7;
+  text-align: center;
+}
+.care-album-grid figure { margin: 0; min-width: 0; }
+.care-album-grid img { display: block; max-width: 100%; height: auto; image-rendering: pixelated; }
+.care-album-grid figcaption { padding-top: 6px; font-weight: 700; overflow-wrap: anywhere; }
+.care-album-confirm { display: grid; gap: 6px; font-size: .85rem; }
+.care-album-pages { display: flex; align-items: center; justify-content: center; gap: 10px; }

@@ -1,3 +1,5 @@
+import { CareAlbum } from "./components/CareAlbum";
+import { BookOpen } from "lucide-react";
 import { petGroup, petSpecies } from "./lib/pets";
 import { AccountSettings } from "./components/AccountSettings";
 import { MembershipPanel } from "./components/MembershipPanel";
@@ -550,6 +552,7 @@ type Panel =
   | "calendar"
   | "housewarming"
   | "pets"
+  | "album"
   | "membership"
   | "exports"
   | "deletion"
@@ -650,6 +653,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
           qc.invalidateQueries({ queryKey: ["household-reactions", id] }),
           qc.invalidateQueries({ queryKey: ["promise-source", id] }),
           qc.invalidateQueries({ queryKey: ["care-rules", id] }),
+          qc.invalidateQueries({ queryKey: ["care-album", id] }),
           qc.invalidateQueries({ queryKey: ["ownership-transfers", id] }),
         ]);
         return data.revision;
@@ -686,6 +690,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
       } else if (e.target === "calendar") setPanel("calendar");
       else if (e.target === "entrance") setPanel("invite");
       else if (e.target === "pet_rest") setPanel("pets");
+      else if (e.target === "bookshelf") setPanel("album");
       else if (e.target === "table") setPanel("story");
       else
         setToast(
@@ -963,6 +968,12 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                         </button>
                       )}
                       {place === "home" && !neutral && (
+                        <button className="scene-control" type="button" aria-label="책장 추억 앨범"
+                          title="책장 추억 앨범" onClick={() => setPanel("album")}>
+                          <BookOpen size={19} aria-hidden="true" />
+                        </button>
+                      )}
+                      {place === "home" && !neutral && (
                         <button
                           className="scene-control scene-zoom"
                           type="button"
@@ -1181,6 +1192,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               calendar: "가족 공유 캘린더",
               design: "우리 집 설정 · 집 분위기",
               pets: "우리 집 돌봄 프로필",
+              album: "추억 앨범",
               membership: "가족 구성원 · 집 참여",
               exports: "공동 기록 내보내기",
               deletion: "집 삭제 관리",
@@ -1211,6 +1223,9 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                 refresh={() => qc.invalidateQueries({ queryKey: ["world", id] })}
               />
             )
+          ) : panel === "album" ? (
+            studio ? <p>실제 집에서 돌봄 프로필을 삭제하면 여기에 사진이 남아요.</p>
+              : <CareAlbum householdId={snapshot.household.id} />
           ) : panel === "deletion" ? (
             <HouseholdDeletionPanel household={snapshot.household} refresh={refresh} />
           ) : panel === "exports" ? (

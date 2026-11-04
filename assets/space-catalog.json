@@ -201,7 +201,8 @@
           "height": 45,
           "depth": 185,
           "layer": "depth",
-          "interactive": false,
+          "interactive": true,
+          "interactionAnchor": [72, 198],
           "collision": [
             60,
             166,
@@ -527,7 +528,8 @@
           "height": 40,
           "depth": 199,
           "layer": "depth",
-          "interactive": false,
+          "interactive": true,
+          "interactionAnchor": [350, 211],
           "collision": [
             342,
             180,
@@ -853,7 +855,8 @@
           "height": 39,
           "depth": 179,
           "layer": "depth",
-          "interactive": false,
+          "interactive": true,
+          "interactionAnchor": [72, 190],
           "collision": [
             60,
             160,

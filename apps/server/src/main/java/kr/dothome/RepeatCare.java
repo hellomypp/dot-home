@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 enum CareProfileType { PET, BABY }
-record CareProfileArchived(Household household,Member actor,CareProfileType type,String id) {}
+record CareProfileArchived(Household household,Member actor,CareProfileType type,String id,String guardianId,String name,String portrait) {}
 
 @Entity @Table(name="repeat_care_rule")
 class RepeatCareRule extends Row {

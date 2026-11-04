@@ -19,6 +19,8 @@ class HouseholdIntegrationTest {
     @Autowired HomeService homes; @Autowired IdentityService identity; @Autowired Invitations invitations; @Autowired Members members; @Autowired MemberExpressions expressions; @Autowired MovementService movement; @Autowired Environment env; @Autowired ObjectMapper json;
     @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired MembershipLifecycle membership;
+    @Autowired CareAlbumService album;
+    @Autowired DependentService dependentProfiles;
     String user(){return identity.resolve("test",UUID.randomUUID().toString(),"검증 구성원").id;}
     @Test void nicknameIsOwnHouseholdProfileAndSurvivesRelogin(){
         String key=UUID.randomUUID().toString(),owner=user();
@@ -72,6 +74,30 @@ class HouseholdIntegrationTest {
         assertThrows(ApiException.class,()->homes.addPet(h,owner,new Api.PetInput("이름","other","cream")));
         assertThrows(ApiException.class,()->homes.addPet(h,owner,new Api.PetInput("이름","cat","invalid")));
         assertEquals(1,homes.world(h,owner).pets().size());
+    }
+    @Test void deletedCareProfilesLeaveIndependentPortraitsThatTheOwnerCanErase(){
+        String owner=user(),guardian=user(),other=user(),h=house(owner).household().id();
+        homes.accept(homes.invite(h,owner).token(),guardian,new Api.Accept("보호자","sage"));
+        homes.accept(homes.invite(h,owner).token(),other,new Api.Accept("가족","sage"));
+        var fish=homes.addPet(h,guardian,new Api.PetInput("별이",null,null,PetSpecies.FISH,"베타",null,17)).pets().getFirst();
+        var baby=dependentProfiles.save(h,guardian,null,new DependentInput("BABY","달이",null,null,null));
+        assertTrue(album.page(h,owner,0).items().isEmpty());
+        assertThrows(ApiException.class,()->homes.archivePet(h,other,fish.id(),fish.version()));
+        homes.archivePet(h,guardian,fish.id(),fish.version());
+        dependentProfiles.archive(h,guardian,baby.id(),baby.version());
+        assertTrue(homes.world(h,owner).pets().isEmpty());
+        assertTrue(homes.world(h,owner).dependents().isEmpty());
+        var photos=album.page(h,owner,0).items();
+        assertEquals(Set.of("별이","달이"),photos.stream().map(CarePhotoView::name).collect(java.util.stream.Collectors.toSet()));
+        assertNotEquals(photos.getFirst().image(),photos.getLast().image());
+        assertTrue(photos.getFirst().image().startsWith("data:image/png;base64,iVBOR"));
+        assertTrue(album.page(h,other,0).items().stream().noneMatch(CarePhotoView::canDelete));
+        assertThrows(ApiException.class,()->album.page(h,user(),0));
+        assertThrows(ApiException.class,()->album.delete(h,other,photos.getFirst().id()));
+        for(var photo:photos)album.delete(h,owner,photo.id());
+        assertTrue(album.page(h,guardian,0).items().isEmpty());
+        assertThrows(ApiException.class,()->homes.archivePet(h,owner,fish.id(),fish.version()));
+        assertTrue(album.page(h,guardian,0).items().isEmpty());
     }
     @Test void tankPlacementRejectsBlockedAndOccupiedTilesAndPersistsAcrossReload(){
         String owner=user(),h=house(owner).household().id();

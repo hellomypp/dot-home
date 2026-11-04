@@ -27,7 +27,7 @@ it("가족이 아기 프로필을 만들 때 보호자를 지정한다", async (
   });
 });
 
-it("보호자의 보관 확인에만 버전을 보내며 일반 가족은 읽을 수 있다", async () => {
+it("보호자의 삭제 확인에만 버전을 보내며 일반 가족은 읽을 수 있다", async () => {
   const refresh = vi.fn().mockResolvedValue(undefined);
   const profile = { id: "baby", type: "BABY", name: "별이", guardianMemberId: "me", appearanceProfile: "v2:child", version: 2 } as const;
   const { rerender } = render(<CareProfiles snapshot={{ ...world, meMemberId: "other", dependents: [profile] }} onPetSaved={vi.fn()} refresh={refresh} />);
@@ -37,9 +37,9 @@ it("보호자의 보관 확인에만 버전을 보내며 일반 가족은 읽을
   expect(within(card).queryByRole("button")).toBeNull();
   rerender(<CareProfiles snapshot={{ ...world, dependents: [profile] }} onPetSaved={vi.fn()} refresh={refresh} />);
   fireEvent.click(within(card).getByRole("button", { name: "별이 프로필 수정" }));
-  fireEvent.click(within(card).getByRole("button", { name: "프로필 보관" }));
+  fireEvent.click(within(card).getByRole("button", { name: "프로필 삭제" }));
   expect(api).not.toHaveBeenCalled();
-  fireEvent.click(within(card).getByRole("button", { name: "보관 확인" }));
+  fireEvent.click(within(card).getByRole("button", { name: "삭제 확인" }));
   await waitFor(() => expect(refresh).toHaveBeenCalledOnce());
   expect(api).toHaveBeenCalledWith("/api/households/h/dependents/baby?version=2", "DELETE");
 });

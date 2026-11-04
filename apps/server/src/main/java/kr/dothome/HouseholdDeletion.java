@@ -95,7 +95,7 @@ class HouseholdDeletionService {
         sql.update("DELETE FROM request_command WHERE member_id IN (SELECT id FROM membership WHERE household_id=?)",id);
         for(String table:List.of("household_reaction","household_request","repeat_care_rule","object_note","household_calendar_event",
             "pantry_change","pantry_item","guestbook_entry","housewarming_invitation","invitation","life_event","dependent_profile",
-            "pet","household_export","ownership_transfer","membership")){
+            "pet","care_photo","household_export","ownership_transfer","membership")){
             sql.update("DELETE FROM "+table+" WHERE household_id=?",id);
         }
         sql.update("DELETE FROM household WHERE id=?",id);

@@ -50,7 +50,7 @@ const typing = () =>
   ) || !!document.querySelector("dialog[open]");
 const logicalTargets: Record<
   string,
-  "fridge" | "calendar" | "sofa" | "table" | "entrance" | "pet_rest"
+  "fridge" | "calendar" | "sofa" | "table" | "entrance" | "pet_rest" | "bookshelf"
 > = {
   fridge: "fridge",
   calendar: "calendar",
@@ -58,6 +58,7 @@ const logicalTargets: Record<
   dining_table: "table",
   entrance: "entrance",
   pet_rest: "pet_rest",
+  bookshelf: "bookshelf",
 };
 class NativeHome extends Phaser.Scene {
   view: WorldView;
@@ -233,6 +234,7 @@ class NativeHome extends Phaser.Scene {
                     table: "같이 먹고 싶은 음식이 있나요?",
                     entrance: "가족 초대",
                     pet_rest: "반려동물 관리",
+                    bookshelf: "추억 앨범",
                   }[target],
                 });
             if (this.canControl()) {

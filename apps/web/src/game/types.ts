@@ -30,7 +30,7 @@ export interface WorldView {
   palette?: 'warm' | 'dusk';
 }
 export type WorldEvent =
-  | { type: 'interact'; target: 'fridge' | 'sofa' | 'table' | 'pet' | 'window' | 'calendar' | 'entrance' | 'pet_rest'; label: string }
+  | { type: 'interact'; target: 'fridge' | 'sofa' | 'table' | 'pet' | 'window' | 'calendar' | 'entrance' | 'pet_rest' | 'bookshelf'; label: string }
   | { type: 'activity'; text: string }
   | { type: 'ready' }
   | { type: 'visibility-resume' }

@@ -85,7 +85,7 @@ class DependentService {
         var actor=homes.requireMember(house,user);
         var profile=editable(household,actor,id,version);
         profile.archivedAt=Instant.now();
-        homes.profileArchived(household,actor,CareProfileType.BABY,id);
+        homes.profileArchived(household,actor,CareProfileType.BABY,id,profile.guardianMemberId,profile.name,"baby");
         homes.emit(household,"DEPENDENTS_CHANGED",Map.of("dependentId",profile.id));
     }
 
