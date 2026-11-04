@@ -4,6 +4,8 @@ import {
   mapFor,
   canStand,
   path,
+  petClearsPeople,
+  nearestFreePoint,
   occludes,
   fade,
   nativeCharacter,
@@ -42,6 +44,22 @@ describe("shared home layouts", () => {
       expect(canStand({ x: 338, y: 133 }, m)).toBe(false);
       expect(canStand({ x: 338, y: 148 }, m)).toBe(true);
     }
+  });
+  it("finds a free pet spawn and routes pets around a character's visible sprite", () => {
+    const map = mapFor("warm-wood-home");
+    const person = { x: 212, y: 160 };
+    const avoidsPerson = (point: typeof person) => petClearsPeople(point, [person]);
+    expect(avoidsPerson({ x: 212, y: 136 })).toBe(false);
+    const spawn = nearestFreePoint(person, (point) => canStand(point, map, true) && avoidsPerson(point));
+    expect(spawn).not.toBeNull();
+    expect(avoidsPerson(spawn!)).toBe(true);
+
+    const start = { x: 184, y: 160 };
+    const destination = { x: 244, y: 160 };
+    const route = path(start, destination, map, true, avoidsPerson);
+    expect(route.at(-1)).toEqual(destination);
+    expect(route.every(avoidsPerson)).toBe(true);
+    expect(path(start, destination, map).some((point) => !avoidsPerson(point))).toBe(true);
   });
   it("occludes only the rear overlap and restores opacity in 160ms", () => {
     const o = mapFor().objects.find((o) => !!o.occlusion)!;

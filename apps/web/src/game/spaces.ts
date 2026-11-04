@@ -89,12 +89,21 @@ export function canStand(p: Point, m: RuntimeMap, pet = false) {
       return left < cx + w && right > cx && top < cy + h && bottom > cy;
     });
 }
-export function nearest(p: Point, m: RuntimeMap, pet = false): Point {
+export function petClearsPeople(pet: Point, people: readonly Point[]) {
+  // Actors are anchored at their feet. A pet behind someone can touch the
+  // upper part of their sprite even when their feet are far apart.
+  return people.every((person) => {
+    const dy = pet.y - person.y;
+    return Math.abs(pet.x - person.x) >= 20 || dy <= -40 || dy >= 18;
+  });
+}
+
+export function nearestFreePoint(p: Point, canOccupy: (point: Point) => boolean): Point | null {
   const center = {
     x: Math.max(8, Math.min(440, Math.round(p.x / 4) * 4)),
     y: Math.max(12, Math.min(312, Math.round(p.y / 4) * 4)),
   };
-  if (canStand(center, m, pet)) return center;
+  if (canOccupy(center)) return center;
   for (let r = 1; r < 112; r++)
     for (let i = -r; i <= r; i++)
       for (const q of [
@@ -103,18 +112,25 @@ export function nearest(p: Point, m: RuntimeMap, pet = false): Point {
         { x: center.x - r * 4, y: center.y + i * 4 },
         { x: center.x + r * 4, y: center.y + i * 4 },
       ])
-        if (canStand(q, m, pet)) return q;
-  return { x: m.spawns[0][0], y: m.spawns[0][1] };
+        if (canOccupy(q)) return q;
+  return null;
+}
+export function nearest(p: Point, m: RuntimeMap, pet = false): Point {
+  return nearestFreePoint(p, (point) => canStand(point, m, pet))
+    ?? { x: m.spawns[0][0], y: m.spawns[0][1] };
 }
 export function path(
   from: Point,
   to: Point,
   m: RuntimeMap,
   pet = false,
+  avoids?: (point: Point) => boolean,
 ): Point[] {
-  const a = nearest(from, m, pet),
-    b = nearest(to, m, pet),
-    key = (p: Point) => `${p.x},${p.y}`,
+  const canOccupy = (point: Point) => canStand(point, m, pet) && (!avoids || avoids(point));
+  const a = nearestFreePoint(from, canOccupy);
+  const b = nearestFreePoint(to, canOccupy);
+  if (!a || !b) return [];
+  const key = (p: Point) => `${p.x},${p.y}`,
     open = [a],
     cost = new Map([[key(a), 0]]),
     came = new Map<string, Point>(),
@@ -152,7 +168,7 @@ export function path(
         c = cost.get(k)! + 4;
       if (
         !closed.has(n) &&
-        canStand(q, m, pet) &&
+        canOccupy(q) &&
         c < (cost.get(n) ?? Infinity)
       ) {
         cost.set(n, c);

@@ -10,6 +10,8 @@ import {
   fridgeMagnet,
   nativeCharacter,
   nearest,
+  nearestFreePoint,
+  petClearsPeople,
   path,
   canStand,
   occludes,
@@ -344,17 +346,18 @@ class NativeHome extends Phaser.Scene {
         a.bubble.destroy();
         this.pets.delete(id);
       }
+    const people = Array.from(this.actors.values(), ({ sprite }) => sprite);
     for (const [i, p] of this.view.pets.entries()) {
       let a = this.pets.get(p.id);
       if (!a) {
-        const rest = this.map.petSpawn;
-        a = this.actor(
-          p.id,
-          p.name,
-          p.kind || "cat",
-          { x: rest[0] + i * 12, y: rest[1] },
-          true,
+        const [x, y] = this.map.petSpawn;
+        const start = { x: x + i * 12, y };
+        const free = nearestFreePoint(start, (point) =>
+          canStand(point, this.map, true) && petClearsPeople(point, people),
         );
+        a = this.actor(p.id, p.name, p.kind || "cat", free ?? start, true);
+        a.sprite.setVisible(free !== null);
+        a.label.setVisible(free !== null);
         this.pets.set(p.id, a);
       }
       a.kind = p.kind || "cat";
@@ -413,8 +416,8 @@ class NativeHome extends Phaser.Scene {
     else this.updateWindowSky();
     this.sync();
   }
-  move(a: Actor, to: Point, manual: boolean) {
-    a.path = path({ x: a.sprite.x, y: a.sprite.y }, to, this.map, a.pet);
+  move(a: Actor, to: Point, manual: boolean, avoids?: (point: Point) => boolean) {
+    a.path = path(a.sprite, to, this.map, a.pet, avoids);
     a.after = undefined;
     if (manual) {
       a.manual = Date.now();
@@ -447,8 +450,22 @@ class NativeHome extends Phaser.Scene {
       if (canStand(to, this.map)) this.move(own, to, true);
       this.lastInput = now;
     }
+    // People keep their existing paths, including server-acknowledged moves.
+    // Advance them first so pets can yield to their current positions.
+    const people = Array.from(this.actors.values(), ({ sprite }) => sprite);
+    const avoidsPeople = (point: Point) => petClearsPeople(point, people);
     const actors = [...this.actors.values(), ...this.pets.values()];
     for (const a of actors) {
+      if (a.pet && (!a.sprite.visible || !avoidsPeople(a.sprite))) {
+        const free = nearestFreePoint(a.sprite, (point) =>
+          canStand(point, this.map, true) && avoidsPeople(point),
+        );
+        a.sprite.setVisible(free !== null);
+        a.label.setVisible(free !== null);
+        if (!free) continue;
+        a.sprite.setPosition(free.x, free.y);
+        a.path = [];
+      }
       const cycle = Math.floor(now / (a.pet ? 17000 : 14000));
       if (
         !this.view.reducedMotion &&
@@ -468,7 +485,7 @@ class NativeHome extends Phaser.Scene {
             (cycle + [...a.id].reduce((x, c) => x + c.charCodeAt(0), 0)) %
               goals.length
           ];
-        this.move(a, { x: q[0], y: q[1] }, false);
+        this.move(a, { x: q[0], y: q[1] }, false, a.pet ? avoidsPeople : undefined);
       }
       let remaining = (Math.min(delta, 50) / 1000) * (a.pet ? 28 : 50),
         dx = 0,
@@ -484,7 +501,7 @@ class NativeHome extends Phaser.Scene {
           x: a.sprite.x + (x / dist) * step,
           y: a.sprite.y + (y / dist) * step,
         };
-        if (!canStand(next, this.map, a.pet)) {
+        if (!canStand(next, this.map, a.pet) || (a.pet && !avoidsPeople(next))) {
           a.path = [];
           break;
         }
@@ -524,7 +541,7 @@ class NativeHome extends Phaser.Scene {
     }
     for (const o of this.objects) {
       const target = actors.some((a) =>
-        occludes(o.meta, {
+        a.sprite.visible && occludes(o.meta, {
           x: a.sprite.x,
           y: a.sprite.y,
           pet: a.pet,
