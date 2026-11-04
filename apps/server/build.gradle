@@ -33,6 +33,12 @@ tasks.register('mysqlTest', Test) {
     useJUnitPlatform { includeTags 'mysql' }
 }
 
+tasks.register('replayHouseholdDeletions', JavaExec) {
+    description = 'Plans or applies deletion log entries to a restored database.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'kr.dothome.HouseholdDeletionReplay'
+}
+
 // Docker supplies the separately built SPA; no generated files are written to src/.
 tasks.named('processResources') {
     if (project.hasProperty('webDist')) {

@@ -24,6 +24,8 @@ class HouseholdDeletionIntegrationTest {
     @Autowired OwnershipService ownership;
     @Autowired JdbcTemplate sql;
 
+    @Autowired javax.sql.DataSource source;
+
     String user(){return identity.resolve("test",UUID.randomUUID().toString(),"검증 계정").id;}
 
     @Test void graceAllowsReadAndExportAndCancelNeverRestoresVisitorAccess(){
@@ -95,5 +97,19 @@ class HouseholdDeletionIntegrationTest {
         assertEquals(1,sql.queryForObject("SELECT COUNT(*) FROM household_deletion_log WHERE household_id=?",Integer.class,house));
         assertEquals(1,sql.queryForObject("SELECT COUNT(*) FROM app_user WHERE id=?",Integer.class,owner));
         assertEquals(1,sql.queryForObject("SELECT COUNT(*) FROM app_user WHERE id=?",Integer.class,friend));
+    }
+    @Test void deletionReplayRemovesOnlyRestoredHomesWithATombstone(){
+        var owner=user();
+        var old=homes.create(owner,new Api.CreateHouse("복원된 삭제 집","대표","sage")).household().id();
+        var active=homes.create(owner,new Api.CreateHouse("유지할 집","대표","sage")).household().id();
+        var note=notes.create(old,owner,"fridge",new NoteInput("되살리면 안 되는 쪽지"));
+        sql.update("INSERT INTO household_deletion_log(household_id,deleted_at) VALUES(?,CURRENT_TIMESTAMP)",old);
+        assertEquals(1,HouseholdDeletionReplay.replay(source,false));
+        assertEquals(note.id(),notes.list(old,owner,"fridge").getFirst().id());
+        assertEquals(1,HouseholdDeletionReplay.replay(source,true));
+        assertEquals(0,HouseholdDeletionReplay.replay(source,true));
+        assertThrows(ApiException.class,()->homes.world(old,owner));
+        assertEquals(active,homes.world(active,owner).household().id());
+        assertEquals(1,sql.queryForObject("SELECT COUNT(*) FROM household_deletion_log WHERE household_id=?",Integer.class,old));
     }
 }

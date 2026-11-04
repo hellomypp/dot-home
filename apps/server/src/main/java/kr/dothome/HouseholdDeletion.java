@@ -78,6 +78,14 @@ class HouseholdDeletionService {
         // Preserve accounts and other homes, and keep a non-content tombstone for restore.
         for(var member:members.findByHouseholdIdAndActiveTrueOrderById(id))
             publisher.publishEvent(new CommittedMembershipExit(id,member.userId));
+        deleteRows(sql,id);
+        sql.update("INSERT INTO household_deletion_log(household_id,deleted_at) VALUES(?,?)",statement->{
+            statement.setString(1,id);
+            statement.setTimestamp(2,java.sql.Timestamp.from(now),Calendar.getInstance(TimeZone.getTimeZone("UTC")));
+        });
+    }
+
+    static void deleteRows(JdbcTemplate sql,String id){
         sql.update("DELETE FROM calendar_attendance WHERE event_id IN (SELECT id FROM household_calendar_event WHERE household_id=?)",id);
         sql.update("DELETE FROM request_transition WHERE request_id IN (SELECT id FROM household_request WHERE household_id=?)",id);
         sql.update("DELETE FROM notice_acknowledgement WHERE request_id IN (SELECT id FROM household_request WHERE household_id=?)",id);
@@ -91,10 +99,6 @@ class HouseholdDeletionService {
             sql.update("DELETE FROM "+table+" WHERE household_id=?",id);
         }
         sql.update("DELETE FROM household WHERE id=?",id);
-        sql.update("INSERT INTO household_deletion_log(household_id,deleted_at) VALUES(?,?)",statement->{
-            statement.setString(1,id);
-            statement.setTimestamp(2,java.sql.Timestamp.from(now),Calendar.getInstance(TimeZone.getTimeZone("UTC")));
-        });
     }
 
     private static void checkVersion(Household house,Long version){

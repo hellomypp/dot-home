@@ -149,4 +149,18 @@ DB를 백업한 뒤 V7을 적용한다. planned_people은 새 JPA/DTO/UI/정책�
 
 ## 집 삭제 활성화
 
-`HOUSEHOLD_DELETION_ENABLED` 기본값은 false다. 기능을 켜면 집 대표가 7일 유예를 요청할 수 있고, 워커가 기한이 지난 해당 집의 행을 영구 삭제한다. 계정과 다른 집은 유지한다. 운영에서 활성화하기 전에 빈 MySQL 8.4 검증 DB에서 V24·삭제·복원을 실행하고 `household_deletion_log`를 백업 복원 시 재적용하는 절차를 검증해야 한다. 계정 삭제 및 결제 보존 운영은 별개다.
+`HOUSEHOLD_DELETION_ENABLED` 기본값은 false다. 기능을 켜면 집 대표가 7일 유예를 요청할 수 있고, 워커가 기한이 지난 해당 집의 행을 영구 삭제한다. 계정과 다른 집은 유지한다. 운영에서 활성화하기 전에 빈 MySQL 8.4 검증 DB에서 V24·삭제·복원을 실행한다. 계정 삭제 및 결제 보존 운영은 별개다.
+
+### 복원에서 삭제 기록 재적용
+
+1. 전체 백업과 별개로 최신 `household_deletion_log`의 데이터를 보관한다. MySQL에서는 `mysqldump --single-transaction --no-create-info --skip-triggers --skip-add-locks --no-tablespaces --set-gtid-purged=OFF --insert-ignore … household_deletion_log`로 데이터만 내보낼 수 있다. 계정 암호는 명령줄에 넣지 않는다. [MySQL 8.4 mysqldump](https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html).
+2. 별도 빈 DB에 전체 백업을 복원하고 Flyway V24 이상을 적용한다. 복원 DB에 최신 삭제 로그를 병합하고, 애플리케이션에 연결하기 전에 복원 DB 전용 `RESTORE_DB_URL`, `RESTORE_DB_USER`, `RESTORE_DB_PASSWORD`를 설정한다.
+3. 조회 모드로 정리 대상 수를 확인한 후 적용한다. 두 번째 조회가 0건인지 확인하고, 보존할 집에서 로그인을 비롯한 핵심 동작을 검증한다.
+
+```bash
+bash scripts/server.sh replayHouseholdDeletions --args=--plan
+bash scripts/server.sh replayHouseholdDeletions --args=--apply
+bash scripts/server.sh replayHouseholdDeletions --args=--plan
+```
+
+`--apply`는 복원된 집 중 삭제 로그가 있는 집만 트랜잭션으로 정리한다. 삭제 로그 자체와 계정, 나머지 집은 보존하며 재실행이 가능하다. H2 복사본에서 검증했다. 실제 MySQL 백업 파일로 재현하는 단계는 운영 검증에 남아 있다.
