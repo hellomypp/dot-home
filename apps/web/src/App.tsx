@@ -646,6 +646,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
           qc.invalidateQueries({ queryKey: ["household-reactions", id] }),
           qc.invalidateQueries({ queryKey: ["promise-source", id] }),
           qc.invalidateQueries({ queryKey: ["care-rules", id] }),
+          qc.invalidateQueries({ queryKey: ["ownership-transfers", id] }),
         ]);
         return data.revision;
       },

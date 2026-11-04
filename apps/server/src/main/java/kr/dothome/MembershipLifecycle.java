@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 record LeaveHouse(@NotBlank @Size(max=80) String requestId) {}
+record MembershipEnding(Household household,String memberId) {}
 record CommittedMembershipExit(String householdId,String userId) {}
 
 @Service @Transactional(isolation=Isolation.READ_COMMITTED)
@@ -66,6 +67,7 @@ class MembershipLifecycle {
         for(var profile:dependents.findByHouseholdIdAndGuardianMemberIdAndArchivedAtIsNull(house.id,member.id))
             profile.guardianMemberId=owner.id;
         publisher.publishEvent(new CommittedMembershipExit(house.id,member.userId));
+        publisher.publishEvent(new MembershipEnding(house,member.id));
         requests.releaseDeparted(house,actor,member.id,now);
         homes.emit(house,"MEMBER_DEPARTED",Map.of());
     }

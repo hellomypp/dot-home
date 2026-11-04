@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { api, type Member, type Snapshot } from "../lib/api";
 import { Portrait } from "./Portrait";
+import { OwnershipTransferPanel } from "./OwnershipTransferPanel";
 
 type Confirmation = { kind: "leave"; requestId: string } | { kind: "remove"; member: Member };
 
@@ -77,6 +78,7 @@ export function MembershipPanel({ snapshot, onLeave, refresh }: {
       ) : (
         <button className="button secondary logout-button" type="button" onClick={() => review({ kind: "leave", requestId: crypto.randomUUID() })}>이 집에서 나가기</button>
       )}
+      {!confirmation && <OwnershipTransferPanel snapshot={snapshot} refresh={refresh} />}
       {message && <p role="status">{message}</p>}
     </section>
   );
