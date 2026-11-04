@@ -256,7 +256,7 @@ class CalendarService {
     private void validateTargets(String h,List<String> targets){
         if(targets.isEmpty())return;
         var allowed=activeMembers(h);
-        for(var pet:pets.findByHouseholdIdOrderById(h))allowed.add(pet.id);
+        for(var pet:pets.findByHouseholdIdAndArchivedAtIsNullOrderById(h))allowed.add(pet.id);
         for(var dependent:dependents.findByHouseholdIdAndArchivedAtIsNullOrderById(h))allowed.add(dependent.id);
         if(!allowed.containsAll(targets))throw ApiException.invalid("이 집의 가족과 돌봄 프로필만 일정 대상으로 선택할 수 있어요.");
     }

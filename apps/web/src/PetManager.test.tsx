@@ -51,3 +51,16 @@ it("가족이 어류 종명과 보호자를 입력하고 수조 범용 표현을
     name: "별이", speciesGroup: "FISH", speciesName: "베타", appearance: "cream",
   });
 });
+
+it("프로필 보관은 확인 후에만 요청하고 장면용 목록에서 뺀다", async () => {
+  const pet = { id: "p", name: "모카", kind: "cat", appearance: "cream", version: 4 };
+  vi.mocked(api).mockResolvedValueOnce(world);
+  render(<App initial={{ ...world, pets: [pet] }} />);
+  fireEvent.click(screen.getByRole("button", { name: "모카 수정" }));
+  fireEvent.click(screen.getByRole("button", { name: "프로필 보관" }));
+  expect(api).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "보관 확인" }));
+  await screen.findByText("반려동물 프로필을 보관했어요.");
+  expect(api).toHaveBeenCalledWith("/api/households/h/pets/p?version=4", "DELETE");
+  expect(screen.queryByRole("button", { name: "모카 수정" })).toBeNull();
+});

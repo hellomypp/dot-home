@@ -156,7 +156,7 @@ Google 인증한 방문자:
 - 종 분류는 `DOG|CAT|BIRD|SMALL_MAMMAL|REPTILE|AMPHIBIAN|FISH|INVERTEBRATE|OTHER`다. 종에 맞춰 `habitat`과 `appearanceId`가 정해진다. 기존 `{name,kind,appearance}`의 cat/dog 및 cream 입력과 조회값을 유지한다. 그 밖의 종은 구형 kind에서 other로 표시된다.
 - `PATCH /api/households/{id}/pets/{petId}`는 `{name,speciesGroup,speciesName?,guardianMemberId?,version}`을 받는다. 지정 보호자·집 대표만 수정하고 오래된 버전에는 409를 반환한다. 생략한 종명·보호자와 기존 appearance를 유지하며 빈 종명으로 지울 수 있다. 개·고양이의 구형 이름·종류 수정 요청을 계속 지원한다.
 - 목록은 기존 `GET /api/households/{id}/world`의 pets로 조회한다. 성공 커밋 후 `PETS_CHANGED`와 revision으로 Phaser와 관리 목록을 갱신한다. 집들이 방문자·다른 집은 조회나 수정 권한이 없다.
-- V17은 기존 이름·종류·외형을 보존하면서 종 분류와 기존 집 대표 보호자를 채운다. 삭제와 추억 모드는 후속 작업이다.
+- V17은 기존 이름·종류·외형을 보존하면서 종 분류와 기존 집 대표 보호자를 채운다. `DELETE /api/households/{id}/pets/{petId}?version=…`는 보호자·대표의 보관 요청이다. V19는 보관 시각을 남기고 집 장면 및 새 일정의 대상에서만 뺀다. 기존 일정은 보존한다. 추억 모드는 후속 작업이다.
 
 ## 아기 돌봄 프로필
 

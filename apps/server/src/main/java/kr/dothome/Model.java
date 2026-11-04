@@ -55,6 +55,7 @@ class Pet extends Row {
     @Enumerated(EnumType.STRING) @Column(length = 24) PetSpecies speciesGroup;
     @Column(length = 80) String speciesName;
     @Column(length = 36) String guardianMemberId;
+    Instant archivedAt;
     @Version long version;
     protected Pet() {}
 }

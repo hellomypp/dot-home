@@ -13,26 +13,33 @@ function PetForm({ snapshot, pet, onSaved, onCancel }: {
   const [group, setGroup] = useState(petGroup(pet));
   const [speciesName, setSpeciesName] = useState(pet?.speciesName ?? "");
   const [guardian, setGuardian] = useState(pet?.guardianMemberId ?? "");
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const pending = useRef(false);
   const prefix = pet?.name ?? "반려동물";
   const kind = group === "CAT" ? "cat" : group === "DOG" ? "dog" : undefined;
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
-    if (pending.current) return;
-    setError("");
+    if (confirmArchive || pending.current) return;
     if (!name.trim() || name.length > 40 || /[\u0000-\u001f\u007f-\u009f]/.test(name)) {
       setError("반려동물 이름은 줄바꿈 없이 1~40자로 입력해 주세요.");
       return;
     }
+    void change(false);
+  }
+
+  async function change(archive: boolean) {
+    if (pending.current) return;
     pending.current = true;
+    setError("");
     setBusy(true);
+    const path = `/api/households/${snapshot.household.id}/pets${pet ? "/" + pet.id : ""}`;
     try {
-      const world = await api<Snapshot>(
-        `/api/households/${snapshot.household.id}/pets${pet ? "/" + pet.id : ""}`,
-        pet ? "PATCH" : "POST",
+      const world = archive && pet
+        ? await api<Snapshot>(`${path}?version=${pet.version ?? 0}`, "DELETE")
+        : await api<Snapshot>(path, pet ? "PATCH" : "POST",
         {
           name: name.trim(),
           ...(kind ? { kind } : {}),
@@ -78,12 +85,23 @@ function PetForm({ snapshot, pet, onSaved, onCancel }: {
         </select>
       </label>
       {error && <p role="alert" className="error-message">{error}</p>}
-      <div className="form-actions">
-        {onCancel && <button type="button" className="button secondary" disabled={busy} onClick={onCancel}>취소</button>}
-        <button className="button primary" disabled={busy}>
-          {busy ? "저장 중…" : pet ? "반려동물 변경 저장" : "반려동물 등록"}
-        </button>
-      </div>
+      {confirmArchive ? (
+        <>
+          <p>집 장면과 새 일정의 대상 목록에서 숨겨요. 기존 일정은 가족 달력에 남아요.</p>
+          <div className="form-actions">
+            <button type="button" className="button secondary" disabled={busy} onClick={() => setConfirmArchive(false)}>돌아가기</button>
+            <button type="button" className="button secondary" disabled={busy} onClick={() => void change(true)}>보관 확인</button>
+          </div>
+        </>
+      ) : (
+        <div className="form-actions">
+          {onCancel && <button type="button" className="button secondary" disabled={busy} onClick={onCancel}>취소</button>}
+          {pet && <button type="button" className="button secondary" disabled={busy} onClick={() => setConfirmArchive(true)}>프로필 보관</button>}
+          <button className="button primary" disabled={busy}>
+            {busy ? "처리 중…" : pet ? "반려동물 변경 저장" : "반려동물 등록"}
+          </button>
+        </div>
+      )}
     </form>
   );
 }
@@ -105,7 +123,7 @@ export function PetManager({ snapshot, onSaved }: { snapshot: Snapshot; onSaved:
               <PetForm snapshot={snapshot} pet={pet} onCancel={() => setEditing(null)} onSaved={(world) => {
                 onSaved(world);
                 setEditing(null);
-                setMessage("반려동물 정보를 변경했어요.");
+                setMessage(world.pets.some((item) => item.id === pet.id) ? "반려동물 정보를 변경했어요." : "반려동물 프로필을 보관했어요.");
               }} />
             ) : (
               <>

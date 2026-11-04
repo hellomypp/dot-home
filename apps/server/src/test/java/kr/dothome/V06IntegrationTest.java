@@ -156,6 +156,20 @@ class V06IntegrationTest {
   assertEquals(List.of(baby.id()),calendar.range(h,guardian,date,date).getFirst().targetIds());
   assertThrows(ApiException.class,()->calendar.save(h,guardian,null,care));
  }
+ @Test void petArchiveRequiresGuardianAndPreservesExistingCareEvents(){
+  String owner=user(),h=house(owner),guardian=join(h,owner),other=join(h,owner);
+  var pet=homes.addPet(h,guardian,new Api.PetInput("별이","cat","cream")).pets().getFirst();
+  LocalDate date=LocalDate.of(2026,11,3);
+  var care=new CalendarInput("급여","","CARE",true,date,date,null,null,"Asia/Seoul",0,"HOUSEHOLD",List.of(pet.id()),null);
+  calendar.save(h,guardian,null,care);
+  assertEquals(403,assertThrows(ApiException.class,()->homes.archivePet(h,other,pet.id(),pet.version())).status.value());
+  assertEquals(409,assertThrows(ApiException.class,()->homes.archivePet(h,owner,pet.id(),pet.version()+1)).status.value());
+  assertTrue(homes.archivePet(h,guardian,pet.id(),pet.version()).pets().isEmpty());
+  assertTrue(homes.world(h,owner).pets().isEmpty());
+  assertEquals(List.of(pet.id()),calendar.range(h,owner,date,date).getFirst().targetIds());
+  assertThrows(ApiException.class,()->calendar.save(h,owner,null,care));
+  assertEquals(404,assertThrows(ApiException.class,()->homes.editPet(h,guardian,pet.id(),new Api.PetEdit("별","cat"))).status.value());
+ }
  @Test void timedCalendarUsesUtcAndSeoulRange(){String a=user(),h=house(a);var i=new CalendarInput("자정 약속","","GENERAL",false,null,null,Instant.parse("2026-11-02T15:00:00Z"),Instant.parse("2026-11-02T16:00:00Z"),"Asia/Seoul",0);calendar.save(h,a,null,i);assertTrue(calendar.range(h,a,LocalDate.of(2026,11,2),LocalDate.of(2026,11,2)).isEmpty());assertEquals(1,calendar.range(h,a,LocalDate.of(2026,11,3),LocalDate.of(2026,11,3)).size());assertThrows(ApiException.class,()->CalendarService.validate(new CalendarInput("거꾸로","","GENERAL",false,null,null,i.endAt(),i.startAt(),"Asia/Seoul",0)));assertThrows(ApiException.class,()->CalendarService.validate(new CalendarInput("혼합","","GENERAL",true,LocalDate.now(),LocalDate.now(),Instant.now(),null,"Asia/Seoul",0)));}
  @Test void visitsNeverCreateFamilyMembershipAndRevocationRemovesAccess(){String a=user(),h=house(a),guest=user();var link=visits.create(h,a);String token=token(link);assertNotEquals(token,links.findById(link.id()).orElseThrow().tokenHash);assertThrows(ApiException.class,()->visits.world(token,guest));assertEquals("공유 집",visits.enter(token,guest).householdName());visits.enter(token,guest);assertTrue(members.findByUserIdAndActiveTrue(guest).isEmpty());assertEquals(1,homes.world(h,a).members().size());assertThrows(ApiException.class,()->homes.world(h,guest));assertThrows(ApiException.class,()->notes.list(h,guest,"fridge"));assertThrows(ApiException.class,()->calendar.range(h,guest,LocalDate.now(),LocalDate.now()));assertThrows(ApiException.class,()->visits.create(h,guest));visits.revoke(h,a,link.id());assertThrows(ApiException.class,()->visits.world(token,guest));assertThrows(ApiException.class,()->visits.enter(token,guest));}
  @Test void guestbookIsIdempotentLimitedAndModerated(){String a=user(),h=house(a),guest=user();var link=visits.create(h,a);String t=token(link);visits.enter(t,guest);var input=new GuestbookInput("request-1","<img src=x onerror=alert(1)>");var e=visits.write(t,guest,input);assertEquals(e.id(),visits.write(t,guest,input).id());assertThrows(ApiException.class,()->visits.write(t,guest,new GuestbookInput("request-2","반복")));assertEquals(1,visits.world(t,guest).guestbook().size());assertThrows(ApiException.class,()->visits.manage(h,guest));visits.hide(h,a,e.id());assertTrue(visits.world(t,guest).guestbook().isEmpty());assertTrue(visits.manage(h,a).getFirst().hidden());}

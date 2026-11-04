@@ -84,10 +84,7 @@ class HomeService {
     Api.World editPet(String householdId,String userId,String petId,Api.PetEdit input) {
         Household household=lock(householdId,userId);
         Member actor=requireMember(householdId,userId);
-        Pet pet=pets.findById(petId).orElseThrow(ApiException::missing);
-        if(!pet.householdId.equals(householdId))throw ApiException.forbidden();
-        boolean owner=household.ownerId.equals(userId);
-        if(!owner&&!actor.id.equals(pet.guardianMemberId))throw ApiException.forbidden();
+        Pet pet=editablePet(household,actor,petId);
         boolean legacy=input.version()==null&&input.kind()!=null&&input.speciesGroup()==null
             &&input.speciesName()==null&&input.guardianMemberId()==null;
         if(!legacy&&(input.version()==null||input.version()!=pet.version))
@@ -103,6 +100,24 @@ class HomeService {
         pets.flush();
         emit(household,"PETS_CHANGED",Map.of("petId",pet.id));
         return snapshot(household,actor.id);
+    }
+    Api.World archivePet(String householdId,String userId,String petId,long version) {
+        Household household=lock(householdId,userId);
+        Member actor=requireMember(householdId,userId);
+        Pet pet=editablePet(household,actor,petId);
+        if(version!=pet.version)
+            throw ApiException.conflict("다른 기기에서 반려동물 정보를 바꿨어요. 최신 정보를 확인해 주세요.");
+        pet.archivedAt=Instant.now();
+        pets.flush();
+        emit(household,"PETS_CHANGED",Map.of("petId",pet.id));
+        return snapshot(household,actor.id);
+    }
+    private Pet editablePet(Household household,Member actor,String petId){
+        Pet pet=pets.findById(petId).orElseThrow(ApiException::missing);
+        if(!pet.householdId.equals(household.id))throw ApiException.forbidden();
+        if(!household.ownerId.equals(actor.userId)&&!actor.id.equals(pet.guardianMemberId))throw ApiException.forbidden();
+        if(pet.archivedAt!=null)throw ApiException.missing();
+        return pet;
     }
     private String petGuardian(String householdId,String memberId) {
         return members.findById(memberId).filter(m->m.active&&m.householdId.equals(householdId))
@@ -246,7 +261,7 @@ class HomeService {
         var saved=expressions.load(householdMembers);
         var memberViews=householdMembers.stream()
             .map(member->memberView(member,household.presetId,saved.getOrDefault(member.id,Map.of()),now,member.id.equals(meId))).toList();
-        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,now,memberViews,pets.findByHouseholdIdOrderById(household.id).stream().map(HomeService::petView).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),events.findTop100ByHouseholdIdOrderByCreatedAtDesc(household.id).stream().map(HomeService::eventView).toList(),Spaces.view(household),
+        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,now,memberViews,pets.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(HomeService::petView).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),events.findTop100ByHouseholdIdOrderByCreatedAtDesc(household.id).stream().map(HomeService::eventView).toList(),Spaces.view(household),
             dependents.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(DependentView::from).toList());
     }
     Api.MemberView memberView(Member m,String preset){

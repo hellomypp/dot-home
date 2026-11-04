@@ -16,7 +16,7 @@ interface Members extends JpaRepository<Member,String> {
     List<Member> findByUserIdAndActiveTrue(String userId);
     long countByHouseholdIdAndActiveTrue(String householdId);
 }
-interface Pets extends JpaRepository<Pet,String> { List<Pet> findByHouseholdIdOrderById(String householdId); }
+interface Pets extends JpaRepository<Pet,String> { List<Pet> findByHouseholdIdAndArchivedAtIsNullOrderById(String householdId); }
 interface Invitations extends JpaRepository<Invitation,String> {
     Optional<Invitation> findByTokenHash(String hash);
     @Lock(LockModeType.PESSIMISTIC_WRITE) @Query("select i from Invitation i where i.id=:id")
