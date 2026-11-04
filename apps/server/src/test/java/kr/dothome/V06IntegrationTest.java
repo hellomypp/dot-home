@@ -10,13 +10,48 @@ import java.util.concurrent.*;
 
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT) @ActiveProfiles({"dev","test"})
 class V06IntegrationTest {
- @Autowired HomeService homes;@Autowired IdentityService identity;@Autowired ObjectNoteService notes;@Autowired CalendarService calendar;@Autowired HousewarmingService visits;@Autowired HousewarmingInvitations links;@Autowired Members members;
+ @Autowired HomeService homes;@Autowired IdentityService identity;@Autowired ObjectNoteService notes;@Autowired ObjectNotes noteRows;@Autowired CalendarService calendar;@Autowired HousewarmingService visits;@Autowired HousewarmingInvitations links;@Autowired Members members;
  String user(){return identity.resolve("test",UUID.randomUUID().toString(),"테스트 가족").id;}
  String house(String u){return homes.create(u,new Api.CreateHouse("공유 집","가족","sage")).household().id();}
  String join(String h,String owner){String u=user();homes.accept(homes.invite(h,owner).token(),u,new Api.Accept("다른 가족","blue"));return u;}
  String token(HousewarmingLink l){return l.url().substring("/visit/".length());}
  @Test void notesAreSharedArchivedAndScoped(){String a=user(),h=house(a),b=join(h,a),outsider=user();var n=notes.create(h,a,"fridge",new NoteInput("<script>alert(1)</script>"));assertEquals(homes.requireMember(h,a).id,n.authorMemberId());assertEquals(1,notes.list(h,b,"fridge").size());assertThrows(ApiException.class,()->notes.list(h,outsider,"fridge"));assertThrows(ApiException.class,()->notes.create(h,a,"unknown",new NoteInput("no")));assertThrows(ApiException.class,()->notes.delete(h,b,n.id(),n.version()));var taken=notes.take(h,b,n.id(),n.version());assertEquals("TAKEN",taken.state());assertEquals(homes.requireMember(h,b).id,taken.takenByMemberId());assertTrue(notes.list(h,a,"fridge").isEmpty());assertEquals(n.body(),notes.archive(h,a).getFirst().body());assertThrows(ApiException.class,()->notes.take(h,a,n.id(),n.version()));notes.delete(h,a,n.id(),taken.version());assertTrue(notes.archive(h,b).isEmpty());}
  @Test void concurrentNoteTakeSucceedsExactlyOnce()throws Exception {String a=user(),h=house(a),b=join(h,a);var note=notes.create(h,a,"fridge",new NoteInput("함께 읽어요"));try(var pool=Executors.newFixedThreadPool(2)){var start=new CountDownLatch(1);var futures=List.of(a,b).stream().map(u->pool.submit(()->{start.await();try{notes.take(h,u,note.id(),note.version());return 1;}catch(ApiException e){assertEquals(409,e.status.value());return 0;}})).toList();start.countDown();assertEquals(1,futures.get(0).get(10,TimeUnit.SECONDS)+futures.get(1).get(10,TimeUnit.SECONDS));}assertEquals(1,notes.archive(h,a).size());}
+ @Test void noteLimitCountsCodePointsAndPreservesLegacyBody(){
+  String a=user(),h=house(a);
+  String limit="🐾".repeat(300);
+  assertEquals(limit,notes.create(h,a,"fridge",new NoteInput(" "+limit+" ")).body());
+  var tooLong=assertThrows(ApiException.class,()->notes.create(h,a,"fridge",new NoteInput(limit+"🐾")));
+  assertEquals(400,tooLong.status.value());
+
+  var legacy=new ObjectNote();
+  legacy.householdId=h;legacy.objectId="fridge";legacy.authorMemberId=homes.requireMember(h,a).id;legacy.body="한".repeat(1000);
+  noteRows.saveAndFlush(legacy);
+  assertEquals(legacy.body,notes.list(h,a,"fridge").stream().filter(n->n.id().equals(legacy.id)).findFirst().orElseThrow().body());
+  notes.take(h,a,legacy.id,legacy.version);
+  assertEquals(legacy.body,notes.archive(h,a).getFirst().body());
+ }
+ @Test void concurrentCreationKeepsAtMostTenAttachedNotes()throws Exception {
+  String a=user(),h=house(a),b=join(h,a);
+  for(int i=0;i<9;i++)notes.create(h,a,"fridge",new NoteInput("기존 "+i));
+  try(var pool=Executors.newFixedThreadPool(2)){
+   var start=new CountDownLatch(1);
+   var futures=List.of(a,b).stream().map(u->pool.submit(()->{
+    start.await();
+    try{notes.create(h,u,"fridge",new NoteInput("새 쪽지"));return 1;}
+    catch(ApiException e){assertEquals(409,e.status.value());return 0;}
+   })).toList();
+   start.countDown();
+   assertEquals(1,futures.get(0).get(10,TimeUnit.SECONDS)+futures.get(1).get(10,TimeUnit.SECONDS));
+  }
+  var attached=notes.list(h,b,"fridge");
+  assertEquals(10,attached.size());
+  var first=attached.getFirst();
+  notes.take(h,b,first.id(),first.version());
+  notes.create(h,a,"fridge",new NoteInput("비운 자리에 새 쪽지"));
+  assertEquals(10,notes.list(h,a,"fridge").size());
+  assertEquals(1,notes.archive(h,a).size());
+ }
  CalendarInput allDay(long version){return new CalendarInput("생일","가족 일정","BIRTHDAY",true,LocalDate.of(2026,11,3),LocalDate.of(2026,11,3),null,null,"Asia/Seoul",version);}
  @Test void calendarDatesVersionsAndScope(){String a=user(),h=house(a),b=join(h,a);var e=calendar.save(h,a,null,allDay(0));assertEquals(LocalDate.of(2026,11,3),e.startDate());assertEquals(1,calendar.range(h,b,LocalDate.of(2026,11,1),LocalDate.of(2026,11,30)).size());var changed=calendar.save(h,b,e.id(),allDay(e.version()));assertEquals(homes.requireMember(h,b).id,changed.updatedByMemberId());assertThrows(ApiException.class,()->calendar.save(h,a,e.id(),allDay(e.version())));assertThrows(ApiException.class,()->calendar.range(h,user(),LocalDate.of(2026,11,1),LocalDate.of(2026,11,30)));assertThrows(ApiException.class,()->calendar.range(h,a,LocalDate.of(2026,1,1),LocalDate.of(2028,1,1)));calendar.delete(h,a,e.id(),changed.version());assertTrue(calendar.range(h,b,LocalDate.of(2026,11,1),LocalDate.of(2026,11,30)).isEmpty());}
  @Test void timedCalendarUsesUtcAndSeoulRange(){String a=user(),h=house(a);var i=new CalendarInput("자정 약속","","GENERAL",false,null,null,Instant.parse("2026-11-02T15:00:00Z"),Instant.parse("2026-11-02T16:00:00Z"),"Asia/Seoul",0);calendar.save(h,a,null,i);assertTrue(calendar.range(h,a,LocalDate.of(2026,11,2),LocalDate.of(2026,11,2)).isEmpty());assertEquals(1,calendar.range(h,a,LocalDate.of(2026,11,3),LocalDate.of(2026,11,3)).size());assertThrows(ApiException.class,()->CalendarService.validate(new CalendarInput("거꾸로","","GENERAL",false,null,null,i.endAt(),i.startAt(),"Asia/Seoul",0)));assertThrows(ApiException.class,()->CalendarService.validate(new CalendarInput("혼합","","GENERAL",true,LocalDate.now(),LocalDate.now(),Instant.now(),null,"Asia/Seoul",0)));}

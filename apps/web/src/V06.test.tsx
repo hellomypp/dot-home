@@ -88,6 +88,21 @@ it("쪽지 작성 실패 시 본문을 보존한다", async () => {
   expect(await screen.findByRole("alert")).toBeTruthy();
   expect((input as HTMLTextAreaElement).value).toBe("남길 이야기");
 });
+it("쪽지는 이모지를 한 자로 세고 300자를 넘긴 초안을 그대로 표시한다", async () => {
+  mocked.mockResolvedValue([] as never);
+  show(<ObjectNotes householdId="h" memberId="a" isOwner />);
+  await screen.findByText("냉장고에 첫 쪽지를 붙여보세요.");
+  const input = screen.getByLabelText("가족에게 남길 쪽지");
+  const submit = screen.getByRole<HTMLButtonElement>("button", { name: "쪽지 붙이기" });
+  const limit = "🐾".repeat(300);
+  fireEvent.change(input, { target: { value: limit + "🐾" } });
+  expect(screen.getByText(/301\/300자/)).toBeTruthy();
+  expect(submit.disabled).toBe(true);
+  expect((input as HTMLTextAreaElement).value).toBe(limit + "🐾");
+  fireEvent.change(input, { target: { value: limit } });
+  fireEvent.click(submit);
+  expect(mocked).toHaveBeenCalledWith("/api/households/h/objects/fridge/notes", "POST", { body: limit });
+});
 it("캘린더는 월 탐색과 종일 일정 생성을 연결한다", async () => {
   mocked.mockResolvedValue([] as never);
   show(<FamilyCalendar householdId="h" />);

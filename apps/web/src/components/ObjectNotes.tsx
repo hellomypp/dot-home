@@ -37,6 +37,10 @@ export function ObjectNotes({
         root + (archive ? "/notes/archive" : "/objects/fridge/notes"),
       ),
   });
+  const noteBody = body.trim();
+  const length = [...noteBody].length;
+  const full = !archive && (query.data?.length ?? 0) >= 10;
+  const canCreate = !full && length > 0 && length <= 300;
   async function mutate(path: string, method: string, input?: unknown) {
     if (lock.current) return;
     lock.current = true;
@@ -58,8 +62,8 @@ export function ObjectNotes({
   }
   function create(e: FormEvent) {
     e.preventDefault();
-    if (body.trim())
-      void mutate("/objects/fridge/notes", "POST", { body: body.trim() });
+    if (canCreate)
+      void mutate("/objects/fridge/notes", "POST", { body: noteBody });
   }
   return (
     <section className="object-notes">
@@ -147,12 +151,17 @@ export function ObjectNotes({
             가족에게 남길 쪽지
             <textarea
               required
-              maxLength={1000}
+              aria-describedby="note-body-limit"
+              aria-invalid={length > 300}
               value={body}
               onChange={(e) => setBody(e.target.value)}
             />
           </label>
-          <button className="button primary" disabled={busy || !body.trim()}>
+          <p id="note-body-limit" className={length > 300 ? "error-message" : "muted"}>
+            {length}/300자{length > 300 && " · 300자 이내로 줄여 주세요."}
+          </p>
+          {full && <p role="status">냉장고에 쪽지가 10장 붙어 있어요. 한 장을 떼거나 삭제해 주세요.</p>}
+          <button className="button primary" disabled={busy || !canCreate}>
             쪽지 붙이기
           </button>
         </form>
