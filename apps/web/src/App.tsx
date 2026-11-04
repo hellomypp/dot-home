@@ -967,7 +967,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             <section className="world-section">
               {!snapshot.household.pendingDeleteUntil && (
                 <div className="work-shift">
-                  <span>{place === "office" && !neutral ? "달빛 광산 · 가상 근무" : "달빛 광산"}</span>
+                  {place === "office" && !neutral && <span>달빛 광산 · 가상 근무</span>}
                   <button className="button secondary" type="button" disabled={workPending} onClick={() => void changeWorkShift()}>
                     <Pickaxe size={15} aria-hidden="true" />
                     {workPending ? "이동 중…" : own.place === "office" ? "퇴근하기" : "출근하기"}

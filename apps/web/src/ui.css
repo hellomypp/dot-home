@@ -1801,3 +1801,4 @@ textarea {
   background: #171a35;
   overflow: hidden;
 }
+.work-shift .button { margin-inline-start: auto; }
