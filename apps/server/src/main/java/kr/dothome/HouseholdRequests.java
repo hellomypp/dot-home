@@ -39,6 +39,8 @@ class HouseholdRequest extends Row {
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=16) RequestKind kind;
     @Enumerated(EnumType.STRING) @Column(length=16) ReactionSource sourceType;
     @Column(length=128) String sourceId;
+    @Column(length=36) String careRuleId;
+    Instant careScheduledAt;
     @Column(nullable=false,length=80) String title;
     @Column(nullable=false,length=300) String body;
     @Column(nullable=false,columnDefinition="TEXT") String targetsJson;
@@ -93,6 +95,8 @@ interface NoticeAcknowledgements extends JpaRepository<NoticeAcknowledgement,Str
 
 interface HouseholdRequests extends JpaRepository<HouseholdRequest,String> {
     Optional<HouseholdRequest> findByIdAndHouseholdId(String id,String householdId);
+    boolean existsByCareRuleIdAndCareScheduledAt(String ruleId,Instant occurrence);
+    List<HouseholdRequest> findByCareRuleIdAndStateInAndDueAtAfter(String ruleId,Collection<RequestState> states,Instant now);
     @Query("""
         select r from HouseholdRequest r where r.householdId=:household
         and (r.state in :states and (r.state not in ('ACTIVE','OPEN','CLAIMED') or r.dueAt>:now)
@@ -123,7 +127,7 @@ record CreateRequest(@NotBlank @Size(max=80) String requestId,@NotNull RequestKi
 record RequestAction(@NotBlank @Size(max=80) String requestId,@NotNull @PositiveOrZero Long version,String reason) {}
 record HouseholdRequestView(String id,RequestKind kind,String title,String body,String authorMemberId,
     List<String> targetMemberIds,String assigneeMemberId,RequestState state,Instant dueAt,String completedByMemberId,
-    Instant completedAt,long version,Instant createdAt,Instant updatedAt,boolean acknowledgedByMe,ReactionSource sourceType) {}
+    Instant completedAt,long version,Instant createdAt,Instant updatedAt,boolean acknowledgedByMe,ReactionSource sourceType,Instant careScheduledAt) {}
 record HouseholdRequestPage(List<HouseholdRequestView> items,String nextCursor) {}
 record PromiseSourceView(boolean available) {}
 record NoticeAcknowledgementView(Instant acknowledgedAt) {}
@@ -136,13 +140,14 @@ class HouseholdRequestService {
     final HomeService homes;
     final Members members;
     final HouseholdRequests requests;
+    final RepeatCareRules careRules;
     final RequestTransitions history;
     final HouseholdCommandReceipts receipts;
     final NoticeAcknowledgements acknowledgements;
     final HouseholdContentSources sources;
     final ObjectMapper json;
-    HouseholdRequestService(HomeService homes,Members members,HouseholdRequests requests,RequestTransitions history,HouseholdCommandReceipts receipts,NoticeAcknowledgements acknowledgements,HouseholdContentSources sources,ObjectMapper json){
-        this.homes=homes;this.members=members;this.requests=requests;this.history=history;this.receipts=receipts;this.acknowledgements=acknowledgements;this.sources=sources;this.json=json;
+    HouseholdRequestService(HomeService homes,Members members,HouseholdRequests requests,RepeatCareRules careRules,RequestTransitions history,HouseholdCommandReceipts receipts,NoticeAcknowledgements acknowledgements,HouseholdContentSources sources,ObjectMapper json){
+        this.homes=homes;this.members=members;this.requests=requests;this.careRules=careRules;this.history=history;this.receipts=receipts;this.acknowledgements=acknowledgements;this.sources=sources;this.json=json;
     }
     HouseholdRequestPage list(String house,String user,List<RequestState> filter,String cursor,int limit){
         Member member=homes.requireMember(house,user);
@@ -219,6 +224,36 @@ class HouseholdRequestService {
             return viewFor(request,now,member);
         });
     }
+    void generateCare(Household house,Member guardian,RepeatCareRule rule,String targetName,Instant occurrence,Instant now){
+        if(requests.existsByCareRuleIdAndCareScheduledAt(rule.id,occurrence))return;
+        var request=new HouseholdRequest();
+        request.householdId=house.id;
+        request.authorMemberId=guardian.id;
+        request.kind=RequestKind.TASK;
+        request.title=rule.title;
+        request.body="돌봄 대상 · "+targetName;
+        request.targetsJson="[]";
+        request.careRuleId=rule.id;
+        request.careScheduledAt=occurrence;
+        request.createdAt=now;
+        request.updatedAt=now;
+        request.dueAt=occurrence.plus(Duration.ofHours(24));
+        request.state=RequestState.OPEN;
+        requests.saveAndFlush(request);
+        record(request,guardian,null,null,now);
+        homes.emit(house,"HOUSEHOLD_REQUEST_CHANGED",request.id);
+    }
+
+    void cancelCare(Household house,Member actor,String ruleId,Instant now){
+        for(var request:requests.findByCareRuleIdAndStateInAndDueAtAfter(ruleId,List.of(RequestState.OPEN,RequestState.CLAIMED),now)){
+            var before=request.state;
+            request.state=RequestState.CANCELLED;
+            request.updatedAt=now;
+            record(request,actor,before,"반복 돌봄이 종료됐어요.",now);
+            homes.emit(house,"HOUSEHOLD_REQUEST_CHANGED",request.id);
+        }
+    }
+
     HouseholdRequestView act(String h,String user,String id,String action,RequestAction input){
         Household house=homes.lock(h,user);
         Member actor=homes.requireMember(h,user);
@@ -236,6 +271,9 @@ class HouseholdRequestService {
             if(action.equals("claim")&&before==RequestState.CLAIMED&&!actor.id.equals(request.assigneeMemberId))
                 throw new ApiException(HttpStatus.CONFLICT,"ALREADY_CLAIMED","다른 가족이 먼저 맡았어요.");
             if(request.version!=input.version())throw ApiException.conflict("요청이 변경됐어요. 최신 내용을 확인해 주세요.");
+            if(action.equals("reopen")&&request.careRuleId!=null
+                &&careRules.findById(request.careRuleId).filter(rule->rule.endedAt==null).isEmpty())
+                throw ApiException.conflict("종료된 반복 돌봄 요청은 다시 열 수 없어요.");
             transition(request,actor,house.ownerId.equals(user),action,before,now);
             request.updatedAt=now;
             requests.flush();
@@ -382,7 +420,7 @@ class HouseholdRequestService {
     }
     private HouseholdRequestView view(HouseholdRequest r,Instant now,boolean acknowledged){
         return new HouseholdRequestView(r.id,r.kind,r.title,r.body,r.authorMemberId,targets(r),r.assigneeMemberId,
-            r.stateAt(now),r.dueAt,r.completedByMemberId,r.completedAt,r.version,r.createdAt,r.updatedAt,acknowledged,r.sourceType);
+            r.stateAt(now),r.dueAt,r.completedByMemberId,r.completedAt,r.version,r.createdAt,r.updatedAt,acknowledged,r.sourceType,r.careScheduledAt);
     }
     private void record(HouseholdRequest r,Member actor,RequestState before,String reason,Instant now){
         var row=new RequestTransition();

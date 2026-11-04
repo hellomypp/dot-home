@@ -165,6 +165,13 @@ Google 인증한 방문자:
 - `PATCH /api/households/{id}/dependents/{profileId}`는 `{name,guardianMemberId?,version}`, `DELETE /api/households/{id}/dependents/{profileId}?version=…`는 보관이다. 보호자·대표만 실행하고, 보관된 아기는 새 일정에서 선택할 수 없다. 기존 일정과 대상 ID는 보존한다.
 - 가구가 다르거나 집들이 방문자인 경우 접근을 거절한다. 변경 시 `DEPENDENTS_CHANGED`로 가족 화면을 갱신한다.
 
+## 반복 돌봄
+
+- `GET /api/households/{id}/care-rules`는 활성 예약과 `nextAt`, `version`, `canEdit`를 반환한다. 활성 가족이 읽고 집 대표·대상 보호자가 설정한다.
+- `POST`에 `{profileType:"PET"|"BABY",profileId,title,weekdays,localTime,timeZone}`을 보낸다. 요일은 영문 ISO 이름 목록이고 매일은 7개를 모두 선택한다. 시각은 HH:mm, 시간대는 IANA 이름이다. `PATCH /{ruleId}`는 같은 설정과 버전을 받으며 대상은 바꿀 수 없다.
+- 예정 시각마다 생활 요청 한 건을 만든다. 시간대의 누락 시각은 다음 유효 시각, 중복 시각은 첫 시각을 사용한다. 재시작 후에는 24시간 이내의 가장 최근 발생 건만 복구한다. 요청의 `careScheduledAt`으로 자동 발생 건을 구분한다.
+- `DELETE /{ruleId}?version=…` 또는 대상 보관은 반복을 종료하고 진행 중인 요청만 취소한다. 완료·만료 기록은 유지한다.
+
 ## v0.7 공유 집 디자인 (v6.2 자산)
 
 `POST /api/households`는 기존 name/memberName/appearance 외에 선택적 presetId를 받는다. 생략 시 garden_home. 허용 프리셋은 garden_home, sunny_apartment, brick_loft이며 classic_home은 기존 집 호환 별칭이다. 신규 appearance는 v2:adult_female, v2:adult_male, v2:child; 기존 v1:HTBA와 옛 값의 저장을 변경하지 않는다.

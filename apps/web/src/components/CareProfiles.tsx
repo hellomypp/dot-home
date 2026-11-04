@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { api, type Dependent, type Snapshot } from "../lib/api";
 import { PetManager } from "./PetManager";
 import { Portrait } from "./Portrait";
+import { RepeatCarePanel } from "./RepeatCarePanel";
 
 type Props = {
   snapshot: Snapshot;
@@ -89,7 +90,7 @@ function BabyForm({ snapshot, profile, onSave, onCancel }: {
 }
 
 export function CareProfiles({ snapshot, onPetSaved, refresh }: Props) {
-  const [section, setSection] = useState<"pets" | "babies">("pets");
+  const [section, setSection] = useState<"pets" | "babies" | "repeat">("pets");
   const [editing, setEditing] = useState<string | null>(null);
   const babies = snapshot.dependents ?? [];
   const owner = snapshot.members.some((member) => member.id === snapshot.meMemberId && member.role === "OWNER");
@@ -103,8 +104,9 @@ export function CareProfiles({ snapshot, onPetSaved, refresh }: Props) {
       <div className="care-profile-switch" role="group" aria-label="돌봄 프로필 종류">
         <button type="button" className="button secondary" aria-pressed={section === "pets"} onClick={() => setSection("pets")}>반려동물</button>
         <button type="button" className="button secondary" aria-pressed={section === "babies"} onClick={() => setSection("babies")}>아기 프로필</button>
+        <button type="button" className="button secondary" aria-pressed={section === "repeat"} onClick={() => setSection("repeat")}>반복 돌봄</button>
       </div>
-      {section === "pets" ? <PetManager snapshot={snapshot} onSaved={onPetSaved} /> : (
+      {section === "repeat" ? <RepeatCarePanel snapshot={snapshot} /> : section === "pets" ? <PetManager snapshot={snapshot} onSaved={onPetSaved} /> : (
         <section className="pet-manager" aria-label="아기 돌봄">
           <p>보호자가 관리하는 돌봄 프로필이에요. 가족 달력에서 아기를 돌봄 일정의 대상으로 선택할 수 있어요.</p>
           {!babies.length && <p className="empty-text">등록한 아기 프로필이 없어요.</p>}

@@ -25,6 +25,7 @@ interface HouseholdRequest {
   version: number;
   acknowledgedByMe?: boolean;
   sourceType?: PromiseDraft["sourceType"] | null;
+  careScheduledAt?: string | null;
 }
 interface RequestPage { items: HouseholdRequest[]; nextCursor: string | null }
 const kinds: Record<Kind, string> = { NOTICE: "공지", TASK: "부탁", PROMISE: "내 약속" };
@@ -315,7 +316,7 @@ function RequestCard({ row, root, snapshot, owner, onChanged }: {
       {row.body && <p>{row.body}</p>}
       {row.sourceType && <PromiseSource householdId={snapshot.household.id} root={root} requestId={row.id} />}
       <dl>
-        <div><dt>작성자</dt><dd>{name(row.authorMemberId)}</dd></div>
+        <div><dt>{row.careScheduledAt ? "반복 돌봄" : "작성자"}</dt><dd>{row.careScheduledAt ? "일정에 따라 자동 등록" : name(row.authorMemberId)}</dd></div>
         <div><dt>기한</dt><dd>{dateTime.format(new Date(row.dueAt))}</dd></div>
         {row.targetMemberIds.length > 0 && <div><dt>대상</dt><dd>{row.targetMemberIds.map(name).join(", ")}</dd></div>}
         {row.assigneeMemberId && <div><dt>담당</dt><dd>{name(row.assigneeMemberId)}</dd></div>}

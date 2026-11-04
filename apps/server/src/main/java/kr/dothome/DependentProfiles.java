@@ -81,8 +81,10 @@ class DependentService {
 
     void archive(String house,String user,String id,long version){
         var household=homes.lock(house,user);
-        var profile=editable(household,homes.requireMember(house,user),id,version);
+        var actor=homes.requireMember(house,user);
+        var profile=editable(household,actor,id,version);
         profile.archivedAt=Instant.now();
+        homes.profileArchived(household,actor,CareProfileType.BABY,id);
         homes.emit(household,"DEPENDENTS_CHANGED",Map.of("dependentId",profile.id));
     }
 
