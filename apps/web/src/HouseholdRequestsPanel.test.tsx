@@ -57,3 +57,27 @@ it("preserves a failed create draft and reuses the request ID on retry", async (
   const writes = mocked.mock.calls.filter((call) => call[1] === "POST");
   expect(writes[0]).toEqual(writes[1]);
 });
+
+it("lets an author edit only the changed field with the original version", async () => {
+  mocked.mockResolvedValue({ items: [{ ...task, version: 2 }], nextCursor: null } as never);
+  show({ ...world, meMemberId: "a" });
+  fireEvent.click(await screen.findByRole("button", { name: "수정" }));
+  fireEvent.change(screen.getByLabelText("제목"), { target: { value: "배 씻기" } });
+  fireEvent.click(screen.getByRole("button", { name: "수정 저장" }));
+  await waitFor(() => expect(mocked).toHaveBeenCalledWith(root + "/request", "PATCH", {
+    version: 2, title: "배 씻기",
+  }));
+});
+
+it("shows private notice confirmation and never sends an actor identifier", async () => {
+  mocked.mockResolvedValue({
+    items: [{ ...task, kind: "NOTICE", state: "ACTIVE", acknowledgedByMe: false }],
+    nextCursor: null,
+  } as never);
+  show();
+  expect(screen.queryByRole("button", { name: "수정" })).toBeNull();
+  fireEvent.click(await screen.findByRole("button", { name: "공지 확인" }));
+  expect(await screen.findByText("내가 확인한 공지")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "공지 확인" })).toBeNull();
+  expect(mocked).toHaveBeenCalledWith(root + "/request/ack", "POST");
+});

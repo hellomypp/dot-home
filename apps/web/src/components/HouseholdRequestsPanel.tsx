@@ -17,6 +17,7 @@ interface HouseholdRequest {
   dueAt: string;
   completedByMemberId: string | null;
   version: number;
+  acknowledgedByMe?: boolean;
 }
 interface RequestPage { items: HouseholdRequest[]; nextCursor: string | null }
 const kinds: Record<Kind, string> = { NOTICE: "공지", TASK: "부탁", PROMISE: "내 약속" };
@@ -99,22 +100,26 @@ export function HouseholdRequestsPanel({ snapshot }: { snapshot: Snapshot }) {
   );
 }
 
-function CreateForm({ root, snapshot, onSaved }: {
+function CreateForm({ root, snapshot, onSaved, existing, onCancel }: {
   root: string; snapshot: Snapshot; onSaved: () => void;
+  existing?: HouseholdRequest;
+  onCancel?: () => void;
 }) {
-  const [kind, setKind] = useState<Kind>("TASK");
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [due, setDue] = useState("");
-  const [targets, setTargets] = useState<string[]>([]);
+  const [base, setBase] = useState(existing);
+  const [kind, setKind] = useState<Kind>(existing?.kind ?? "TASK");
+  const [title, setTitle] = useState(existing?.title ?? "");
+  const [body, setBody] = useState(existing?.body ?? "");
+  const [due, setDue] = useState(existing ? seoulInput(existing.dueAt) : "");
+  const [targets, setTargets] = useState<string[]>(existing?.targetMemberIds ?? []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [latest, setLatest] = useState<HouseholdRequest>();
   const pending = useRef(false);
   const receipt = useRef<{ fingerprint: string; id: string } | null>(null);
   const valid = title.trim().length > 0 && [...title.trim()].length <= 80 && [...body.trim()].length <= 300;
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!valid || pending.current) return;
+    if (!valid || pending.current || latest) return;
     pending.current = true;
     setBusy(true);
     setError("");
@@ -124,12 +129,29 @@ function CreateForm({ root, snapshot, onSaved }: {
         targetMemberIds: kind === "TASK" ? targets : [],
         ...(due ? { dueAt: new Date(due + ":00+09:00").toISOString() } : {}),
       };
-      const fingerprint = JSON.stringify(payload);
-      if (receipt.current?.fingerprint !== fingerprint) receipt.current = { fingerprint, id: crypto.randomUUID() };
-      await api(root, "POST", { ...payload, requestId: receipt.current.id });
+      if (base) {
+        const updates = {
+          version: base.version,
+          ...(payload.title !== base.title ? { title: payload.title } : {}),
+          ...(payload.body !== base.body ? { body: payload.body } : {}),
+          ...(kind === "TASK" && !sameTargets(targets, base.targetMemberIds) ? { targetMemberIds: targets } : {}),
+          ...(due !== seoulInput(base.dueAt) ? { dueAt: payload.dueAt ?? null } : {}),
+        };
+        await api(root + "/" + base.id, "PATCH", updates);
+      } else {
+        const fingerprint = JSON.stringify(payload);
+        if (receipt.current?.fingerprint !== fingerprint) receipt.current = { fingerprint, id: crypto.randomUUID() };
+        await api(root, "POST", { ...payload, requestId: receipt.current.id });
+      }
       onSaved();
     } catch (e) {
       setError((e as Error).message);
+      if (base && e instanceof ApiError && e.status === 409) {
+        try {
+          const current = await api<HouseholdRequest>(root + "/" + base.id);
+          if (current.version !== base.version) setLatest(current);
+        } catch {}
+      }
     } finally {
       pending.current = false;
       setBusy(false);
@@ -137,11 +159,13 @@ function CreateForm({ root, snapshot, onSaved }: {
   }
   return (
     <form className="request-compose" onSubmit={submit}>
-      <label>종류
-        <select value={kind} disabled={busy} onChange={(e) => setKind(e.target.value as Kind)}>
-          {Object.entries(kinds).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-        </select>
-      </label>
+      {!base && (
+        <label>종류
+          <select value={kind} disabled={busy} onChange={(e) => setKind(e.target.value as Kind)}>
+            {Object.entries(kinds).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+      )}
       <label>제목<input required value={title} disabled={busy} onChange={(e) => setTitle(e.target.value)} /></label>
       <label>내용<textarea value={body} disabled={busy} onChange={(e) => setBody(e.target.value)} /></label>
       <p className="muted">제목 {[...title.trim()].length}/80자 · 내용 {[...body.trim()].length}/300자</p>
@@ -165,11 +189,37 @@ function CreateForm({ root, snapshot, onSaved }: {
       </label>
       {!due && <p className="muted">{kind === "NOTICE" ? "기본 기한은 다음 자정이에요. 밤 11시 이후에는 12시간 뒤로 설정돼요." : "기한을 정하지 않으면 7일 뒤 만료돼요."}</p>}
       {error && <p role="alert" className="error-message">{error}</p>}
-      <button type="submit" className="button primary" disabled={busy || !valid}>
-        {busy ? "저장 중…" : "가족에게 공유"}
-      </button>
+      {latest && base && (
+        <div className="expression-conflict">
+          <p>최신 요청을 확인했어요. 입력한 수정만 다시 적용할 수 있어요.</p>
+          <p className="muted">최신 제목 · {latest.title}</p>
+          <button type="button" className="button secondary" onClick={() => {
+            if (title.trim() === base.title) setTitle(latest.title);
+            if (body.trim() === base.body) setBody(latest.body);
+            if (due === seoulInput(base.dueAt)) setDue(seoulInput(latest.dueAt));
+            if (sameTargets(targets, base.targetMemberIds)) setTargets(latest.targetMemberIds);
+            setBase(latest);
+            setLatest(undefined);
+            setError("");
+          }}>최신값 확인 · 내 입력 유지</button>
+        </div>
+      )}
+      <div className="request-actions">
+        {onCancel && <button type="button" className="button secondary" disabled={busy} onClick={onCancel}>수정 닫기</button>}
+        <button type="submit" className="button primary" disabled={busy || !valid || Boolean(latest)}>
+          {busy ? "저장 중…" : base ? "수정 저장" : "가족에게 공유"}
+        </button>
+      </div>
     </form>
   );
+}
+
+function seoulInput(instant: string) {
+  return new Date(Date.parse(instant) + 9 * 60 * 60 * 1000).toISOString().slice(0, 16);
+}
+
+function sameTargets(a: string[], b: string[]) {
+  return a.length === b.length && a.every((id) => b.includes(id));
 }
 
 function availableActions(row: HouseholdRequest, member: string, owner: boolean): Action[] {
@@ -190,6 +240,8 @@ function RequestCard({ row, root, snapshot, owner, onChanged }: {
   onChanged: () => Promise<void>;
 }) {
   const [confirm, setConfirm] = useState<Action>();
+  const [editing, setEditing] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false);
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -197,6 +249,26 @@ function RequestCard({ row, root, snapshot, owner, onChanged }: {
   const receipt = useRef<{ fingerprint: string; id: string } | null>(null);
   const name = (id: string) => snapshot.members.find((m) => m.id === id)?.name ?? "퇴실한 구성원";
   const actions = availableActions(row, snapshot.meMemberId, owner);
+  const canEdit = (owner || row.authorMemberId === snapshot.meMemberId) &&
+    ["ACTIVE", "OPEN", "CLAIMED"].includes(row.state);
+  const canAcknowledge = row.kind === "NOTICE" && row.state === "ACTIVE" && !row.acknowledgedByMe && !acknowledged;
+  async function acknowledge() {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await api(root + "/" + row.id + "/ack", "POST");
+      setAcknowledged(true);
+      await onChanged();
+    } catch (e) {
+      setError((e as Error).message);
+      if (e instanceof ApiError && e.status === 410) void onChanged();
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
+  }
   async function run(action: Action, note?: string) {
     if (pending.current) return;
     pending.current = true;
@@ -229,8 +301,14 @@ function RequestCard({ row, root, snapshot, owner, onChanged }: {
         {row.targetMemberIds.length > 0 && <div><dt>대상</dt><dd>{row.targetMemberIds.map(name).join(", ")}</dd></div>}
         {row.assigneeMemberId && <div><dt>담당</dt><dd>{name(row.assigneeMemberId)}</dd></div>}
       </dl>
-      {actions.length > 0 && (
+      {(row.acknowledgedByMe || acknowledged) && <p className="muted">내가 확인한 공지</p>}
+      {!editing && (actions.length > 0 || canEdit || canAcknowledge) && (
         <div className="request-actions">
+          {canAcknowledge && <button type="button" className="button primary" disabled={busy} onClick={() => void acknowledge()}>공지 확인</button>}
+          {canEdit && <button type="button" className="button secondary" disabled={busy} onClick={() => {
+            setConfirm(undefined);
+            setEditing(true);
+          }}>수정</button>}
           {actions.map((action) => (
             <button type="button" key={action} className="button secondary" disabled={busy} onClick={() => {
               if (action === "cancel" || action === "reopen") {
@@ -240,6 +318,12 @@ function RequestCard({ row, root, snapshot, owner, onChanged }: {
             }}>{actionNames[action]}</button>
           ))}
         </div>
+      )}
+      {editing && (
+        <CreateForm root={root} snapshot={snapshot} existing={row} onCancel={() => setEditing(false)} onSaved={() => {
+          setEditing(false);
+          void onChanged();
+        }} />
       )}
       {confirm && actions.includes(confirm) && (
         <form onSubmit={(e) => { e.preventDefault(); void run(confirm, reason.trim()); }}>

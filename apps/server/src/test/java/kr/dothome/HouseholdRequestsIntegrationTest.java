@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import tools.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -15,6 +16,7 @@ class HouseholdRequestsIntegrationTest {
     @Autowired HouseholdRequests rows;
     @Autowired HomeService homes;
     @Autowired IdentityService identity;
+    @Autowired ObjectMapper json;
 
     String user(){return identity.resolve("test",UUID.randomUUID().toString(),"검증 가족").id;}
     String house(String owner){return homes.create(owner,new Api.CreateHouse("검증 집","대표","sage")).household().id();}
@@ -80,6 +82,37 @@ class HouseholdRequestsIntegrationTest {
             service.history(h,a,row.id).stream().map(RequestHistoryItem::nextState).toList());
         var page=service.list(h,a,List.of(RequestState.EXPIRED),null,20);
         assertEquals(List.of(row.id),page.items().stream().map(HouseholdRequestView::id).toList());
+    }
+    @Test void requestEditPreservesOtherFieldsAndProtectsAssignee(){
+        String owner=user(),h=house(owner),author=join(h,owner),assignee=join(h,owner);
+        String target=homes.requireMember(h,assignee).id;
+        var task=service.create(h,author,task("create",List.of(target)));
+        assertEquals(403,assertThrows(ApiException.class,()->service.edit(h,assignee,task.id(),json.readTree("""
+            {"version":0,"title":"변경"}
+            """))).status.value());
+        var claimed=service.act(h,assignee,task.id(),"claim",new RequestAction("claim",task.version(),null));
+        var edited=service.edit(h,owner,task.id(),json.createObjectNode().put("version",claimed.version()).put("title","제목만 바꾸기"));
+        assertEquals(task.body(),edited.body());
+        assertEquals(task.dueAt(),edited.dueAt());
+        assertEquals(List.of(target),edited.targetMemberIds());
+        assertEquals(target,edited.assigneeMemberId());
+        var replace=json.createObjectNode().put("version",edited.version());
+        replace.putArray("targetMemberIds").add(homes.requireMember(h,owner).id);
+        assertEquals(409,assertThrows(ApiException.class,()->service.edit(h,author,task.id(),replace)).status.value());
+        assertEquals(409,assertThrows(ApiException.class,()->service.edit(h,author,task.id(),json.createObjectNode().put("version",0).put("title","오래된 수정"))).status.value());
+    }
+    @Test void noticeAcknowledgementIsPrivateAndIdempotent(){
+        String owner=user(),h=house(owner),a=join(h,owner),b=join(h,owner);
+        var notice=service.create(h,owner,new CreateRequest("notice",RequestKind.NOTICE,"확인해 주세요",null,null,null));
+        assertFalse(service.read(h,a,notice.id()).acknowledgedByMe());
+        var acknowledged=service.acknowledge(h,a,notice.id());
+        assertEquals(acknowledged,service.acknowledge(h,a,notice.id()));
+        assertTrue(service.read(h,a,notice.id()).acknowledgedByMe());
+        assertTrue(service.list(h,a,null,null,20).items().getFirst().acknowledgedByMe());
+        assertFalse(service.read(h,b,notice.id()).acknowledgedByMe());
+        assertFalse(service.read(h,owner,notice.id()).acknowledgedByMe());
+        assertEquals(403,assertThrows(ApiException.class,()->service.acknowledge(h,user(),notice.id())).status.value());
+        assertEquals(notice.version(),service.read(h,owner,notice.id()).version());
     }
     @Test void expiryFilteringAndNoticeAndPromiseStatesAreDistinct(){
         String a=user(),h=house(a);

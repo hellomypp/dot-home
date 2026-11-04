@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
@@ -75,6 +76,18 @@ class RequestCommand extends Row {
     @Column(nullable=false) Instant expiresAt;
 }
 
+@Entity @Table(name="notice_acknowledgement")
+class NoticeAcknowledgement extends Row {
+    @Column(nullable=false,length=36) String requestId;
+    @Column(nullable=false,length=36) String memberId;
+    @Column(nullable=false) Instant acknowledgedAt;
+}
+
+interface NoticeAcknowledgements extends JpaRepository<NoticeAcknowledgement,String> {
+    Optional<NoticeAcknowledgement> findByMemberIdAndRequestId(String memberId,String requestId);
+    List<NoticeAcknowledgement> findByMemberIdAndRequestIdIn(String memberId,Collection<String> requestIds);
+}
+
 interface HouseholdRequests extends JpaRepository<HouseholdRequest,String> {
     Optional<HouseholdRequest> findByIdAndHouseholdId(String id,String householdId);
     @Query("""
@@ -102,8 +115,9 @@ record CreateRequest(@NotBlank @Size(max=80) String requestId,@NotNull RequestKi
 record RequestAction(@NotBlank @Size(max=80) String requestId,@NotNull @PositiveOrZero Long version,String reason) {}
 record HouseholdRequestView(String id,RequestKind kind,String title,String body,String authorMemberId,
     List<String> targetMemberIds,String assigneeMemberId,RequestState state,Instant dueAt,String completedByMemberId,
-    Instant completedAt,long version,Instant createdAt,Instant updatedAt) {}
+    Instant completedAt,long version,Instant createdAt,Instant updatedAt,boolean acknowledgedByMe) {}
 record HouseholdRequestPage(List<HouseholdRequestView> items,String nextCursor) {}
+record NoticeAcknowledgementView(Instant acknowledgedAt) {}
 record RequestHistoryItem(String actorMemberId,RequestState previousState,RequestState nextState,String reason,Instant occurredAt) {}
 
 @Service @Transactional(isolation=Isolation.READ_COMMITTED)
@@ -115,12 +129,13 @@ class HouseholdRequestService {
     final HouseholdRequests requests;
     final RequestTransitions history;
     final RequestCommands commands;
+    final NoticeAcknowledgements acknowledgements;
     final ObjectMapper json;
-    HouseholdRequestService(HomeService homes,Members members,HouseholdRequests requests,RequestTransitions history,RequestCommands commands,ObjectMapper json){
-        this.homes=homes;this.members=members;this.requests=requests;this.history=history;this.commands=commands;this.json=json;
+    HouseholdRequestService(HomeService homes,Members members,HouseholdRequests requests,RequestTransitions history,RequestCommands commands,NoticeAcknowledgements acknowledgements,ObjectMapper json){
+        this.homes=homes;this.members=members;this.requests=requests;this.history=history;this.commands=commands;this.acknowledgements=acknowledgements;this.json=json;
     }
     HouseholdRequestPage list(String house,String user,List<RequestState> filter,String cursor,int limit){
-        homes.requireMember(house,user);
+        Member member=homes.requireMember(house,user);
         if(limit<1||limit>100)throw ApiException.invalid("한 번에 1~100개의 요청을 불러올 수 있어요.");
         Instant now=now();
         var states=filter==null||filter.isEmpty()?ALL:EnumSet.copyOf(filter);
@@ -128,11 +143,14 @@ class HouseholdRequestService {
         var rows=requests.page(house,states,states.contains(RequestState.EXPIRED),now,cursor==null,
             before.time(),before.id(),Pageable.ofSize(limit+1));
         String next=rows.size()>limit?Cursor.encode(rows.get(limit-1)):null;
-        return new HouseholdRequestPage(rows.stream().limit(limit).map(row->view(row,now)).toList(),next);
+        var ids=rows.stream().limit(limit).filter(row->row.kind==RequestKind.NOTICE).map(row->row.id).toList();
+        var acknowledged=new HashSet<String>();
+        if(!ids.isEmpty())for(var row:acknowledgements.findByMemberIdAndRequestIdIn(member.id,ids))acknowledged.add(row.requestId);
+        return new HouseholdRequestPage(rows.stream().limit(limit).map(row->view(row,now,acknowledged.contains(row.id))).toList(),next);
     }
     HouseholdRequestView read(String house,String user,String id){
-        homes.requireMember(house,user);
-        return view(scoped(house,id),now());
+        Member member=homes.requireMember(house,user);
+        return viewFor(scoped(house,id),now(),member);
     }
     List<RequestHistoryItem> history(String house,String user,String id){
         homes.requireMember(house,user);
@@ -168,7 +186,7 @@ class HouseholdRequestService {
             requests.saveAndFlush(request);
             record(request,member,null,null,now);
             homes.emit(house,"HOUSEHOLD_REQUEST_CHANGED",request.id);
-            return view(request,now);
+            return viewFor(request,now,member);
         });
     }
     HouseholdRequestView act(String h,String user,String id,String action,RequestAction input){
@@ -193,8 +211,80 @@ class HouseholdRequestService {
             requests.flush();
             record(request,actor,before,reason,now);
             homes.emit(house,"HOUSEHOLD_REQUEST_CHANGED",request.id);
-            return view(request,now);
+            return viewFor(request,now,actor);
         });
+    }
+    HouseholdRequestView edit(String h,String user,String id,JsonNode input){
+        Household house=homes.lock(h,user);
+        Member actor=homes.requireMember(h,user);
+        HouseholdRequest request=scoped(h,id);
+        if(!house.ownerId.equals(user)&&!actor.id.equals(request.authorMemberId))throw ApiException.forbidden();
+        Instant now=now();
+        if(request.stateAt(now)==RequestState.EXPIRED)
+            throw new ApiException(HttpStatus.GONE,"EXPIRED","기한이 지난 요청이에요.");
+        requireState(request.state,RequestState.ACTIVE,RequestState.OPEN,RequestState.CLAIMED);
+        if(!input.isObject()||!input.has("version")||input.properties().stream().anyMatch(
+                entry->!Set.of("version","title","body","targetMemberIds","dueAt").contains(entry.getKey())))
+            throw ApiException.invalid("수정할 요청 항목을 확인해 주세요.");
+        var version=input.get("version");
+        if(!version.isIntegralNumber()||!version.canConvertToLong()||version.asLong()<0)
+            throw ApiException.invalid("요청 버전을 확인해 주세요.");
+        if(version.asLong()!=request.version)throw ApiException.conflict("요청이 변경됐어요. 최신 내용을 확인해 주세요.");
+
+        String title=input.has("title")?text(inputText(input.get("title")),1,80,"제목"):request.title;
+        String body=input.has("body")?text(inputText(input.get("body")),0,300,"내용"):request.body;
+        var oldTargets=targets(request);
+        var targets=input.has("targetMemberIds")?readTargets(input.get("targetMemberIds")):oldTargets;
+        if(input.has("targetMemberIds")){
+            validateTargets(h,targets);
+            if(request.assigneeMemberId!=null&&!targets.isEmpty()&&!targets.contains(request.assigneeMemberId))
+                throw ApiException.conflict("현재 담당자가 대상에서 제외될 수 없어요.");
+        }
+        Instant deadline=request.dueAt;
+        if(input.has("dueAt")){
+            try{
+                String time=inputText(input.get("dueAt"));
+                deadline=time==null?due(request.kind,null,request.createdAt):due(request.kind,Instant.parse(time),now);
+            }catch(java.time.format.DateTimeParseException e){throw ApiException.invalid("요청 기한을 확인해 주세요.");}
+            if(!deadline.isAfter(now))throw ApiException.invalid("기한은 현재보다 뒤여야 해요.");
+        }
+        if(title.equals(request.title)&&body.equals(request.body)&&targets.equals(oldTargets)&&deadline.equals(request.dueAt))
+            return viewFor(request,now,actor);
+        request.title=title;request.body=body;request.targetsJson=json.writeValueAsString(targets);
+        request.dueAt=deadline;request.updatedAt=now;
+        requests.flush();
+        homes.emit(house,"HOUSEHOLD_REQUEST_CHANGED",request.id);
+        return viewFor(request,now,actor);
+    }
+    NoticeAcknowledgementView acknowledge(String h,String user,String id){
+        homes.lock(h,user);
+        Member member=homes.requireMember(h,user);
+        HouseholdRequest request=scoped(h,id);
+        if(request.kind!=RequestKind.NOTICE)throw ApiException.invalid("공지에만 확인을 남길 수 있어요.");
+        var existing=acknowledgements.findByMemberIdAndRequestId(member.id,id).orElse(null);
+        if(existing!=null)return new NoticeAcknowledgementView(existing.acknowledgedAt);
+        Instant now=now();
+        if(request.stateAt(now)!=RequestState.ACTIVE)
+            throw new ApiException(HttpStatus.GONE,"EXPIRED","확인할 수 있는 공지가 아니에요.");
+        var row=new NoticeAcknowledgement();
+        row.requestId=id;row.memberId=member.id;row.acknowledgedAt=now;
+        acknowledgements.save(row);
+        return new NoticeAcknowledgementView(now);
+    }
+    private static String inputText(JsonNode value){
+        if(value.isNull())return null;
+        if(!value.isTextual())throw ApiException.invalid("요청 입력 형식을 확인해 주세요.");
+        return value.asText();
+    }
+    private static List<String> readTargets(JsonNode values){
+        if(!values.isArray())throw ApiException.invalid("요청 대상은 가족 목록이어야 해요.");
+        var targets=new TreeSet<String>();
+        for(var value:values){
+            if(!value.isTextual()||value.asText().isBlank()||value.asText().length()>36)
+                throw ApiException.invalid("요청 대상을 확인해 주세요.");
+            targets.add(value.asText());
+        }
+        return List.copyOf(targets);
     }
     private void transition(HouseholdRequest request,Member actor,boolean owner,String action,RequestState before,Instant now){
         if(request.kind==RequestKind.NOTICE&&!action.equals("cancel"))
@@ -257,9 +347,12 @@ class HouseholdRequestService {
     private List<String> targets(HouseholdRequest request){
         return json.readValue(request.targetsJson,new TypeReference<List<String>>(){});
     }
-    private HouseholdRequestView view(HouseholdRequest r,Instant now){
+    private HouseholdRequestView viewFor(HouseholdRequest r,Instant now,Member member){
+        return view(r,now,r.kind==RequestKind.NOTICE&&acknowledgements.findByMemberIdAndRequestId(member.id,r.id).isPresent());
+    }
+    private HouseholdRequestView view(HouseholdRequest r,Instant now,boolean acknowledged){
         return new HouseholdRequestView(r.id,r.kind,r.title,r.body,r.authorMemberId,targets(r),r.assigneeMemberId,
-            r.stateAt(now),r.dueAt,r.completedByMemberId,r.completedAt,r.version,r.createdAt,r.updatedAt);
+            r.stateAt(now),r.dueAt,r.completedByMemberId,r.completedAt,r.version,r.createdAt,r.updatedAt,acknowledged);
     }
     private void record(HouseholdRequest r,Member actor,RequestState before,String reason,Instant now){
         var row=new RequestTransition();
@@ -335,6 +428,13 @@ class HouseholdRequestController {
     }
     @PostMapping HouseholdRequestView create(Principal p,@PathVariable String house,@Valid @RequestBody CreateRequest input){
         return service.create(house,p.getName(),input);
+    }
+    @PatchMapping("/{id}") HouseholdRequestView edit(Principal p,@PathVariable String house,@PathVariable String id,
+            @RequestBody JsonNode input){
+        return service.edit(house,p.getName(),id,input);
+    }
+    @PostMapping("/{id}/ack") NoticeAcknowledgementView acknowledge(Principal p,@PathVariable String house,@PathVariable String id){
+        return service.acknowledge(house,p.getName(),id);
     }
     @PostMapping("/{id}/{action:claim|release|complete|cancel|reopen}") HouseholdRequestView act(Principal p,
         @PathVariable String house,@PathVariable String id,@PathVariable String action,@Valid @RequestBody RequestAction input){
