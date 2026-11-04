@@ -73,7 +73,7 @@ class HouseholdExportService {
     }
 
     ExportView start(String house,String user,ExportInput input){
-        homes.lock(house,user);
+        homes.readLock(house,user);
         Member actor=homes.requireMember(house,user);
         Instant now=Instant.now();
         var previous=jobs.findByMemberIdAndRequestId(actor.id,input.requestId()).orElse(null);
@@ -104,7 +104,7 @@ class HouseholdExportService {
     }
 
     String download(String house,String user,String id,String token){
-        homes.lock(house,user);
+        homes.readLock(house,user);
         var actor=homes.requireMember(house,user);
         var job=owned(house,actor,id);
         var now=Instant.now();

@@ -39,6 +39,7 @@ class MembershipLifecycle {
         var house=households.locked(h).orElseThrow(ApiException::missing);
         if(members.existsByHouseholdIdAndUserIdAndExitRequestId(h,user,input.requestId()))return;
         var member=members.current(h,user).orElseThrow(ApiException::forbidden);
+        HomeService.writable(house);
         end(house,member,member,input.requestId());
     }
 

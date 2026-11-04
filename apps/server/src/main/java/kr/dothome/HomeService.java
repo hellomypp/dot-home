@@ -16,6 +16,7 @@ record CommittedSignal(String householdId,Api.Signal signal) {}
 @Transactional(isolation=Isolation.READ_COMMITTED)
 class HomeService {
     @jakarta.persistence.PersistenceContext jakarta.persistence.EntityManager entityManager;
+    @org.springframework.beans.factory.annotation.Value("${app.household-deletion-enabled:false}") boolean deletionAvailable;
     final Households households;
     final Members members;
     final Pets pets;
@@ -33,10 +34,19 @@ class HomeService {
         return members.findByHouseholdIdAndUserIdAndActiveTrue(householdId,userId).orElseThrow(ApiException::forbidden);
     }
     Household lock(String householdId,String userId) {
+        Household household=readLock(householdId,userId);
+        writable(household);
+        return household;
+    }
+    Household readLock(String householdId,String userId) {
         requireMember(householdId,userId);
         Household household=households.locked(householdId).orElseThrow(ApiException::missing);
         members.current(householdId,userId).orElseThrow(ApiException::forbidden);
         return household;
+    }
+    static void writable(Household household){
+        if(household.pendingDeleteUntil!=null)
+            throw new ApiException(HttpStatus.CONFLICT,"HOUSEHOLD_PENDING_DELETION","삭제 대기 중인 집은 열람과 내보내기만 가능해요.");
     }
     void owner(Household household,String userId) { if(!household.ownerId.equals(userId)) throw ApiException.forbidden(); }
     Api.World create(String userId,Api.CreateHouse input) {
@@ -54,8 +64,8 @@ class HomeService {
         var spawn=Spaces.spawn(preset,index);
         member.x=spawn[0];member.y=spawn[1];
     }
-    Api.World world(String householdId,String userId) { Household household=lock(householdId,userId); return snapshot(household,requireMember(householdId,userId).id); }
-    SpaceView design(String id,String user){return Spaces.view(lock(id,user));}
+    Api.World world(String householdId,String userId) { Household household=readLock(householdId,userId); return snapshot(household,requireMember(householdId,userId).id); }
+    SpaceView design(String id,String user){return Spaces.view(readLock(id,user));}
     Api.World design(String id,String user,SpaceInput input){
         Household h=lock(id,user);owner(h,user);Spaces.validate(input.presetId(),input.variants());
         if(h.designVersion!=input.version())throw ApiException.conflict("다른 기기에서 집 분위기를 바꿨어요. 최신 설정을 확인해 주세요.");
@@ -159,6 +169,7 @@ class HomeService {
     Api.InvitationPreview preview(String token) {
         Invitation invitation=invitation(token);available(invitation);
         Household household=households.findById(invitation.householdId).orElseThrow(ApiException::missing);
+        if(household.pendingDeleteUntil!=null)throw gone();
         return new Api.InvitationPreview(household.name,invitation.expiresAt,true);
     }
     // The household row lock serializes admission. READ_COMMITTED ensures queries after
@@ -169,6 +180,7 @@ class HomeService {
         Household household=households.locked(first.householdId).orElseThrow(ApiException::missing);
         Invitation invitation=invitations.locked(first.id).orElseThrow(ApiException::missing);
         entityManager.refresh(invitation,jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        if(household.pendingDeleteUntil!=null)throw gone();
         var previous=members.findFirstByHouseholdIdAndUserIdAndEndedAtIsNotNullOrderByEndedAtDesc(household.id,userId);
         if(previous.isPresent()&&(invitation.createdAt==null||!invitation.createdAt.isAfter(previous.get().endedAt)))
             throw new ApiException(org.springframework.http.HttpStatus.GONE,"INVITATION_BEFORE_EXIT","집을 나간 뒤에 발급된 새 초대가 필요해요.");
@@ -281,7 +293,7 @@ class HomeService {
         var saved=expressions.load(householdMembers);
         var memberViews=householdMembers.stream()
             .map(member->memberView(member,household.presetId,saved.getOrDefault(member.id,Map.of()),now,member.id.equals(meId))).toList();
-        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,now,memberViews,pets.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(HomeService::petView).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),householdEvents(household.id,householdMembers),Spaces.view(household),
+        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId,household.pendingDeleteUntil,household.deletionVersion,deletionAvailable),meId,household.revision,now,memberViews,pets.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(HomeService::petView).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),householdEvents(household.id,householdMembers),Spaces.view(household),
             dependents.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(DependentView::from).toList());
     }
     Api.MemberView memberView(Member m,String preset){

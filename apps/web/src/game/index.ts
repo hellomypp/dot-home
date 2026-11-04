@@ -29,7 +29,7 @@ class HomeScene extends Phaser.Scene {
     this.emit({type:'ready'});
   }
   solids(){return this.view.place==='home'?HOME_SOLIDS:OTHER_SOLIDS;}
-  canControl(){return (!this.view.observedMemberId||this.view.observedMemberId===this.view.ownMemberId)&&this.view.members.some(m=>m.id===this.view.ownMemberId&&m.place===this.view.place);}
+  canControl(){return !this.view.readOnly&&(!this.view.observedMemberId||this.view.observedMemberId===this.view.ownMemberId)&&this.view.members.some(m=>m.id===this.view.ownMemberId&&m.place===this.view.place);}
   texture(key:string,canvas:HTMLCanvasElement){if(this.textures.exists(key))return key;this.textures.addCanvas(key,canvas);return key;}
   drawRoom(){
     this.children.removeAll(true);this.actors.clear();this.petActors=[];

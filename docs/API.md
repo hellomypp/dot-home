@@ -82,6 +82,12 @@
 - `POST /{exportId}/download`에 `{token}`을 보낸다. 다운로드는 현재 참여 중인 같은 Membership과 CSRF 검증을 요구한다. 토큰은 URL에 넣지 않는다. 파일은 한 시간 안에 받을 수 있고 탈퇴·퇴실 시 서버의 파일을 지운다.
 - JSON에는 공동 일정, 사물 쪽지, 부탁·공지, 생활 기록이 들어간다. 개인 공유 일정, 현재 상태, 인증·위치 원본, 계정 ID는 포함하지 않는다. 항목 종류별 1만 행 또는 전체 2MB를 초과하면 일부 기록을 조용히 누락하는 대신 작업이 제한 상태로 끝난다.
 
+### 집 삭제 유예
+
+- `POST /api/households/{id}/deletion`의 `{requestId,version}`은 대표의 7일 삭제 유예를 시작한다. `POST /deletion/cancel`의 `{version}`으로 기한 전 취소할 수 있다. world의 집 정보에 `pendingDeleteUntil`, `deletionVersion`, `deletionAvailable`이 추가된다.
+- 대기 동안 활성 가족은 읽기와 내보내기를 이용한다. 쓰기·초대·방문을 막고 기존 방문 링크는 취소 후에도 복원하지 않는다. 예정 시각이 지나면 작업자가 이 집의 행을 정리하고 집 ID와 삭제 시각을 로그로 남긴다.
+- 신규 삭제 요청과 예약 정리는 `HOUSEHOLD_DELETION_ENABLED`가 켜진 환경에서만 동작한다. 기본값은 false다.
+
 ## v0.9 달력 공유 범위
 
 - 월간 조회의 `timeZone`은 선택 사항이며 기본 `Asia/Seoul`이다. 종일 일정의 LocalDate는 변환하지 않는다. 종료를 생략한 시간 일정은 시작 시각과 같은 순간으로 저장한다.

@@ -16,6 +16,7 @@ export interface WorldMember {
 }
 export interface WorldPet { id: string; name: string; kind?: string; color?: string; habitat?: PetHabitat }
 export interface WorldView {
+  readOnly?: boolean;
   closeView?:boolean;
   windowSky?: WindowSky;
   design?:SpaceDesign;

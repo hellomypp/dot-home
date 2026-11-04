@@ -28,7 +28,7 @@ public final class Api {
     public record UserView(String id,String name) {}
     public record MembershipView(String householdId,String householdName,String memberId,String role) {}
     public record Me(UserView user,List<MembershipView> memberships) {}
-    public record HouseView(String id,String name,String ownerId) {}
+    public record HouseView(String id,String name,String ownerId,Instant pendingDeleteUntil,long deletionVersion,boolean deletionAvailable) {}
     public record MemberView(String id,String userId,String name,String appearance,String role,String place,String mood,String food,String thought,Instant statusExpiresAt,Instant statusUpdatedAt,double x,double y,String action,java.util.Map<String,ExpressionValue> currentState,SharedPlace sharedPlace,long membershipVersion) {}
     public record PetView(String id,String name,String kind,String appearance,PetSpecies speciesGroup,String speciesName,
         String habitat,String guardianMemberId,String appearanceId,long version) {}

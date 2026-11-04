@@ -33,3 +33,4 @@ server:
         same-site: lax
 app:
   origin: ${APP_ORIGIN:https://localhost}
+  household-deletion-enabled: ${HOUSEHOLD_DELETION_ENABLED:false}

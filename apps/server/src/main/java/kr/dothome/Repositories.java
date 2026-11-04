@@ -7,6 +7,8 @@ import java.util.*;
 
 interface Accounts extends JpaRepository<Account,String> { Optional<Account> findByProviderAndSubject(String provider,String subject); }
 interface Households extends JpaRepository<Household,String> {
+    @Query("select h.id from Household h where h.pendingDeleteUntil<=:now order by h.pendingDeleteUntil,h.id")
+    List<String> dueForDeletion(java.time.Instant now,org.springframework.data.domain.Pageable page);
     @Lock(LockModeType.PESSIMISTIC_WRITE) @Query("select h from Household h where h.id=:id")
     Optional<Household> locked(@Param("id") String id);
 }

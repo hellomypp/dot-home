@@ -18,11 +18,13 @@ export function ObjectNotes({
   memberId,
   isOwner,
   members = [],
+  readOnly = false,
 }: {
   householdId: string;
   memberId: string;
   isOwner: boolean;
   members?: { id: string; name: string }[];
+  readOnly?: boolean;
 }) {
   const [archive, setArchive] = useState(false),
     [body, setBody] = useState(""),
@@ -117,7 +119,7 @@ export function ObjectNotes({
                 : ""}
             </small>
             <div>
-              {!archive && (
+              {!archive && !readOnly && (
                 <button
                   className="button primary"
                   disabled={busy}
@@ -130,7 +132,7 @@ export function ObjectNotes({
                   떼어 읽기
                 </button>
               )}
-              {(isOwner || n.authorMemberId === memberId) && (
+              {!readOnly && (isOwner || n.authorMemberId === memberId) && (
                 <button
                   className="button secondary"
                   disabled={busy}
@@ -146,14 +148,14 @@ export function ObjectNotes({
                 </button>
               )}
             </div>
-            <CareReactions householdId={householdId} sourceType="NOTE" sourceId={n.id} />
+            {!readOnly && <CareReactions householdId={householdId} sourceType="NOTE" sourceId={n.id} />}
           </article>
         ))
       ) : (
         <p className="empty-text">
           {archive
             ? "아직 보관한 쪽지가 없어요."
-            : "냉장고에 첫 쪽지를 붙여보세요."}
+            : readOnly ? "냉장고에 붙은 쪽지가 없어요." : "냉장고에 첫 쪽지를 붙여보세요."}
         </p>
       )}
       {archive && (archivedNotes.hasNextPage || archivedNotes.isFetchNextPageError) && (
@@ -166,7 +168,7 @@ export function ObjectNotes({
           {archivedNotes.isFetchingNextPage ? "불러오는 중…" : archivedNotes.isFetchNextPageError ? "다음 쪽지 다시 불러오기" : "보관한 쪽지 더 보기"}
         </button>
       )}
-      {!archive && (
+      {!archive && !readOnly && (
         <form onSubmit={create}>
           <label>
             가족에게 남길 쪽지

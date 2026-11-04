@@ -161,6 +161,7 @@ class NativeHome extends Phaser.Scene {
   }
   canControl() {
     return (
+      !this.view.readOnly &&
       (!this.view.observedMemberId ||
         this.view.observedMemberId === this.view.ownMemberId) &&
       this.actors.has(this.view.ownMemberId)

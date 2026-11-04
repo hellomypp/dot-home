@@ -5,6 +5,7 @@ import {
   Paintbrush,
   DoorOpen,
   Download,
+  Trash2,
   ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -32,7 +33,7 @@ export function AccountSettings({
   reduced: boolean;
   onPalette: (p: "warm" | "dusk") => void;
   onReduced: (v: boolean) => void;
-  onOpen: (p: "design" | "housewarming" | "invite" | "membership" | "exports") => void;
+  onOpen: (p: "design" | "housewarming" | "invite" | "membership" | "exports" | "deletion") => void;
   onSaved: (s: Snapshot) => void;
   onLogout: () => void;
 }) {
@@ -106,6 +107,15 @@ export function AccountSettings({
             </button>
           )}
         </div>
+        {!studio && own.role === "OWNER" && (snapshot.household.deletionAvailable || snapshot.household.pendingDeleteUntil) && (
+          <div className="settings-links">
+            <button onClick={() => onOpen("deletion")}>
+              <Trash2 size={20} />
+              <span>{snapshot.household.pendingDeleteUntil ? "집 삭제 대기 관리" : "집 삭제"}</span>
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
       </section>
       <section className="settings-section">
         <h3>화면과 움직임</h3>

@@ -40,7 +40,11 @@ class RepeatCareRule extends Row {
 interface RepeatCareRules extends JpaRepository<RepeatCareRule,String> {
     List<RepeatCareRule> findByHouseholdIdAndEndedAtIsNullOrderByNextAtAscIdAsc(String house);
     List<RepeatCareRule> findByHouseholdIdAndProfileTypeAndProfileIdAndEndedAtIsNull(String house,CareProfileType type,String id);
-    @Query("select r.id from RepeatCareRule r where r.endedAt is null and r.nextAt<=:now order by r.nextAt,r.id")
+    @Query("""
+        select r.id from RepeatCareRule r where r.endedAt is null and r.nextAt<=:now
+        and exists (select h.id from Household h where h.id=r.householdId and h.pendingDeleteUntil is null)
+        order by r.nextAt,r.id
+        """)
     List<String> due(Instant now,Pageable page);
 }
 
@@ -104,7 +108,7 @@ class RepeatCareService {
     }
 
     List<RepeatCareView> list(String house,String user){
-        var household=homes.lock(house,user);
+        var household=homes.readLock(house,user);
         var actor=homes.requireMember(house,user);
         return rules.findByHouseholdIdAndEndedAtIsNullOrderByNextAtAscIdAsc(house).stream()
             .map(rule->view(rule,canEdit(household,actor,target(house,rule.profileType,rule.profileId).guardian()))).toList();
@@ -153,7 +157,7 @@ class RepeatCareService {
         var candidate=rules.findById(id).orElse(null);
         if(candidate==null)return;
         var house=households.locked(candidate.householdId).orElse(null);
-        if(house==null)return;
+        if(house==null||house.pendingDeleteUntil!=null)return;
         // The initial ID lookup may precede another scheduler transaction.
         entities.refresh(candidate);
         if(candidate.endedAt!=null||candidate.nextAt.isAfter(now))return;

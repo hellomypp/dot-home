@@ -2,6 +2,7 @@ import { petGroup, petSpecies } from "./lib/pets";
 import { AccountSettings } from "./components/AccountSettings";
 import { MembershipPanel } from "./components/MembershipPanel";
 import { HouseholdExportPanel } from "./components/HouseholdExportPanel";
+import { HouseholdDeletionPanel } from "./components/HouseholdDeletionPanel";
 import { ShareLink } from "./components/ShareLink";
 import { SpaceSettings } from "./components/SpaceSettings";
 import { CharacterChoices } from "./components/CharacterStyleForm";
@@ -551,6 +552,7 @@ type Panel =
   | "pets"
   | "membership"
   | "exports"
+  | "deletion"
   | "design"
   | null;
 function HouseholdRoute() {
@@ -691,7 +693,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
         );
     }
     if (e.type === "visibility-resume") void refresh();
-    if (e.type === "move-intent" && !studio)
+    if (e.type === "move-intent" && !studio && !snapshot?.household.pendingDeleteUntil)
       live.current?.send({
         requestId: crypto.randomUUID(),
         kind: "MOVE_INTENT",
@@ -728,6 +730,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
   }
   const place = observedMember.place;
   const view: WorldView = {
+    readOnly: Boolean(snapshot.household.pendingDeleteUntil),
     closeView,
     windowSky,
     design: snapshot.design,
@@ -792,6 +795,13 @@ function GamePage({ studio = false }: { studio?: boolean }) {
           <Link to="/login">
             실제 우리 집 만들기 <ArrowRight size={14} />
           </Link>
+        </div>
+      )}
+      {snapshot.household.pendingDeleteUntil && (
+        <div className="deletion-banner" role="status">
+          <p>이 집은 삭제 대기 중이에요. 공동 기록을 보고 내려받을 수 있어요.</p>
+          <button className="button secondary" onClick={() => setPanel("exports")}>기록 내보내기</button>
+          {own.role === "OWNER" && <button className="button secondary" onClick={() => setPanel("deletion")}>삭제 대기 관리</button>}
         </div>
       )}
       <div className="game-layout">
@@ -1172,6 +1182,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               pets: "우리 집 돌봄 프로필",
               membership: "가족 구성원 · 집 참여",
               exports: "공동 기록 내보내기",
+              deletion: "집 삭제 관리",
               settings: "내 계정과 보기 설정",
             }[panel]
           }
@@ -1199,6 +1210,8 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                 refresh={() => qc.invalidateQueries({ queryKey: ["world", id] })}
               />
             )
+          ) : panel === "deletion" ? (
+            <HouseholdDeletionPanel household={snapshot.household} refresh={refresh} />
           ) : panel === "exports" ? (
             <HouseholdExportPanel householdId={snapshot.household.id} />
           ) : panel === "membership" ? (
@@ -1217,7 +1230,8 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             studio ? (
               <p>일정은 실제 가족의 집에서 사용할 수 있어요.</p>
             ) : (
-              <FamilyCalendar householdId={snapshot.household.id} isOwner={own.role === "OWNER"} participants={[
+              <FamilyCalendar householdId={snapshot.household.id} isOwner={own.role === "OWNER"}
+                readOnly={Boolean(snapshot.household.pendingDeleteUntil)} participants={[
                 ...snapshot.members.map(({ id, name }) => ({ id, name })),
                 ...snapshot.pets.map(({ id, name }) => ({ id, name, dependentLabel: "반려동물" })),
                 ...(snapshot.dependents ?? []).map(({ id, name }) => ({ id, name, dependentLabel: "아기" })),
@@ -1282,6 +1296,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                   members={snapshot.members}
                   memberId={own.id}
                   isOwner={own.role === "OWNER"}
+                  readOnly={Boolean(snapshot.household.pendingDeleteUntil)}
                 />
               )}
             </>

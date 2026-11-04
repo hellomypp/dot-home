@@ -24,6 +24,9 @@ class Household extends Row {
     long designVersion;
     @Column(nullable=false,length=512) String objectVariants="{}";
     long revision;
+    Instant pendingDeleteUntil;
+    @Column(length=80) String deletionRequestId;
+    long deletionVersion;
     protected Household() {}
 }
 @Entity @Table(name = "membership")

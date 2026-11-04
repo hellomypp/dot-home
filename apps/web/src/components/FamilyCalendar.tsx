@@ -58,8 +58,8 @@ export function occurs(event: CalendarEvent, date: string) {
           ),
         ) >= date;
 }
-export function FamilyCalendar({ householdId, isOwner = false, participants = [] }: {
-  householdId: string; isOwner?: boolean;
+export function FamilyCalendar({ householdId, isOwner = false, participants = [], readOnly = false }: {
+  householdId: string; isOwner?: boolean; readOnly?: boolean;
   participants?: { id: string; name: string; dependentLabel?: string }[];
 }) {
   const titleField = useRef<HTMLInputElement>(null);
@@ -302,7 +302,7 @@ export function FamilyCalendar({ householdId, isOwner = false, participants = []
                   {!!e.targetIds?.length && (
                     <small>일정 대상 · {e.targetIds.map((id) => participants.find((p) => p.id === id)?.name ?? "이전 대상").join(", ")}</small>
                   )}
-                  {e.canRespond && (
+                  {!readOnly && e.canRespond && (
                     <div className="calendar-rsvp" role="group" aria-label={e.title + " 참석 응답"}>
                       {(Object.keys(attendanceLabels) as AttendanceStatus[]).map((status) => (
                         <button type="button" className="button secondary" key={status} disabled={busy}
@@ -312,18 +312,18 @@ export function FamilyCalendar({ householdId, isOwner = false, participants = []
                       ))}
                     </div>
                   )}
-                  {!e.canRespond && Object.keys(e.rsvpCounts ?? {}).length > 0 && (
+                  {(readOnly || !e.canRespond) && Object.keys(e.rsvpCounts ?? {}).length > 0 && (
                     <small>참석 응답 · {Object.entries(e.rsvpCounts ?? {}).map(([status, count]) =>
                       `${attendanceLabels[status as AttendanceStatus]} ${count}명`).join(" · ")}</small>
                   )}
                   <div>
-                    {e.canEdit !== false && (
+                    {!readOnly && e.canEdit !== false && (
                       <>
                         <button className="button secondary" onClick={() => open(e)}>상세 / 수정</button>
                         <button disabled={busy} className="button secondary" onClick={() => void remove(e)}>삭제</button>
                       </>
                     )}
-                    {e.canHide && !e.hiddenAt && (
+                    {!readOnly && e.canHide && !e.hiddenAt && (
                       <button disabled={busy} className="button secondary" onClick={() => void moderate(e, true)}>가족 화면에서 숨기기</button>
                     )}
                   </div>
@@ -336,7 +336,7 @@ export function FamilyCalendar({ householdId, isOwner = false, participants = []
           )}
         </>
       )}
-      {isOwner && (
+      {isOwner && !readOnly && (
         <details onToggle={(event) => setShowHidden(event.currentTarget.open)}>
           <summary>숨긴 개인 일정 관리</summary>
           {showHidden && (
@@ -353,10 +353,10 @@ export function FamilyCalendar({ householdId, isOwner = false, participants = []
           )}
         </details>
       )}
-      <button className="button primary" onClick={() => open(null)}>
+      {!readOnly && <button className="button primary" onClick={() => open(null)}>
         일정 등록
-      </button>
-      {form && (
+      </button>}
+      {form && !readOnly && (
         <form
           aria-label={edit ? "일정 수정" : "새 일정"}
           className="calendar-form"
