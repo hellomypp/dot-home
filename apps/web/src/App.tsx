@@ -3,7 +3,7 @@ import { AccountSettings } from "./components/AccountSettings";
 import { ShareLink } from "./components/ShareLink";
 import { SpaceSettings } from "./components/SpaceSettings";
 import { CharacterChoices } from "./components/CharacterStyleForm";
-import { PetManager } from "./components/PetManager";
+import { CareProfiles } from "./components/CareProfiles";
 import { VisitPage, HousewarmingPanel } from "./components/Housewarming";
 import { CareReactions } from "./components/CareReactions";
 import { HouseholdRequestsPanel, type PromiseDraft } from "./components/HouseholdRequestsPanel";
@@ -827,11 +827,11 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             </button>
             <button
               className="button secondary sidebar-pet"
-              aria-label="반려동물 등록 · 관리"
+              aria-label="아기 · 반려동물 관리"
               onClick={() => setPanel("pets")}
             >
               <PawPrint size={16} />
-              <span>반려동물</span>
+              <span>돌봄</span>
             </button>
           </div>
           {snapshot.pets.length > 0 && (
@@ -1155,7 +1155,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               housewarming: "집들이 · 친구 방문",
               calendar: "가족 공유 캘린더",
               design: "우리 집 설정 · 집 분위기",
-              pets: "우리 집 반려동물",
+              pets: "우리 집 돌봄 프로필",
               settings: "내 계정과 보기 설정",
             }[panel]
           }
@@ -1177,9 +1177,10 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             studio ? (
               <p>반려동물 관리는 실제 집에서 사용할 수 있어요.</p>
             ) : (
-              <PetManager
+              <CareProfiles
                 snapshot={snapshot}
-                onSaved={(data) => qc.setQueryData(["world", id], data)}
+                onPetSaved={(data) => qc.setQueryData(["world", id], data)}
+                refresh={() => qc.invalidateQueries({ queryKey: ["world", id] })}
               />
             )
           ) : panel === "housewarming" ? (
@@ -1194,7 +1195,8 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             ) : (
               <FamilyCalendar householdId={snapshot.household.id} isOwner={own.role === "OWNER"} participants={[
                 ...snapshot.members.map(({ id, name }) => ({ id, name })),
-                ...snapshot.pets.map(({ id, name }) => ({ id, name, pet: true })),
+                ...snapshot.pets.map(({ id, name }) => ({ id, name, dependentLabel: "반려동물" })),
+                ...(snapshot.dependents ?? []).map(({ id, name }) => ({ id, name, dependentLabel: "아기" })),
               ]} />
             )
           ) : panel === "story" ? (

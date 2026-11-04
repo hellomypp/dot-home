@@ -34,7 +34,7 @@ public final class Api {
         String habitat,String guardianMemberId,String appearanceId,long version) {}
     public record PantryView(String id,String name,String location,double quantity,String unit,LocalDate expiresOn,long version,Instant updatedAt) {}
     public record EventView(String id,String type,String message,String authorMemberId,String authorName,Instant createdAt) {}
-    public record World(HouseView household,String meMemberId,long revision,Instant serverTime,List<MemberView> members,List<PetView> pets,List<PantryView> pantryItems,List<EventView> events,SpaceView design) {}
+    public record World(HouseView household,String meMemberId,long revision,Instant serverTime,List<MemberView> members,List<PetView> pets,List<PantryView> pantryItems,List<EventView> events,SpaceView design,List<DependentView> dependents) {}
     public record InvitationView(String id,String token,Instant expiresAt,String url) {}
     public record InvitationPreview(String householdName,Instant expiresAt,boolean available) {}
     public record Signal(String eventId,long revision,String type,Instant serverTime,Object payload) {}

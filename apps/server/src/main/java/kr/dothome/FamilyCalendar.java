@@ -99,10 +99,11 @@ class CalendarService {
     final CalendarEvents events;
     final Members members;
     final Pets pets;
+    final DependentProfiles dependents;
     final CalendarAttendances attendance;
     final ObjectMapper json;
-    CalendarService(HomeService homes,CalendarEvents events,Members members,Pets pets,CalendarAttendances attendance,ObjectMapper json){
-        this.homes=homes;this.events=events;this.members=members;this.pets=pets;this.attendance=attendance;this.json=json;
+    CalendarService(HomeService homes,CalendarEvents events,Members members,Pets pets,DependentProfiles dependents,CalendarAttendances attendance,ObjectMapper json){
+        this.homes=homes;this.events=events;this.members=members;this.pets=pets;this.dependents=dependents;this.attendance=attendance;this.json=json;
     }
     static void validate(CalendarInput input){
         if(input.title().strip().isEmpty())throw ApiException.invalid("일정 제목을 입력해 주세요.");
@@ -256,7 +257,8 @@ class CalendarService {
         if(targets.isEmpty())return;
         var allowed=activeMembers(h);
         for(var pet:pets.findByHouseholdIdOrderById(h))allowed.add(pet.id);
-        if(!allowed.containsAll(targets))throw ApiException.invalid("이 집의 가족과 반려동물만 일정 대상으로 선택할 수 있어요.");
+        for(var dependent:dependents.findByHouseholdIdAndArchivedAtIsNullOrderById(h))allowed.add(dependent.id);
+        if(!allowed.containsAll(targets))throw ApiException.invalid("이 집의 가족과 돌봄 프로필만 일정 대상으로 선택할 수 있어요.");
     }
     private List<String> targets(HouseholdCalendarEvent event){
         return event.targetIds==null?List.of():json.readValue(event.targetIds,new TypeReference<List<String>>(){});

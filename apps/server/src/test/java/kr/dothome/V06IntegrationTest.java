@@ -10,7 +10,7 @@ import java.util.concurrent.*;
 
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT) @ActiveProfiles({"dev","test"})
 class V06IntegrationTest {
- @Autowired HomeService homes;@Autowired IdentityService identity;@Autowired ObjectNoteService notes;@Autowired ObjectNotes noteRows;@Autowired CalendarService calendar;@Autowired HousewarmingService visits;@Autowired HousewarmingInvitations links;@Autowired Members members;@Autowired tools.jackson.databind.ObjectMapper json;
+ @Autowired HomeService homes;@Autowired IdentityService identity;@Autowired ObjectNoteService notes;@Autowired ObjectNotes noteRows;@Autowired CalendarService calendar;@Autowired DependentService dependents;@Autowired HousewarmingService visits;@Autowired HousewarmingInvitations links;@Autowired Members members;@Autowired tools.jackson.databind.ObjectMapper json;
  String user(){return identity.resolve("test",UUID.randomUUID().toString(),"테스트 가족").id;}
  String house(String u){return homes.create(u,new Api.CreateHouse("공유 집","가족","sage")).household().id();}
  String join(String h,String owner){String u=user();homes.accept(homes.invite(h,owner).token(),u,new Api.Accept("다른 가족","blue"));return u;}
@@ -132,6 +132,29 @@ class V06IntegrationTest {
   assertEquals(30,legacy.reminderMinutesBefore());
   calendar.delete(h,owner,event.id(),legacy.version());
   assertTrue(calendar.range(h,guest,date,date).isEmpty());
+ }
+ @Test void dependentProfileIsNotAMemberAndArchivingKeepsCalendarHistory(){
+  String owner=user(),h=house(owner),guardian=join(h,owner),other=join(h,owner),visitor=user();
+  visits.enter(token(visits.create(h,owner)),visitor);
+  String otherHouse=house(other),otherGuardian=homes.requireMember(otherHouse,other).id;
+  assertThrows(ApiException.class,()->dependents.save(h,guardian,null,new DependentInput("BABY","별",otherGuardian,null,null)));
+  var baby=dependents.save(h,guardian,null,new DependentInput("BABY"," 별 ",null,null,null));
+  assertEquals("별",baby.name());assertEquals(homes.requireMember(h,guardian).id,baby.guardianMemberId());
+  assertEquals(List.of(baby),homes.world(h,owner).dependents());
+  assertEquals(3,homes.world(h,owner).members().size());
+  assertThrows(ApiException.class,()->dependents.list(h,visitor));
+  assertEquals(403,assertThrows(ApiException.class,()->dependents.archive(h,other,baby.id(),0)).status.value());
+  var edited=dependents.save(h,guardian,baby.id(),new DependentInput(null,"별이",null,null,0L));
+  assertEquals(1,edited.version());
+  assertEquals(409,assertThrows(ApiException.class,()->dependents.archive(h,owner,baby.id(),0)).status.value());
+  LocalDate date=LocalDate.of(2026,11,3);
+  var care=new CalendarInput("아기 돌봄","","CARE",true,date,date,null,null,"Asia/Seoul",0,"HOUSEHOLD",List.of(baby.id()),null);
+  var event=calendar.save(h,guardian,null,care);
+  assertFalse(event.canRespond());
+  dependents.archive(h,owner,baby.id(),edited.version());
+  assertTrue(dependents.list(h,guardian).isEmpty());
+  assertEquals(List.of(baby.id()),calendar.range(h,guardian,date,date).getFirst().targetIds());
+  assertThrows(ApiException.class,()->calendar.save(h,guardian,null,care));
  }
  @Test void timedCalendarUsesUtcAndSeoulRange(){String a=user(),h=house(a);var i=new CalendarInput("자정 약속","","GENERAL",false,null,null,Instant.parse("2026-11-02T15:00:00Z"),Instant.parse("2026-11-02T16:00:00Z"),"Asia/Seoul",0);calendar.save(h,a,null,i);assertTrue(calendar.range(h,a,LocalDate.of(2026,11,2),LocalDate.of(2026,11,2)).isEmpty());assertEquals(1,calendar.range(h,a,LocalDate.of(2026,11,3),LocalDate.of(2026,11,3)).size());assertThrows(ApiException.class,()->CalendarService.validate(new CalendarInput("거꾸로","","GENERAL",false,null,null,i.endAt(),i.startAt(),"Asia/Seoul",0)));assertThrows(ApiException.class,()->CalendarService.validate(new CalendarInput("혼합","","GENERAL",true,LocalDate.now(),LocalDate.now(),Instant.now(),null,"Asia/Seoul",0)));}
  @Test void visitsNeverCreateFamilyMembershipAndRevocationRemovesAccess(){String a=user(),h=house(a),guest=user();var link=visits.create(h,a);String token=token(link);assertNotEquals(token,links.findById(link.id()).orElseThrow().tokenHash);assertThrows(ApiException.class,()->visits.world(token,guest));assertEquals("공유 집",visits.enter(token,guest).householdName());visits.enter(token,guest);assertTrue(members.findByUserIdAndActiveTrue(guest).isEmpty());assertEquals(1,homes.world(h,a).members().size());assertThrows(ApiException.class,()->homes.world(h,guest));assertThrows(ApiException.class,()->notes.list(h,guest,"fridge"));assertThrows(ApiException.class,()->calendar.range(h,guest,LocalDate.now(),LocalDate.now()));assertThrows(ApiException.class,()->visits.create(h,guest));visits.revoke(h,a,link.id());assertThrows(ApiException.class,()->visits.world(token,guest));assertThrows(ApiException.class,()->visits.enter(token,guest));}

@@ -6,7 +6,8 @@ import type { Place } from '../game/types';
 export interface Member { id:string;userId:string;name:string;appearance:string;role:'OWNER'|'MEMBER';place:Place;mood:string;food:string;thought:string;statusExpiresAt:string|null;statusUpdatedAt:string;x:number;y:number;action:string;currentState?:Partial<Record<ExpressionField,ExpressionValue>>;sharedPlace?:SharedPlace }
 export interface PantryItem { id:string;name:string;location:string;quantity:number;unit:string;expiresOn:string|null;version:number;updatedAt:string }
 export interface LifeEvent { id:string;type:string;message:string;authorMemberId:string;authorName:string;createdAt:string }
-export interface Snapshot { design?:SpaceDesign;household:{id:string;name:string;ownerId:string};meMemberId:string;revision:number;serverTime:string;members:Member[];pets:Pet[];pantryItems:PantryItem[];events:LifeEvent[] }
+export interface Dependent { id:string;type:"BABY";name:string;guardianMemberId:string;appearanceProfile:string;version:number }
+export interface Snapshot { design?:SpaceDesign;household:{id:string;name:string;ownerId:string};meMemberId:string;revision:number;serverTime:string;members:Member[];pets:Pet[];dependents?:Dependent[];pantryItems:PantryItem[];events:LifeEvent[] }
 export interface Identity { user:{id:string;name:string};memberships:{householdId:string;householdName:string;memberId:string;role:string}[] }
 export class ApiError extends Error { constructor(public status:number,message:string) {super(message);} }
 let csrf: {token:string;headerName:string}|null = null;

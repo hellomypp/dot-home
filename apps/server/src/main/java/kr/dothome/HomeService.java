@@ -18,14 +18,15 @@ class HomeService {
     final Households households;
     final Members members;
     final Pets pets;
+    final DependentProfiles dependents;
     final Invitations invitations;
     final PantryItems pantry;
     final PantryChanges changes;
     final LifeEvents events;
     final ExpressionStore expressions;
     final ApplicationEventPublisher publisher;
-    HomeService(Households households,Members members,Pets pets,Invitations invitations,PantryItems pantry,PantryChanges changes,LifeEvents events,ExpressionStore expressions,ApplicationEventPublisher publisher) {
-        this.households=households;this.members=members;this.pets=pets;this.invitations=invitations;this.pantry=pantry;this.changes=changes;this.events=events;this.expressions=expressions;this.publisher=publisher;
+    HomeService(Households households,Members members,Pets pets,DependentProfiles dependents,Invitations invitations,PantryItems pantry,PantryChanges changes,LifeEvents events,ExpressionStore expressions,ApplicationEventPublisher publisher) {
+        this.households=households;this.members=members;this.pets=pets;this.dependents=dependents;this.invitations=invitations;this.pantry=pantry;this.changes=changes;this.events=events;this.expressions=expressions;this.publisher=publisher;
     }
     Member requireMember(String householdId,String userId) {
         return members.findByHouseholdIdAndUserIdAndActiveTrue(householdId,userId).orElseThrow(ApiException::forbidden);
@@ -245,7 +246,8 @@ class HomeService {
         var saved=expressions.load(householdMembers);
         var memberViews=householdMembers.stream()
             .map(member->memberView(member,household.presetId,saved.getOrDefault(member.id,Map.of()),now,member.id.equals(meId))).toList();
-        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,now,memberViews,pets.findByHouseholdIdOrderById(household.id).stream().map(HomeService::petView).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),events.findTop100ByHouseholdIdOrderByCreatedAtDesc(household.id).stream().map(HomeService::eventView).toList(),Spaces.view(household));
+        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,now,memberViews,pets.findByHouseholdIdOrderById(household.id).stream().map(HomeService::petView).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),events.findTop100ByHouseholdIdOrderByCreatedAtDesc(household.id).stream().map(HomeService::eventView).toList(),Spaces.view(household),
+            dependents.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(DependentView::from).toList());
     }
     Api.MemberView memberView(Member m,String preset){
         return memberView(m,preset,expressions.load(m),Instant.now(),false);

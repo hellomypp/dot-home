@@ -60,7 +60,7 @@ export function occurs(event: CalendarEvent, date: string) {
 }
 export function FamilyCalendar({ householdId, isOwner = false, participants = [] }: {
   householdId: string; isOwner?: boolean;
-  participants?: { id: string; name: string; pet?: boolean }[];
+  participants?: { id: string; name: string; dependentLabel?: string }[];
 }) {
   const titleField = useRef<HTMLInputElement>(null);
   const today = seoulDate(),
@@ -401,17 +401,23 @@ export function FamilyCalendar({ householdId, isOwner = false, participants = []
               <option value="CARE">돌봄</option>
             </select>
           </label>
-          {participants.length > 0 && (
+          {(participants.length > 0 || targets.length > 0) && (
             <fieldset className="calendar-targets">
               <legend>일정 대상 · 선택</legend>
-              <p className="muted">선택하지 않으면 모든 가족이 응답할 수 있어요. 반려동물은 일정 대상에만 포함돼요.</p>
+              <p className="muted">선택하지 않으면 모든 가족이 응답할 수 있어요. 아기와 반려동물은 일정 대상에만 포함돼요.</p>
+              {targets.filter((id) => !participants.some((participant) => participant.id === id)).map((id) => (
+                <label className="checkbox-label" key={id}>
+                  <input type="checkbox" checked onChange={() => setTargets((current) => current.filter((target) => target !== id))} />
+                  이전 대상 · 보관 또는 퇴실
+                </label>
+              ))}
               {participants.map((participant) => (
                 <label className="checkbox-label" key={participant.id}>
                   <input type="checkbox" checked={targets.includes(participant.id)} onChange={(e) => {
                     const checked = e.target.checked;
                     setTargets((current) => checked ? [...current, participant.id] : current.filter((id) => id !== participant.id));
                   }} />
-                  {participant.name}{participant.pet && " · 반려동물"}
+                  {participant.name}{participant.dependentLabel && ` · ${participant.dependentLabel}`}
                 </label>
               ))}
             </fieldset>

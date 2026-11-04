@@ -2,3 +2,7 @@
 .pet-card{min-width:0}.pet-card>span:last-child{min-width:0}.pet-card strong{overflow-wrap:anywhere}
 
 .pet-habitat-hint{margin:0;padding:10px 12px;background:#eef2e8;border-radius:10px;color:#48583e}.pet-manager-card>div{min-width:0;overflow-wrap:anywhere}
+
+.care-profile-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.care-profile-switch button[aria-pressed="true"]{background:#e7eddf;color:#3f583d;border-color:#adbea1}
+.care-profile-summary{display:flex;align-items:center;gap:10px}.care-profile-summary .portrait{flex:none}

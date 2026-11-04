@@ -69,7 +69,7 @@
 - 생성 시 `scope`는 `HOUSEHOLD`(기본) 또는 `PERSONAL_SHARED`다. 공동 일정은 작성자와 집 대표, 개인 공유 일정은 작성자만 수정·삭제한다. 등록 후 공유 종류는 고정한다. `CARE` 유형을 지원한다.
 - 집 대표만 `POST /{id}/hide` 또는 `/unhide`에 `{version}`을 보내 개인 일정을 숨김·복원할 수 있다. `GET /moderation?from=…&to=…`는 숨긴 일정의 ID·숨김 시각·버전만 반환한다. 숨긴 일정은 작성자만 원문을 읽을 수 있고, 작성자가 비활성 상태이면 다른 가족에게 개인 일정이 노출되지 않는다.
 
-- 선택 사항인 `targetIds`는 같은 집의 활성 가족과 등록 반려동물 ID 목록이다. 생략하면 이전 값 유지, 빈 배열은 모든 가족을 뜻한다. 반려동물은 돌봄 일정의 대상이며 참석 응답을 보내는 계정은 실제 가족뿐이다.
+- 선택 사항인 `targetIds`는 같은 집의 활성 가족과 등록된 아기·반려동물 ID 목록이다. 생략하면 이전 값 유지, 빈 배열은 모든 가족을 뜻한다. 아기와 반려동물은 돌봄 일정의 대상이며 참석 응답을 보내는 계정은 실제 가족뿐이다.
 - `PUT /api/households/{h}/calendar-events/{id}/rsvp`의 본문은 `{status,version}`이다. 상태는 `ACCEPTED|DECLINED|TENTATIVE`, 최초 버전은 0이다. 서버가 응답자를 식별하며 대상이 아닌 가족은 403, 버전 충돌은 409를 받는다. 달력은 본인 응답 `myRsvp`와 가족 합계 `rsvpCounts`를 제공한다.
 - `reminderMinutesBefore`는 선택 사항이며 허용값은 0·10·30·60·1440분이다. 명시적 null로 해제한다. 이 값의 저장과 실제 알림 발송은 별개다.
 
@@ -157,6 +157,13 @@ Google 인증한 방문자:
 - `PATCH /api/households/{id}/pets/{petId}`는 `{name,speciesGroup,speciesName?,guardianMemberId?,version}`을 받는다. 지정 보호자·집 대표만 수정하고 오래된 버전에는 409를 반환한다. 생략한 종명·보호자와 기존 appearance를 유지하며 빈 종명으로 지울 수 있다. 개·고양이의 구형 이름·종류 수정 요청을 계속 지원한다.
 - 목록은 기존 `GET /api/households/{id}/world`의 pets로 조회한다. 성공 커밋 후 `PETS_CHANGED`와 revision으로 Phaser와 관리 목록을 갱신한다. 집들이 방문자·다른 집은 조회나 수정 권한이 없다.
 - V17은 기존 이름·종류·외형을 보존하면서 종 분류와 기존 집 대표 보호자를 채운다. 삭제와 추억 모드는 후속 작업이다.
+
+## 아기 돌봄 프로필
+
+- `GET /api/households/{id}/dependents`와 world의 `dependents`는 활성 아기 프로필을 반환한다. 아기 프로필에는 계정이나 가족 Membership이 생기지 않는다.
+- `POST /api/households/{id}/dependents`는 `{type:"BABY",name,guardianMemberId?}`를 받는다. 보호자를 생략하면 작성자가 맡는다. 기본 외형은 기존 `v2:child`이고 생년월일·건강정보는 수집하지 않는다.
+- `PATCH /api/households/{id}/dependents/{profileId}`는 `{name,guardianMemberId?,version}`, `DELETE /api/households/{id}/dependents/{profileId}?version=…`는 보관이다. 보호자·대표만 실행하고, 보관된 아기는 새 일정에서 선택할 수 없다. 기존 일정과 대상 ID는 보존한다.
+- 가구가 다르거나 집들이 방문자인 경우 접근을 거절한다. 변경 시 `DEPENDENTS_CHANGED`로 가족 화면을 갱신한다.
 
 ## v0.7 공유 집 디자인 (v6.2 자산)
 
