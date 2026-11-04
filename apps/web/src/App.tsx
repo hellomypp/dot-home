@@ -4,6 +4,7 @@ import { SpaceSettings } from "./components/SpaceSettings";
 import { CharacterChoices } from "./components/CharacterStyleForm";
 import { PetManager } from "./components/PetManager";
 import { VisitPage, HousewarmingPanel } from "./components/Housewarming";
+import { HouseholdRequestsPanel } from "./components/HouseholdRequestsPanel";
 import { ExpressionForm } from "./components/ExpressionForm";
 import { FamilyCalendar } from "./components/FamilyCalendar";
 import { ObjectNotes, type ObjectNote } from "./components/ObjectNotes";
@@ -561,6 +562,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     refetchInterval: 30_000,
     gcTime: 0,
   });
+  const [activityTab, setActivityTab] = useState<"records" | "requests">("records");
   const [fridgeTab, setFridgeTab] = useState<"food" | "notes">("food");
   const attachedNotes = useQuery({
     queryKey: ["object-notes", id, false],
@@ -628,6 +630,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
         await Promise.all([
           qc.invalidateQueries({ queryKey: ["object-notes", id] }),
           qc.invalidateQueries({ queryKey: ["calendar", id] }),
+          qc.invalidateQueries({ queryKey: ["household-requests", id] }),
         ]);
         return data.revision;
       },
@@ -989,7 +992,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                   </span>
                   <span>
                     <strong>생활 기록</strong>
-                    <small>소소한 소식 남기기</small>
+                    <small>소식과 부탁 나누기</small>
                   </span>
                   <ChevronRight size={16} />
                 </button>
@@ -1134,7 +1137,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             {
               story: "지금, 내 이야기",
               pantry: "우리 집 냉장고",
-              event: "작은 소식 남기기",
+              event: "우리 집 생활 기록",
               invite: "우리 집에 초대하기",
               housewarming: "집들이 · 친구 방문",
               calendar: "가족 공유 캘린더",
@@ -1238,20 +1241,32 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               )}
             </>
           ) : panel === "event" ? (
-            <EventForm
-              snapshot={snapshot}
-              studio={studio}
-              onSaved={async (data) => {
-                if (studio) setSample(data);
-                else await refresh();
-                setPanel(null);
-                setToast(
-                  studio
-                    ? "시안에 소식을 남겼어요."
-                    : "우리 집에 소식을 남겼어요.",
-                );
-              }}
-            />
+            <div className="activity-panel">
+              {!studio && (
+                <nav className="fridge-tabs" aria-label="생활 기록 분류">
+                  <button className="button secondary" aria-pressed={activityTab === "records"} onClick={() => setActivityTab("records")}>기록 남기기</button>
+                  <button className="button secondary" aria-pressed={activityTab === "requests"} onClick={() => setActivityTab("requests")}>부탁·공지</button>
+                </nav>
+              )}
+              {!studio && activityTab === "requests" ? (
+                <HouseholdRequestsPanel snapshot={snapshot} />
+              ) : (
+                  <EventForm
+                    snapshot={snapshot}
+                    studio={studio}
+                    onSaved={async (data) => {
+                      if (studio) setSample(data);
+                      else await refresh();
+                      setPanel(null);
+                      setToast(
+                        studio
+                          ? "시안에 소식을 남겼어요."
+                          : "우리 집에 소식을 남겼어요.",
+                      );
+                    }}
+                  />
+              )}
+            </div>
           ) : panel === "invite" ? (
             <InvitePanel snapshot={snapshot} studio={studio} />
           ) : (
