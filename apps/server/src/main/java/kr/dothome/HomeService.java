@@ -90,6 +90,7 @@ class HomeService {
         pet.speciesGroup=group;
         pet.speciesName=petSpeciesName(input.speciesName());
         pet.guardianMemberId=input.guardianMemberId()==null?actor.id:petGuardian(householdId,input.guardianMemberId());
+        placeTank(household,pet,group,input.tankSlot());
         pets.save(pet);
         emit(household,"PETS_CHANGED",Map.of("petId",pet.id));
         return snapshot(household,actor.id);
@@ -99,7 +100,7 @@ class HomeService {
         Member actor=requireMember(householdId,userId);
         Pet pet=editablePet(household,actor,petId);
         boolean legacy=input.version()==null&&input.kind()!=null&&input.speciesGroup()==null
-            &&input.speciesName()==null&&input.guardianMemberId()==null;
+            &&input.speciesName()==null&&input.guardianMemberId()==null&&input.tankSlot()==null;
         if(!legacy&&(input.version()==null||input.version()!=pet.version))
             throw ApiException.conflict("다른 기기에서 반려동물 정보를 바꿨어요. 최신 정보를 확인해 주세요.");
         PetSpecies group=PetSpecies.resolve(input.speciesGroup(),input.kind());
@@ -110,9 +111,17 @@ class HomeService {
         pet.speciesGroup=group;
         if(input.speciesName()!=null)pet.speciesName=petSpeciesName(input.speciesName());
         if(input.guardianMemberId()!=null)pet.guardianMemberId=petGuardian(householdId,input.guardianMemberId());
+        placeTank(household,pet,group,input.tankSlot());
         pets.flush();
         emit(household,"PETS_CHANGED",Map.of("petId",pet.id));
         return snapshot(household,actor.id);
+    }
+    private void placeTank(Household house,Pet pet,PetSpecies species,Integer slot){
+        if(slot!=null&&(species!=PetSpecies.FISH||!Spaces.tankSlot(house.presetId,slot)))
+            throw ApiException.invalid("이 집에서 수조를 놓을 수 있는 칸을 선택해 주세요.");
+        if(slot!=null&&pets.existsByHouseholdIdAndTankSlotAndArchivedAtIsNullAndIdNot(house.id,slot,pet.id))
+            throw ApiException.conflict("다른 수조가 먼저 놓였어요. 빈 칸을 다시 선택해 주세요.");
+        if(species!=PetSpecies.FISH||slot!=null)pet.tankSlot=slot;
     }
     Api.World archivePet(String householdId,String userId,String petId,long version) {
         Household household=lock(householdId,userId);
@@ -150,7 +159,7 @@ class HomeService {
     private static Api.PetView petView(Pet pet){
         var group=groupFor(pet);
         return new Api.PetView(pet.id,pet.name,pet.kind,pet.appearance,group,pet.speciesName==null?"":pet.speciesName,
-            group.habitat,pet.guardianMemberId,group.appearanceId,pet.version);
+            group.habitat,pet.guardianMemberId,group.appearanceId,pet.version,pet.tankSlot);
     }
     Api.InvitationView invite(String householdId,String userId) {
         Household household=lock(householdId,userId);owner(household,userId);

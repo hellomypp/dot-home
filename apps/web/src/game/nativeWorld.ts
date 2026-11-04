@@ -14,6 +14,7 @@ import {
   nearest,
   nearestFreePoint,
   petClearsPeople,
+  tankPoint,
   path,
   canStand,
   occludes,
@@ -34,6 +35,7 @@ type Actor = {
   kind: string;
   pet: boolean;
   habitat?: Exclude<PetHabitat, "FLOOR">;
+  tankSlot?: number;
   remote: string;
   manual: number;
   cycle: number;
@@ -359,7 +361,9 @@ class NativeHome extends Phaser.Scene {
       let a = this.pets.get(p.id);
       const habitat = p.habitat === "FLOOR" ? undefined : p.habitat;
       const kind = p.kind || "cat";
-      if (a && (a.habitat !== habitat || a.kind !== kind)) {
+      const tank = habitat === "TANK" ? tankPoint(this.map, p.tankSlot) : undefined;
+      const tankSlot = tank ? p.tankSlot ?? undefined : undefined;
+      if (a && (a.habitat !== habitat || a.kind !== kind || a.tankSlot !== tankSlot)) {
         a.sprite.destroy();
         a.label.destroy();
         a.bubble.destroy();
@@ -368,10 +372,12 @@ class NativeHome extends Phaser.Scene {
       if (!a) {
         const [x, y] = this.map.petSpawn;
         const start = { x: x + i * (habitat ? 34 : 12), y };
-        const free = nearestFreePoint(start, (point) =>
+        const free = tank ?? nearestFreePoint(start, (point) =>
           canStand(point, this.map, true) && (habitat != null || petClearsPeople(point, people)),
         );
         a = this.actor(p.id, p.name, kind, free ?? start, true, habitat);
+        a.tankSlot = tankSlot;
+        if (tank) a.sprite.setPosition(tank.x, tank.y);
         a.sprite.setVisible(free !== null);
         a.label.setVisible(free !== null);
         this.pets.set(p.id, a);

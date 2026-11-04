@@ -44,11 +44,17 @@ it("가족이 어류 종명과 보호자를 입력하고 수조 범용 표현을
   fireEvent.change(screen.getByLabelText("반려동물 종류"), { target: { value: "FISH" } });
   fireEvent.change(screen.getByLabelText("반려동물 종 이름 · 선택"), { target: { value: "베타" } });
   expect(screen.getByText(/수조 범용 그림/)).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "반려동물 등록" }));
+  expect(screen.getByText("놓을 수 없음")).toBeTruthy();
+  const submit = screen.getByRole("button", { name: "반려동물 등록" }) as HTMLButtonElement;
+  expect(submit.disabled).toBe(true);
+  expect(screen.queryByRole("button", { name: "수조 위치 1행 1열" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "수조 위치 3행 2열" }));
+  expect(submit.disabled).toBe(false);
+  fireEvent.click(submit);
   await screen.findByRole("button", { name: "별이 수정" });
   expect(screen.getByText("보호자 님이 보호자로 관리 중")).toBeTruthy();
   expect(api).toHaveBeenLastCalledWith("/api/households/h/pets", "POST", {
-    name: "별이", speciesGroup: "FISH", speciesName: "베타", appearance: "cream",
+    name: "별이", speciesGroup: "FISH", speciesName: "베타", appearance: "cream", tankSlot: 17,
   });
 });
 

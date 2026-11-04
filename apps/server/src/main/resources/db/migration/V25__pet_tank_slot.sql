@@ -1,0 +1,1 @@
+ALTER TABLE pet ADD COLUMN tank_slot INT;

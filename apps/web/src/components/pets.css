@@ -12,3 +12,20 @@
 .care-weekdays>div{display:flex;flex-wrap:wrap;gap:4px;margin-block:4px 8px}
 .care-weekdays button{min-width:44px;min-height:44px;padding:6px}
 .care-weekdays button[aria-pressed="true"]{background:#e7eddf;color:#3f583d;border-color:#adbea1}
+
+.tank-placement { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.tank-placement legend { padding: 0; margin-bottom: 6px; font-weight: 700; }
+.tank-placement p, .tank-legend { font-size: .84rem; color: #48583e; }
+.tank-board { position: relative; isolation: isolate; width: 100%; overflow: hidden; border-radius: 12px; background: #ecd9bc; }
+.tank-board .space-preview.full-room { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; }
+.tank-grid { position: absolute; inset: 0; display: grid; grid-auto-rows: 1fr; }
+.tank-grid > * { display: grid; place-items: center; min-width: 0; min-height: 0; border: 1px solid #fff4dc45; padding: 0; }
+.tank-grid .tank-blocked { color: #ffded0; background: #602d3654; }
+.tank-grid .tank-used { color: #fff1c9; background: #694c22b8; }
+.tank-grid button { color: #f5ffe8; background: #3a623bbf; border: 2px solid #b8dc99; border-radius: 3px; }
+.tank-grid button[aria-pressed="true"] { background: #24747d; border-color: #c4fbff; color: #fff; }
+.tank-grid button:focus-visible { outline: 3px solid white; outline-offset: -4px; }
+.tank-legend { display: flex; flex-wrap: wrap; gap: 5px 12px; }
+.tank-legend span { display: inline-flex; gap: 4px; align-items: center; }
+.tank-legend span:nth-child(2) { color: #803842; }
+.tank-legend span:nth-child(3) { color: #745322; }

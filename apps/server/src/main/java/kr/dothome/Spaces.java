@@ -24,6 +24,10 @@ final class Spaces {
     static Map<String,String> overrides(Household house){try{return JSON.readValue(house.objectVariants,Map.class);}catch(Exception e){throw new IllegalStateException("Invalid stored space design");}}
     static SpaceView view(Household h){return new SpaceView(h.presetId,h.designVersion,Map.copyOf(overrides(h)));}
     static JsonNode map(String preset){return DATA.get("maps").get(mapId(preset));}
+    static boolean tankSlot(String preset,int slot){
+        for(var allowed:map(preset).path("tankSlots"))if(allowed.asInt()==slot)return true;
+        return false;
+    }
     static boolean walkable(double x,double y,String preset){
         if(!Double.isFinite(x)||!Double.isFinite(y))return false;
         var map=map(preset);if(map==null)return false;

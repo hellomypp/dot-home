@@ -1,6 +1,8 @@
 import { useRef, useState, type FormEvent } from "react";
 import { api, type Snapshot } from "../lib/api";
 import { petGroup, petSpecies, type Pet, type PetSpecies } from "../lib/pets";
+import { TankPlacement } from "./TankPlacement";
+import { mapFor } from "../game/spaces";
 import "./pets.css";
 
 function PetForm({ snapshot, pet, onSaved, onCancel }: {
@@ -13,6 +15,7 @@ function PetForm({ snapshot, pet, onSaved, onCancel }: {
   const [group, setGroup] = useState(petGroup(pet));
   const [speciesName, setSpeciesName] = useState(pet?.speciesName ?? "");
   const [guardian, setGuardian] = useState(pet?.guardianMemberId ?? "");
+  const [pickedSlot, setPickedSlot] = useState<number | null>(null);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -20,9 +23,15 @@ function PetForm({ snapshot, pet, onSaved, onCancel }: {
   const prefix = pet?.name ?? "반려동물";
   const kind = group === "CAT" ? "cat" : group === "DOG" ? "dog" : undefined;
 
+  const map = mapFor(snapshot.design?.presetId);
+  const occupied = new Set(snapshot.pets.flatMap((item) => item.id !== pet?.id && item.tankSlot != null ? [item.tankSlot] : []));
+  const slot = pickedSlot ?? pet?.tankSlot ?? null;
+  const validSlot = slot !== null && map.tankSlots.includes(slot) && !occupied.has(slot);
+  const needsSlot = group === "FISH" && ((!pet || petGroup(pet) !== "FISH" || pickedSlot !== null) && !validSlot);
+
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (confirmArchive || pending.current) return;
+    if (confirmArchive || pending.current || needsSlot) return;
     if (!name.trim() || name.length > 40 || /[\u0000-\u001f\u007f-\u009f]/.test(name)) {
       setError("반려동물 이름은 줄바꿈 없이 1~40자로 입력해 주세요.");
       return;
@@ -45,6 +54,7 @@ function PetForm({ snapshot, pet, onSaved, onCancel }: {
           ...(kind ? { kind } : {}),
           speciesGroup: group,
           speciesName: speciesName.trim(),
+          ...(group === "FISH" && validSlot ? { tankSlot: slot } : {}),
           ...(guardian ? { guardianMemberId: guardian } : {}),
           ...(pet ? { version: pet.version ?? 0 } : { appearance: "cream" }),
         },
@@ -53,6 +63,7 @@ function PetForm({ snapshot, pet, onSaved, onCancel }: {
       if (!pet) {
         setName("");
         setSpeciesName("");
+        setPickedSlot(null);
       }
     } catch (error) {
       setError((error as Error).message);
@@ -84,6 +95,10 @@ function PetForm({ snapshot, pet, onSaved, onCancel }: {
           {snapshot.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
         </select>
       </label>
+      {group === "FISH" && !confirmArchive && (
+        <TankPlacement design={snapshot.design} occupied={occupied}
+          selected={pickedSlot ?? (validSlot ? slot : null)} onSelect={setPickedSlot} busy={busy} />
+      )}
       {error && <p role="alert" className="error-message">{error}</p>}
       {confirmArchive ? (
         <>
@@ -97,7 +112,7 @@ function PetForm({ snapshot, pet, onSaved, onCancel }: {
         <div className="form-actions">
           {onCancel && <button type="button" className="button secondary" disabled={busy} onClick={onCancel}>취소</button>}
           {pet && <button type="button" className="button secondary" disabled={busy} onClick={() => setConfirmArchive(true)}>프로필 보관</button>}
-          <button className="button primary" disabled={busy}>
+          <button className="button primary" disabled={busy || needsSlot}>
             {busy ? "처리 중…" : pet ? "반려동물 변경 저장" : "반려동물 등록"}
           </button>
         </div>

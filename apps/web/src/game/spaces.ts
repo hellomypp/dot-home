@@ -32,9 +32,11 @@ export interface RuntimeMap {
   previewCrop: [number, number, number, number];
   walkBounds: [number, number, number, number];
   petSpawn: number[];
+  tankSlots: number[];
 }
 export const catalogue = raw as unknown as {
   maps: Record<string, RuntimeMap>;
+  tankGrid: { columns: number; rows: number; cellSize: number; baseInset: number };
   presets: { id: string; name: string }[];
   variants: Record<string, string[]>;
   aliases: Record<string, string>;
@@ -51,6 +53,15 @@ export function mapFor(id = warmWoodPreset) {
   return Object.hasOwn(catalogue.maps, key)
     ? catalogue.maps[key]
     : catalogue.maps[warmWoodPreset];
+}
+export function tankPoint(map: RuntimeMap, slot: number | null | undefined) {
+  if (slot == null || !map.tankSlots.includes(slot)) return undefined;
+  const { columns, cellSize, baseInset } = catalogue.tankGrid;
+  const [x, y] = map.previewCrop;
+  return {
+    x: x + ((slot % columns) + 0.5) * cellSize,
+    y: y + (Math.floor(slot / columns) + 1) * cellSize - baseInset,
+  };
 }
 export function fridgeMagnet(design: SpaceDesign) {
   return design.variants.fridge === "leaf" ? 0x47832b

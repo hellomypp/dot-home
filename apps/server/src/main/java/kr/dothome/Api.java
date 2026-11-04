@@ -9,13 +9,19 @@ public final class Api {
     public record DevLogin(@NotBlank @Pattern(regexp="[A-Za-z0-9_-]{2,64}") String accountKey,@NotBlank @Size(max=40) String name) {}
     public record PetInput(@NotBlank @Size(max=40) String name,@Pattern(regexp="cat|dog") String kind,
         @Pattern(regexp="cream") String appearance,PetSpecies speciesGroup,@Size(max=80) String speciesName,
-        @Size(max=36) String guardianMemberId) {
-        public PetInput(String name,String kind,String appearance){this(name,kind,appearance,null,null,null);}
+        @Size(max=36) String guardianMemberId,Integer tankSlot) {
+        public PetInput(String name,String kind,String appearance){this(name,kind,appearance,null,null,null,null);}
+        public PetInput(String name,String kind,String appearance,PetSpecies speciesGroup,String speciesName,String guardianMemberId){
+            this(name,kind,appearance,speciesGroup,speciesName,guardianMemberId,null);
+        }
     }
     public record PetEdit(@NotBlank @Size(max=40) String name,@Pattern(regexp="cat|dog") String kind,
         PetSpecies speciesGroup,@Size(max=80) String speciesName,@Size(max=36) String guardianMemberId,
-        @PositiveOrZero Long version) {
-        public PetEdit(String name,String kind){this(name,kind,null,null,null,null);}
+        @PositiveOrZero Long version,Integer tankSlot) {
+        public PetEdit(String name,String kind){this(name,kind,null,null,null,null,null);}
+        public PetEdit(String name,String kind,PetSpecies speciesGroup,String speciesName,String guardianMemberId,Long version){
+            this(name,kind,speciesGroup,speciesName,guardianMemberId,version,null);
+        }
     }
     public record CreateHouse(@NotBlank @Size(max=80) String name,@NotBlank @Size(max=40) String memberName,@NotBlank @Size(max=24) String appearance,@Size(max=32) String presetId) {public CreateHouse(String name,String memberName,String appearance){this(name,memberName,appearance,null);}}
     public record Profile(@NotBlank @Size(max=40) String memberName,@Size(max=24) String appearance) {public Profile(String memberName){this(memberName,null);}}
@@ -31,7 +37,7 @@ public final class Api {
     public record HouseView(String id,String name,String ownerId,Instant pendingDeleteUntil,long deletionVersion,boolean deletionAvailable) {}
     public record MemberView(String id,String userId,String name,String appearance,String role,String place,String mood,String food,String thought,Instant statusExpiresAt,Instant statusUpdatedAt,double x,double y,String action,java.util.Map<String,ExpressionValue> currentState,SharedPlace sharedPlace,long membershipVersion) {}
     public record PetView(String id,String name,String kind,String appearance,PetSpecies speciesGroup,String speciesName,
-        String habitat,String guardianMemberId,String appearanceId,long version) {}
+        String habitat,String guardianMemberId,String appearanceId,long version,Integer tankSlot) {}
     public record PantryView(String id,String name,String location,double quantity,String unit,LocalDate expiresOn,long version,Instant updatedAt) {}
     public record EventView(String id,String type,String message,String authorMemberId,String authorName,Instant createdAt) {}
     public record World(HouseView household,String meMemberId,long revision,Instant serverTime,List<MemberView> members,List<PetView> pets,List<PantryView> pantryItems,List<EventView> events,SpaceView design,List<DependentView> dependents) {}

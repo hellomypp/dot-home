@@ -73,6 +73,20 @@ class HouseholdIntegrationTest {
         assertThrows(ApiException.class,()->homes.addPet(h,owner,new Api.PetInput("이름","cat","invalid")));
         assertEquals(1,homes.world(h,owner).pets().size());
     }
+    @Test void tankPlacementRejectsBlockedAndOccupiedTilesAndPersistsAcrossReload(){
+        String owner=user(),h=house(owner).household().id();
+        assertEquals(400,assertThrows(ApiException.class,()->homes.addPet(h,owner,
+            new Api.PetInput("수조",null,null,PetSpecies.FISH,"",null,0))).status.value());
+        var placed=homes.addPet(h,owner,new Api.PetInput("수조",null,null,PetSpecies.FISH,"",null,17)).pets().getFirst();
+        assertEquals(17,homes.world(h,owner).pets().getFirst().tankSlot());
+        assertEquals(409,assertThrows(ApiException.class,()->homes.addPet(h,owner,
+            new Api.PetInput("두번째",null,null,PetSpecies.FISH,"",null,17))).status.value());
+        assertEquals(400,assertThrows(ApiException.class,()->homes.addPet(h,owner,
+            new Api.PetInput("강아지","dog","cream",null,null,null,18))).status.value());
+        homes.archivePet(h,owner,placed.id(),placed.version());
+        assertEquals(17,homes.addPet(h,owner,
+            new Api.PetInput("두번째",null,null,PetSpecies.FISH,"",null,17)).pets().getFirst().tankSlot());
+    }
     @Test void petSpeciesAndGuardianAreScopedAndVersioned(){
         String owner=user(),family=user(),outsider=user(),h=house(owner).household().id();
         var membership=homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("가족","sage"));

@@ -60,6 +60,7 @@ class Pet extends Row {
     @Column(nullable = false, length = 24) String appearance;
     @Enumerated(EnumType.STRING) @Column(length = 24) PetSpecies speciesGroup;
     @Column(length = 80) String speciesName;
+    Integer tankSlot;
     @Column(length = 36) String guardianMemberId;
     Instant archivedAt;
     @Version long version;

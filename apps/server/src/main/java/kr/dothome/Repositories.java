@@ -24,6 +24,7 @@ interface Members extends JpaRepository<Member,String> {
 }
 interface Pets extends JpaRepository<Pet,String> {
     List<Pet> findByHouseholdIdAndArchivedAtIsNullOrderById(String householdId);
+    boolean existsByHouseholdIdAndTankSlotAndArchivedAtIsNullAndIdNot(String householdId,int tankSlot,String petId);
     List<Pet> findByHouseholdIdAndGuardianMemberIdAndArchivedAtIsNull(String householdId,String guardian);
 }
 interface Invitations extends JpaRepository<Invitation,String> {

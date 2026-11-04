@@ -22,6 +22,7 @@ export interface Pet {
   guardianMemberId?: string | null;
   appearanceId?: string;
   version?: number;
+  tankSlot?: number | null;
 }
 
 export function petGroup(pet?: Pet): PetSpecies {

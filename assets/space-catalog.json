@@ -1,7 +1,9 @@
 {
+  "tankGrid": {"columns": 8, "rows": 6, "cellSize": 48, "baseInset": 6},
   "maps": {
     "warm-wood-home": {
       "id": "warm-wood-home",
+      "tankSlots": [17, 18, 28, 30],
       "backdrop": "/art/homes-v2/warm-wood-home/architecture.png",
       "previewCrop": [
         32,
@@ -327,6 +329,7 @@
     },
     "sunny_apartment": {
       "id": "sunny_apartment",
+      "tankSlots": [17, 18, 28, 29],
       "backdrop": "/art/homes-v2/modern-apartment/architecture.png",
       "previewCrop": [
         32,
@@ -652,6 +655,7 @@
     },
     "brick_loft": {
       "id": "brick_loft",
+      "tankSlots": [17, 18, 19, 28, 29, 30],
       "backdrop": "/art/homes-v2/color-townhouse/architecture.png",
       "previewCrop": [
         32,
