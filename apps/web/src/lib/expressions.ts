@@ -58,5 +58,5 @@ export function sharedPlaceLabel(presence: SharedPlace | undefined, fallback: st
   const current = currentSharedPlace(presence);
   if (!current) return fallback;
   if (current.status === "UNSHARED") return "위치 미공유";
-  return current.place ? sharedPlaces[current.place] : "현재 장소 미확인";
+  return current.place ? sharedPlaces[current.place] : "위치 공유 켜짐";
 }

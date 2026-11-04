@@ -2,7 +2,7 @@ import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
 import {
-  expressionFields, expressionKeys, expressionLabel, sharedPlaces,
+  expressionFields, expressionKeys, expressionLabel,
   type ExpressionField, type ExpressionState,
 } from "../lib/expressions";
 
@@ -35,7 +35,7 @@ export function ExpressionForm({
     <div className="expression-panel">
       <Editor initial={query.data} path={path} householdName={householdName} onSaved={onSaved} />
       <details>
-        <summary>공유 장소 바꾸기</summary>
+        <summary>가족 위치 공유 설정</summary>
         <PlaceForm path={path} initial={query.data} onSaved={onPlaceSaved} />
       </details>
     </div>
@@ -183,16 +183,13 @@ function PlaceForm({ path, initial, onSaved }: {
 }) {
   const [base, setBase] = useState(initial);
   const [enabled, setEnabled] = useState(initial.sharing.enabled);
-  const [place, setPlace] = useState(initial.place.value ?? "");
-  const [duration, setDuration] = useState(0);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [latest, setLatest] = useState<ExpressionState>();
   const pending = useRef(false);
   const receipt = useRef<{ body: string; id: string } | null>(null);
-  const placeChanged = enabled && ((place || null) !== base.place.value || (place && duration));
-  const changed = enabled !== base.sharing.enabled || Boolean(placeChanged);
+  const changed = enabled !== base.sharing.enabled;
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -201,20 +198,12 @@ function PlaceForm({ path, initial, onSaved }: {
     setBusy(true);
     setSaved(false);
     setError("");
-    const changes = {
-      ...(enabled !== base.sharing.enabled ? { sharing: { enabled, version: base.sharing.version } } : {}),
-      ...(placeChanged ? { place: {
-        value: place || null, version: base.place.version,
-        ...(place && duration ? { ttlMinutes: duration } : {}),
-      } } : {}),
-    };
+    const changes = { sharing: { enabled, version: base.sharing.version } };
     const body = JSON.stringify(changes);
     if (receipt.current?.body !== body) receipt.current = { body, id: crypto.randomUUID() };
     try {
       const result = await api<ExpressionState>(path, "PATCH", { requestId: receipt.current.id, changes });
       setBase(result);
-      setPlace(result.place.value ?? "");
-      setDuration(0);
       setSaved(true);
       onSaved();
     } catch (err) {
@@ -229,47 +218,18 @@ function PlaceForm({ path, initial, onSaved }: {
   }
   return (
     <form onSubmit={save}>
-      <p className="muted">직접 고른 장소만 이 집 가족에게 공유해요.</p>
+      <p className="muted">이 설정은 이 집에만 적용돼요.</p>
       <label className="checkbox-label">
         <input type="checkbox" checked={enabled} disabled={busy} onChange={(e) => {
           setEnabled(e.target.checked);
           setSaved(false);
         }} />
-        이 집에 장소 공유
+        이 집 가족에게 위치 공유
       </label>
-      {enabled && (
-        <>
-          <label>내가 공유할 장소
-            <select value={place} disabled={busy} onChange={(e) => {
-              setPlace(e.target.value);
-              setSaved(false);
-            }}>
-              <option value="">선택하지 않아요</option>
-              {Object.entries(sharedPlaces).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-            </select>
-          </label>
-          {place && (
-            <label>장소 공개 시간
-              <select value={duration} disabled={busy} onChange={(e) => {
-                setDuration(Number(e.target.value));
-                setSaved(false);
-              }}>
-                <option value={0}>{place === base.place.value ? "현재 기한 유지" : "기본 · 2시간"}</option>
-                <option value={15}>15분</option><option value={30}>30분</option>
-                <option value={60}>1시간</option><option value={120}>2시간</option>
-              </select>
-            </label>
-          )}
-          {base.place.value && base.place.expiresAt && (
-            <p className="muted">현재 공개 기한 {new Date(base.place.expiresAt).toLocaleString("ko-KR")}</p>
-          )}
-        </>
-      )}
       {error && <p role="alert" className="error-message">{error}</p>}
       {latest && (
         <div>
-          <p>최신 상태 · {latest.sharing.enabled && latest.place.value
-            ? sharedPlaces[latest.place.value] : "공유 중인 장소 없음"}</p>
+          <p>최신 상태 · {latest.sharing.enabled ? "위치 공유 켜짐" : "위치 미공유"}</p>
           <button type="button" className="button secondary" onClick={() => {
             setBase(latest);
             setLatest(undefined);
@@ -277,8 +237,8 @@ function PlaceForm({ path, initial, onSaved }: {
           }}>최신값 확인 · 내 입력 유지</button>
         </div>
       )}
-      {saved && <p role="status">공유 장소를 저장했어요.</p>}
-      <button type="submit" className="button secondary" disabled={busy || !changed || Boolean(latest)}>장소 저장</button>
+      {saved && <p role="status">위치 공유 설정을 저장했어요.</p>}
+      <button type="submit" className="button secondary" disabled={busy || !changed || Boolean(latest)}>공유 설정 저장</button>
     </form>
   );
 }

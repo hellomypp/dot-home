@@ -73,20 +73,16 @@ it("asks for explicit review before retrying with the latest field version", asy
   }));
 });
 
-it("requires home-specific consent before sharing a manual place and sends both versions", async () => {
+it("saves only the household-specific location consent", async () => {
   mocked.mockResolvedValue(state as never);
   show();
-  const consent = await screen.findByLabelText("이 집에 장소 공유");
-  expect(screen.queryByLabelText("내가 공유할 장소")).toBeNull();
+  const consent = await screen.findByLabelText("이 집 가족에게 위치 공유");
   fireEvent.click(consent);
-  fireEvent.change(screen.getByLabelText("내가 공유할 장소"), { target: { value: "OFFICE" } });
-  fireEvent.change(screen.getByLabelText("장소 공개 시간"), { target: { value: "15" } });
-  fireEvent.click(screen.getByRole("button", { name: "장소 저장" }));
+  expect(screen.queryByLabelText("내가 공유할 장소")).toBeNull();
+  expect(screen.queryByLabelText("장소 공개 시간")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "공유 설정 저장" }));
   await waitFor(() => expect(mocked).toHaveBeenCalledWith(path, "PATCH", {
     requestId: expect.any(String),
-    changes: {
-      sharing: { enabled: true, version: 0 },
-      place: { value: "OFFICE", version: 0, ttlMinutes: 15 },
-    },
+    changes: { sharing: { enabled: true, version: 0 } },
   }));
 });
