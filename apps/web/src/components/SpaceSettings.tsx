@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { api, type Snapshot } from "../lib/api";
-import { catalogue, defaultDesign, warmWoodPreset, type SpaceDesign } from "../game/spaces";
+import { catalogue, defaultDesign, mapFor, type SpaceDesign } from "../game/spaces";
 import { SpacePreview } from "./SpacePreview";
 import "./spaces.css";
 export function PresetPicker({
@@ -21,10 +21,7 @@ export function PresetPicker({
           disabled={disabled}
           key={p.id}
           aria-label={p.name}
-          aria-pressed={
-            value === p.id ||
-            (value === "classic_home" && p.id === "garden_home")
-          }
+          aria-pressed={mapFor(value).id === p.id}
           onClick={() => onChange(p.id)}
         >
           <SpacePreview design={{ presetId: p.id, version: 0, variants: {} }} />
@@ -38,11 +35,6 @@ const labels: Record<string, string> = {
   original: "기본 냉장고",
   leaf: "초록 자석",
   star: "노란 자석",
-  sage: "세이지 소파",
-  blue: "파란 소파",
-  leather: "가죽 소파",
-  wood: "원목 식탁",
-  round: "둥근 식탁",
 };
 export function SpaceSettings({
   snapshot,
@@ -95,42 +87,25 @@ export function SpaceSettings({
               setSaved(false);
             }}
           />
-          {Object.entries(catalogue.variants).filter(([key]) => draft.presetId !== warmWoodPreset || key === "fridge").map(([key, values]) => (
-            <label key={key}>
-              {
-                {
-                  fridge: "냉장고 외형",
-                  sofa: "소파 외형",
-                  table: "식탁 외형",
-                }[key]
-              }
-              <select
-                aria-label={
-                  {
-                    fridge: "냉장고 외형",
-                    sofa: "소파 외형",
-                    table: "식탁 외형",
-                  }[key]
-                }
-                disabled={busy}
-                value={draft.variants[key] || ""}
-                onChange={(e) => {
-                  const variants = { ...draft.variants };
-                  if (e.target.value) variants[key] = e.target.value;
-                  else delete variants[key];
-                  setDraft({ ...draft, variants });
-                  setSaved(false);
-                }}
-              >
-                <option value="">선택한 집의 기본 외형</option>
-                {values.map((v) => (
-                  <option value={v} key={v}>
-                    {labels[v]}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
+          <label>
+            냉장고 외형
+            <select
+              disabled={busy}
+              value={draft.variants.fridge || ""}
+              onChange={(e) => {
+                const variants = { ...draft.variants };
+                if (e.target.value) variants.fridge = e.target.value;
+                else delete variants.fridge;
+                setDraft({ ...draft, variants });
+                setSaved(false);
+              }}
+            >
+              <option value="">선택한 집의 기본 외형</option>
+              {catalogue.variants.fridge.map((v) => (
+                <option value={v} key={v}>{labels[v]}</option>
+              ))}
+            </select>
+          </label>
           <div className="form-actions">
             <button
               className="button secondary"

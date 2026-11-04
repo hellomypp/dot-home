@@ -2,12 +2,10 @@ import Phaser from "phaser";
 import { makeCat } from "./art";
 import {
   assetBase,
-  assetUrl,
   catalogue,
   mapFor,
   defaultDesign,
-  spriteFor,
-  variantsFor,
+  fridgeMagnet,
   nativeCharacter,
   nearest,
   path,
@@ -68,19 +66,10 @@ class NativeHome extends Phaser.Scene {
   preload() {
     const files = new Set<string>();
     for (const m of Object.values(catalogue.maps)) {
-      if (m.tileset) this.load.image("terrain:" + m.id, assetUrl(m.tileset));
-      if (m.backdrop) files.add(m.backdrop);
+      files.add(m.backdrop);
       for (const o of m.objects) files.add(o.sprite);
     }
-    for (const name of [
-      "sage_sofa",
-      "blue_sofa",
-      "leather_sofa",
-      "wood_dining",
-      "round_dining",
-    ])
-      files.add("assets/objects/" + name + ".png");
-    for (const file of files) this.load.image(file, assetUrl(file));
+    for (const file of files) this.load.image(file, file);
     for (const kind of ["adult_female", "adult_male", "child"])
       this.load.spritesheet(
         kind,
@@ -176,51 +165,27 @@ class NativeHome extends Phaser.Scene {
     const design = this.view.design || defaultDesign;
     this.map = mapFor(design.presetId);
     this.designKey = JSON.stringify(design);
-    const tile = (grid: number[][], depth: number) => {
-      const map = this.make.tilemap({
-        data: grid.map((row) => row.map((g) => (g ? g - 1 : -1))),
-        tileWidth: 16,
-        tileHeight: 16,
-      });
-      const tiles = map.addTilesetImage(
-        "terrain:" + this.map.id,
-        "terrain:" + this.map.id,
-        16,
-        16,
-        0,
-        0,
-        0,
-      );
-      map.createLayer(0, tiles!, 0, 0)!.setDepth(depth);
-    };
-    if (this.map.backdrop)
-      this.add.image(0, 0, this.map.backdrop).setOrigin(0, 0).setDepth(-1000);
-    else tile(this.map.ground, -1000);
+    this.add.image(0, 0, this.map.backdrop).setOrigin(0, 0).setDepth(-1000);
+    const magnet = fridgeMagnet(design);
     const add = (o: MapObject) => {
-      const texture = spriteFor(o, design),
-        source = this.textures
-          .get(texture)
-          .getSourceImage() as HTMLImageElement;
       const image = this.add
-        .image(o.x + Math.round((o.width - source.width) / 2), o.y, texture)
+        .image(o.x, o.y, o.sprite)
         .setOrigin(0, 0)
         .setDepth(
           o.layer === "ground"
             ? -900
             : o.layer === "wall"
               ? -700
-              : o.layer === "foreground"
-                ? 10000
-                : o.depth,
+              : o.depth,
         );
       if (o.occlusion) this.objects.push({ meta: o, image });
       if (o.interactive) {
         image.setInteractive({
           hitArea: new Phaser.Geom.Rectangle(
-            (source.width - Math.max(44, source.width)) / 2,
-            (source.height - Math.max(44, source.height)) / 2,
-            Math.max(44, source.width),
-            Math.max(44, source.height),
+            (o.width - Math.max(44, o.width)) / 2,
+            (o.height - Math.max(44, o.height)) / 2,
+            Math.max(44, o.width),
+            Math.max(44, o.height),
           ),
           hitAreaCallback: Phaser.Geom.Rectangle.Contains,
           useHandCursor: true,
@@ -262,24 +227,20 @@ class NativeHome extends Phaser.Scene {
           },
         );
       }
-      if (o.id === "fridge" && variantsFor(design).fridge !== "original") {
-        const color =
-          variantsFor(design).fridge === "leaf" ? 0x47832b : 0xffcf76;
+      if (o.id === "fridge" && magnet !== undefined) {
         this.add
-          .rectangle(o.x + 20, o.y + 20, 4, 4, color)
+          .rectangle(o.x + 20, o.y + 20, 4, 4, magnet)
           .setDepth(o.depth + 0.1);
         this.add
-          .rectangle(o.x + 20, o.y + 20, 2, 8, color)
+          .rectangle(o.x + 20, o.y + 20, 2, 8, magnet)
           .setDepth(o.depth + 0.1);
       }
     };
-    this.map.objects.filter((o) => o.layer === "ground").forEach(add);
-    if (this.map.tileset) tile(this.map.architecture, -800);
-    this.map.objects.filter((o) => o.layer !== "ground").forEach(add);
+    this.map.objects.forEach(add);
     this.cameras.main
       .setBounds(0, 0, 448, 320)
       .setRoundPixels(true)
-      .setBackgroundColor(this.map.backdrop ? "#e8d9bf" : "#000000");
+      .setBackgroundColor("#e8d9bf");
   }
   actor(
     id: string,
@@ -379,9 +340,7 @@ class NativeHome extends Phaser.Scene {
     for (const [i, p] of this.view.pets.entries()) {
       let a = this.pets.get(p.id);
       if (!a) {
-        const rest = this.map.petSpawn ?? this.map.objects.find(
-          (o) => o.id === "pet_rest",
-        )!.interactionAnchor!;
+        const rest = this.map.petSpawn;
         a = this.actor(
           p.id,
           p.name,
@@ -480,7 +439,7 @@ class NativeHome extends Phaser.Scene {
         a.cycle = cycle;
         const goals = [
           ...this.map.spawns,
-          ...(a.pet && this.map.petSpawn ? [this.map.petSpawn] : []),
+          ...(a.pet ? [this.map.petSpawn] : []),
           ...this.map.objects
             .filter((o) => o.interactive)
             .map((o) => o.interactionAnchor!),
@@ -596,10 +555,22 @@ export function mountNativeWorld(
       render: { preserveDrawingBuffer: true },
     });
   const resize = () => {
-    const zoom = Math.max(1, Math.min(2, Math.floor(parent.clientWidth / 320)));
+    const mobile = window.matchMedia("(max-width: 760px)").matches;
+    const width = mobile ? Math.max(1, parent.clientWidth) : 320;
+    const zoom = mobile ? 1 : Math.max(1, Math.min(2, Math.floor(parent.clientWidth / width)));
     parent.style.height = 224 * zoom + "px";
-    if (game.isBooted) game.scale.setZoom(zoom);
+    if (game.isBooted) {
+      if (game.scale.gameSize.width !== width) game.scale.resize(width, 224);
+      if (game.scale.zoom !== zoom) game.scale.setZoom(zoom);
+    }
   };
+  // Layout can shift after the canvas loads. Refresh Phaser's page offset
+  // before it translates a tap or click into scene coordinates.
+  const refreshInputBounds = (event: Event) => {
+    if (event.target === game.canvas) game.scale.updateBounds();
+  };
+  parent.addEventListener("touchstart", refreshInputBounds, { capture: true, passive: true });
+  parent.addEventListener("mousedown", refreshInputBounds, true);
   const observer = new ResizeObserver(resize);
   observer.observe(parent);
   game.events.once("ready", resize);
@@ -608,6 +579,8 @@ export function mountNativeWorld(
     update: (view) => scene.setView(view),
     destroy: () => {
       observer.disconnect();
+      parent.removeEventListener("touchstart", refreshInputBounds, true);
+      parent.removeEventListener("mousedown", refreshInputBounds, true);
       game.destroy(true);
       parent.style.height = "";
       parent.classList.remove("native-world");

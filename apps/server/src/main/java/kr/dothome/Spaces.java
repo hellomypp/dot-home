@@ -11,7 +11,7 @@ final class Spaces {
     static final ObjectMapper JSON=new ObjectMapper();
     static final JsonNode DATA;
     static {try(var in=new ClassPathResource("spaces/space-catalog.json").getInputStream()){DATA=JSON.readTree(in);}catch(Exception e){throw new ExceptionInInitializerError(e);}}
-    static String mapId(String preset){return "classic_home".equals(preset)?"garden_home":preset;}
+    static String mapId(String preset){var alias=DATA.get("aliases").get(preset);return alias==null?preset:alias.asText();}
     static void validate(String preset,Map<String,String> variants){
         if(preset==null||!DATA.get("maps").has(mapId(preset)))throw ApiException.invalid("지원하지 않는 집 프리셋이에요.");
         if(variants==null||variants.size()>3)throw ApiException.invalid("가구 외형을 확인해 주세요.");
@@ -28,21 +28,14 @@ final class Spaces {
         if(!Double.isFinite(x)||!Double.isFinite(y))return false;
         var map=map(preset);if(map==null)return false;
         var bounds=map.get("walkBounds");
-        if(bounds!=null){
-            double left=x-6,right=x+6,top=y-8,bottom=y;
-            int bx=bounds.get(0).asInt(),by=bounds.get(1).asInt();
-            if(left<bx||right>bx+bounds.get(2).asInt()||top<by||bottom>by+bounds.get(3).asInt())return false;
-            for(var object:map.get("objects")){
-                var collision=object.get("collision");
-                if(collision==null||collision.isNull())continue;
-                int cx=collision.get(0).asInt(),cy=collision.get(1).asInt();
-                if(left<cx+collision.get(2).asInt()&&right>cx&&top<cy+collision.get(3).asInt()&&bottom>cy)return false;
-            }
-            return true;
-        }
-        for(double dx:new double[]{-6,5})for(double dy:new double[]{-8,-1}){
-            int tx=(int)Math.floor((x+dx)/16),ty=(int)Math.floor((y+dy)/16);
-            if(tx<0||ty<0||tx>=28||ty>=20||map.get("collision").get(ty*28+tx).asInt()==1)return false;
+        double left=x-6,right=x+6,top=y-8,bottom=y;
+        int bx=bounds.get(0).asInt(),by=bounds.get(1).asInt();
+        if(left<bx||right>bx+bounds.get(2).asInt()||top<by||bottom>by+bounds.get(3).asInt())return false;
+        for(var object:map.get("objects")){
+            var collision=object.get("collision");
+            if(collision==null||collision.isNull())continue;
+            int cx=collision.get(0).asInt(),cy=collision.get(1).asInt();
+            if(left<cx+collision.get(2).asInt()&&right>cx&&top<cy+collision.get(3).asInt()&&bottom>cy)return false;
         }
         return true;
     }

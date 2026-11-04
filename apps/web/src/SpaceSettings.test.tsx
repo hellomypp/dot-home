@@ -32,13 +32,13 @@ it("preview and cancel never persist; save keeps per-object override across pres
     design: { ...initial.design, presetId: "brick_loft", version: 4 },
   });
   render(<App />);
-  fireEvent.click(screen.getByRole("button", { name: "벽돌 로프트" }));
+  fireEvent.click(screen.getByRole("button", { name: "컬러 타운하우스" }));
   expect(api).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "미리보기 취소" }));
   expect(
-    screen.getByRole("button", { name: "정원집" }).getAttribute("aria-pressed"),
+    screen.getByRole("button", { name: "따뜻한 나무집" }).getAttribute("aria-pressed"),
   ).toBe("true");
-  fireEvent.click(screen.getByRole("button", { name: "벽돌 로프트" }));
+  fireEvent.click(screen.getByRole("button", { name: "컬러 타운하우스" }));
   fireEvent.click(screen.getByRole("button", { name: "집 분위기 저장" }));
   await screen.findByRole("status");
   expect(api).toHaveBeenCalledWith("/api/households/h/design", "PATCH", {
@@ -68,7 +68,7 @@ it("deduplicates save and preserves failed draft, then permits fetching latest v
       }),
   );
   render(<App />);
-  fireEvent.click(screen.getByRole("button", { name: "햇살 아파트" }));
+  fireEvent.click(screen.getByRole("button", { name: "모던한 아파트" }));
   const button = screen.getByRole("button", { name: "집 분위기 저장" });
   fireEvent.click(button);
   fireEvent.click(button);
@@ -77,7 +77,7 @@ it("deduplicates save and preserves failed draft, then permits fetching latest v
   await screen.findByRole("alert");
   expect(
     screen
-      .getByRole("button", { name: "햇살 아파트" })
+      .getByRole("button", { name: "모던한 아파트" })
       .getAttribute("aria-pressed"),
   ).toBe("true");
   vi.mocked(api).mockResolvedValueOnce({
@@ -91,7 +91,7 @@ it("deduplicates save and preserves failed draft, then permits fetching latest v
   await waitFor(() =>
     expect(
       screen
-        .getByRole("button", { name: "벽돌 로프트" })
+        .getByRole("button", { name: "컬러 타운하우스" })
         .getAttribute("aria-pressed"),
     ).toBe("true"),
   );

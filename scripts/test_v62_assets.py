@@ -16,23 +16,21 @@ class RuntimeAssets(unittest.TestCase):
   for who in ['adult_female','adult_male','child']:self.assertEqual((96,160),self.dimensions('assets/characters/'+who+'.png'))
   self.assertEqual((80,64),self.dimensions('assets/pets/small_dog_walk.png'));self.assertEqual((40,64),self.dimensions('assets/pets/small_dog_states.png'))
   a=json.loads((ART/'animation.json').read_text());self.assertEqual(['down','left','right','up'],a['directions']);self.assertEqual([1,2,3,2],a['human']['walk']);self.assertEqual(150,a['human']['msPerFrame'])
- def test_shared_catalogue_is_the_original_runtime_map(self):
-  data=json.loads((ROOT/'assets/space-catalog.json').read_text())
+ def test_original_v62_maps_are_retained(self):
   for name in ('garden_home','sunny_apartment','brick_loft'):
-   m=data['maps'][name]
-   original=json.loads((ART/'maps'/f'{name}.runtime.json').read_text())
-   self.assertEqual(original,m)
+   m=json.loads((ART/'maps'/f'{name}.runtime.json').read_text())
    self.assertEqual(560,len(m['collision']))
    for obj in m['objects']:self.assertTrue((ART/obj['sprite']).is_file())
- def test_warm_wood_sprites_match_runtime_dimensions(self):
+ def test_new_home_sprites_match_runtime_dimensions(self):
   catalog=json.loads((ROOT/'assets/space-catalog.json').read_text())
-  room=catalog['maps']['warm-wood-home']
   public=ART.parents[1]
   def size(url):
    png=(public/url.lstrip('/')).read_bytes()
    self.assertEqual(b'\x89PNG\r\n\x1a\n',png[:8])
    return struct.unpack('>II',png[16:24])
-  self.assertEqual((448,320),size(room['backdrop']))
-  for obj in room['objects']:
-   self.assertEqual((obj['width'],obj['height']),size(obj['sprite']))
+  self.assertEqual(3,len(catalog['presets']))
+  for room in catalog['maps'].values():
+   self.assertEqual((448,320),size(room['backdrop']))
+   for obj in room['objects']:
+    self.assertEqual((obj['width'],obj['height']),size(obj['sprite']))
 if __name__=='__main__':unittest.main()

@@ -45,7 +45,7 @@ class SpaceIntegrationTest {
     @Test void legacyCoordinatesAndAppearanceAreNotOverwritten(){
         String owner=user(),h=homes.create(owner,new Api.CreateHouse("기존 집","대표","v1:3212")).household().id();
         jdbc.update("UPDATE membership SET avatar_space='legacy',x=320,y=288 WHERE household_id=?",h);
-        var m=homes.world(h,owner).members().getFirst();assertEquals(224,m.x());assertEquals(272,m.y());assertEquals("v1:3212",m.appearance());
+        var m=homes.world(h,owner).members().getFirst();assertEquals(224,m.x());assertEquals(260,m.y());assertEquals("v1:3212",m.appearance());
         assertEquals(320,jdbc.queryForObject("SELECT x FROM membership WHERE household_id=?",Double.class,h));
         homes.profile(h,owner,new Api.Profile("새 이름","v2:child"));assertEquals("v2:child",homes.world(h,owner).members().getFirst().appearance());
         assertThrows(ApiException.class,()->homes.profile(h,owner,new Api.Profile("새 이름","v2:unknown")));
@@ -71,8 +71,8 @@ class SpaceIntegrationTest {
         assertEquals(preset,visits.enter(link,visitor).design().presetId());
     }
     @Test void canonicalAnchorsAndFootCollisionMatchAllMaps(){
-        for(var preset:List.of("garden_home","sunny_apartment","brick_loft")){
-            assertTrue(Spaces.walkable(224,272,preset));assertFalse(Spaces.walkable(-1,100,preset));assertFalse(Spaces.walkable(Double.NaN,100,preset));
+        for(var preset:List.of("warm-wood-home","sunny_apartment","brick_loft","garden_home","classic_home")){
+            for(var spawn:Spaces.map(preset).get("spawns"))assertTrue(Spaces.walkable(spawn.get(0).asDouble(),spawn.get(1).asDouble(),preset));assertFalse(Spaces.walkable(-1,100,preset));assertFalse(Spaces.walkable(Double.NaN,100,preset));
             for(var object:Spaces.map(preset).get("objects"))if(object.get("interactive").asBoolean()){
                 var anchor=object.get("interactionAnchor");assertTrue(Spaces.walkable(anchor.get(0).asDouble(),anchor.get(1).asDouble(),preset),preset+"/"+object.get("id"));
             }

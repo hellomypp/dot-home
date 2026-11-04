@@ -25,53 +25,37 @@ export interface MapObject {
 }
 export interface RuntimeMap {
   id: string;
-  width: number;
-  height: number;
-  tileWidth: number;
-  tileHeight: number;
-  ground: number[][];
-  architecture: number[][];
-  collision: number[];
   objects: MapObject[];
   spawns: number[][];
   visitorSpawn: number[];
-  tileset?: string;
-  backdrop?: string;
-  previewCrop?: [number, number, number, number];
-  walkBounds?: [number, number, number, number];
-  petSpawn?: number[];
+  backdrop: string;
+  previewCrop: [number, number, number, number];
+  walkBounds: [number, number, number, number];
+  petSpawn: number[];
 }
 export const catalogue = raw as unknown as {
   maps: Record<string, RuntimeMap>;
   presets: { id: string; name: string }[];
   variants: Record<string, string[]>;
-  defaults: Record<string, Record<string, string>>;
+  aliases: Record<string, string>;
 };
+export const warmWoodPreset = "warm-wood-home";
 export const defaultDesign: SpaceDesign = {
-  presetId: "garden_home",
+  presetId: warmWoodPreset,
   version: 0,
   variants: {},
 };
 export const assetBase = "/art/v62/";
-export const warmWoodPreset = "warm-wood-home";
-export const assetUrl = (file: string) => file.startsWith("/") ? file : assetBase + file;
-export function mapFor(id = "garden_home") {
-  return (
-    catalogue.maps[id === "classic_home" ? "garden_home" : id] ||
-    catalogue.maps.garden_home
-  );
+export function mapFor(id = warmWoodPreset) {
+  const key = Object.hasOwn(catalogue.aliases, id) ? catalogue.aliases[id] : id;
+  return Object.hasOwn(catalogue.maps, key)
+    ? catalogue.maps[key]
+    : catalogue.maps[warmWoodPreset];
 }
-export function variantsFor(d: SpaceDesign) {
-  return { ...catalogue.defaults[mapFor(d.presetId).id], ...d.variants };
-}
-export function spriteFor(o: MapObject, d: SpaceDesign) {
-  if (d.presetId === warmWoodPreset) return o.sprite;
-  const v = variantsFor(d);
-  return o.id === "sofa"
-    ? `assets/objects/${{ sage: "sage_sofa", blue: "blue_sofa", leather: "leather_sofa" }[v.sofa] || "sage_sofa"}.png`
-    : o.id === "dining_table"
-      ? `assets/objects/${v.table === "round" ? "round_dining" : "wood_dining"}.png`
-      : o.sprite;
+export function fridgeMagnet(design: SpaceDesign) {
+  return design.variants.fridge === "leaf" ? 0x47832b
+    : design.variants.fridge === "star" ? 0xffcf76
+    : undefined;
 }
 export type NativeCharacter = "adult_female" | "adult_male" | "child";
 export const characterStyles: { id: NativeCharacter; name: string }[] = [
@@ -95,24 +79,15 @@ export interface Point {
 }
 export function canStand(p: Point, m: RuntimeMap, pet = false) {
   if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
-  if (m.walkBounds) {
-    const left = p.x - (pet ? 5 : 6), right = p.x + (pet ? 5 : 6);
-    const top = p.y - (pet ? 5 : 8), bottom = p.y;
-    const [x, y, width, height] = m.walkBounds;
-    return left >= x && right <= x + width && top >= y && bottom <= y + height &&
-      !m.objects.some(({ collision }) => {
-        if (!collision) return false;
-        const [cx, cy, w, h] = collision;
-        return left < cx + w && right > cx && top < cy + h && bottom > cy;
-      });
-  }
-  return (pet ? [-5, 4] : [-6, 5]).every((dx) =>
-    (pet ? [-5, -1] : [-8, -1]).every((dy) => {
-      const x = Math.floor((p.x + dx) / 16),
-        y = Math.floor((p.y + dy) / 16);
-      return x >= 0 && x < 28 && y >= 0 && y < 20 && !m.collision[y * 28 + x];
-    }),
-  );
+  const left = p.x - (pet ? 5 : 6), right = p.x + (pet ? 5 : 6);
+  const top = p.y - (pet ? 5 : 8), bottom = p.y;
+  const [x, y, width, height] = m.walkBounds;
+  return left >= x && right <= x + width && top >= y && bottom <= y + height &&
+    !m.objects.some(({ collision }) => {
+      if (!collision) return false;
+      const [cx, cy, w, h] = collision;
+      return left < cx + w && right > cx && top < cy + h && bottom > cy;
+    });
 }
 export function nearest(p: Point, m: RuntimeMap, pet = false): Point {
   const center = {
@@ -220,46 +195,19 @@ export function renderPreview(
 ) {
   c.imageSmoothingEnabled = false;
   c.clearRect(0, 0, 448, 320);
-  if (m.backdrop) c.drawImage(images.get(m.backdrop)!, 0, 0);
-  const tiles = (grid: number[][]) => {
-    if (!m.tileset) return;
-    const terrain = images.get(m.tileset)!;
-    grid.forEach((row, y) =>
-      row.forEach((gid, x) => {
-        if (gid)
-          c.drawImage(
-            terrain,
-            ((gid - 1) % 8) * 16,
-            Math.floor((gid - 1) / 8) * 16,
-            16,
-            16,
-            x * 16,
-            y * 16,
-            16,
-            16,
-          );
-      }),
-    );
-  };
-  const obj = (o: MapObject) => {
-    const image = images.get(spriteFor(o, d))!;
-    c.drawImage(image, o.x + Math.round((o.width - image.width) / 2), o.y);
-    if (o.id === "fridge") {
-      const v = variantsFor(d).fridge;
-      if (v !== "original") {
-        c.fillStyle = v === "leaf" ? "#47832b" : "#ffcf76";
-        c.fillRect(o.x + 18, o.y + 18, 4, 4);
-        c.fillRect(o.x + 19, o.y + 16, 2, 8);
-      }
+  c.drawImage(images.get(m.backdrop)!, 0, 0);
+  const magnet = fridgeMagnet(d);
+  const drawObject = (o: MapObject) => {
+    c.drawImage(images.get(o.sprite)!, o.x, o.y);
+    if (o.id === "fridge" && magnet !== undefined) {
+      c.fillStyle = "#" + magnet.toString(16);
+      c.fillRect(o.x + 18, o.y + 18, 4, 4);
+      c.fillRect(o.x + 19, o.y + 16, 2, 8);
     }
   };
-  tiles(m.ground);
-  m.objects.filter((o) => o.layer === "ground").forEach(obj);
-  tiles(m.architecture);
-  m.objects.filter((o) => o.layer === "wall").forEach(obj);
-  m.objects
-    .filter((o) => o.layer === "depth")
+  m.objects.filter((o) => o.layer === "ground").forEach(drawObject);
+  m.objects.filter((o) => o.layer === "wall").forEach(drawObject);
+  m.objects.filter((o) => o.layer === "depth")
     .sort((a, b) => a.depth - b.depth)
-    .forEach(obj);
-  m.objects.filter((o) => o.layer === "foreground").forEach(obj);
+    .forEach(drawObject);
 }

@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
   defaultDesign,
-  assetUrl,
   mapFor,
   renderPreview,
-  spriteFor,
   type SpaceDesign,
 } from "../game/spaces";
 export function SpacePreview({
@@ -15,15 +13,11 @@ export function SpacePreview({
   const ref = useRef<HTMLCanvasElement>(null),
     [error, setError] = useState(false);
   const m = mapFor(design.presetId);
-  const [x, y, width, height] = m.previewCrop ?? [64, 48, 320, 224];
+  const [x, y, width, height] = m.previewCrop;
   useEffect(() => {
     let alive = true;
     setError(false);
-    const files = new Set([
-      ...(m.tileset ? [m.tileset] : []),
-      ...(m.backdrop ? [m.backdrop] : []),
-      ...m.objects.map((o) => spriteFor(o, design)),
-    ]);
+    const files = new Set([m.backdrop, ...m.objects.map((o) => o.sprite)]);
     const images = new Map<string, HTMLImageElement>();
     Promise.all(
       [...files].map(
@@ -35,7 +29,7 @@ export function SpacePreview({
               resolve();
             };
             image.onerror = reject;
-            image.src = assetUrl(file);
+            image.src = file;
           }),
       ),
     )
@@ -60,7 +54,7 @@ export function SpacePreview({
     };
   }, [design.presetId, JSON.stringify(design.variants)]);
   return (
-    <div className={m.previewCrop ? "space-preview full-room" : "space-preview"}>
+    <div className="space-preview full-room">
       {error ? (
         <p role="alert">집 이미지를 불러오지 못했어요.</p>
       ) : (

@@ -62,7 +62,7 @@ class SocketIntegrationTest {
     }
     @Test void topicPublishAndForgedActorAreRejected()throws Exception{
         try(var owner=login()){var home=homes.create(owner.user,new Api.CreateHouse("보안 집","가온","sage"));String id=home.household().id();try(var socket=socket(owner)){socket.send("SEND\ndestination:/topic/households/"+id+"/events\n\n{}");socket.take("CLOSED");}
-            try(var socket=socket(owner)){socket.send("SUBSCRIBE\nid:errors\ndestination:/user/queue/errors\n\n");subscribe(socket,id);socket.send("SEND\ndestination:/app/households/"+id+"/actions\ncontent-type:application/json\n\n{\"requestId\":\"forged\",\"kind\":\"MOVE_INTENT\",\"scene\":\"home\",\"x\":320,\"y\":320,\"memberId\":\"other\"}");socket.take("ACTION_DENIED");assertEquals(272,homes.world(id,owner.user).members().getFirst().y());}
+            try(var socket=socket(owner)){socket.send("SUBSCRIBE\nid:errors\ndestination:/user/queue/errors\n\n");subscribe(socket,id);socket.send("SEND\ndestination:/app/households/"+id+"/actions\ncontent-type:application/json\n\n{\"requestId\":\"forged\",\"kind\":\"MOVE_INTENT\",\"scene\":\"home\",\"x\":320,\"y\":320,\"memberId\":\"other\"}");socket.take("ACTION_DENIED");assertEquals(260,homes.world(id,owner.user).members().getFirst().y());}
         }
     }
     @Test void latestTabControlsCharacterAndLogoutClosesSockets()throws Exception{

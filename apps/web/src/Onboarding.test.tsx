@@ -288,7 +288,7 @@ it("구형 색상은 유지하고 새 외형의 네 항목을 손실 없이 복�
 
 it("제공된 캐릭터 스타일을 선택하고 프리셋과 함께 저장한다", async () => {
   show();await house();
-  fireEvent.click(screen.getByRole("button", {name:/벽돌/}));
+  fireEvent.click(screen.getByRole("button", {name:/컬러 타운하우스/}));
   character();
   fireEvent.click(screen.getByRole("button", {name:"노란 멜빵 캐릭터"}));
   fireEvent.click(screen.getByRole("button", {name:"우리 집 만들기"}));
