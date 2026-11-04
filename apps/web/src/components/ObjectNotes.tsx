@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 export interface ObjectNote {
   id: string;
@@ -30,16 +30,25 @@ export function ObjectNotes({
     lock = useRef(false),
     client = useQueryClient();
   const root = `/api/households/${householdId}`;
-  const query = useQuery({
-    queryKey: ["object-notes", householdId, archive],
-    queryFn: () =>
-      api<ObjectNote[]>(
-        root + (archive ? "/notes/archive" : "/objects/fridge/notes"),
-      ),
+  const attachedNotes = useQuery({
+    queryKey: ["object-notes", householdId, false],
+    queryFn: () => api<ObjectNote[]>(root + "/objects/fridge/notes"),
+    enabled: !archive,
   });
+  const archivedNotes = useInfiniteQuery({
+    queryKey: ["object-notes", householdId, "archive"],
+    initialPageParam: "",
+    queryFn: ({ pageParam }) => api<{ items: ObjectNote[]; nextCursor: string | null }>(
+      root + "/notes/archive/page" + (pageParam ? "?cursor=" + encodeURIComponent(pageParam) : ""),
+    ),
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    enabled: archive,
+  });
+  const query = archive ? archivedNotes : attachedNotes;
+  const notes = archive ? archivedNotes.data?.pages.flatMap((page) => page.items) : attachedNotes.data;
   const noteBody = body.trim();
   const length = [...noteBody].length;
-  const full = !archive && (query.data?.length ?? 0) >= 10;
+  const full = !archive && (attachedNotes.data?.length ?? 0) >= 10;
   const canCreate = !full && length > 0 && length <= 300;
   async function mutate(path: string, method: string, input?: unknown) {
     if (lock.current) return;
@@ -85,7 +94,7 @@ export function ObjectNotes({
       </nav>
       {query.isPending ? (
         <p role="status">쪽지를 가져오고 있어요…</p>
-      ) : query.error ? (
+      ) : query.error && !notes?.length ? (
         <p role="alert">
           {query.error.message}
           <button
@@ -95,8 +104,8 @@ export function ObjectNotes({
             다시 시도
           </button>
         </p>
-      ) : query.data?.length ? (
-        query.data.map((n) => (
+      ) : notes?.length ? (
+        notes.map((n) => (
           <article className="object-note" key={n.id}>
             <p>{n.body}</p>
             <small>
@@ -144,6 +153,16 @@ export function ObjectNotes({
             ? "아직 보관한 쪽지가 없어요."
             : "냉장고에 첫 쪽지를 붙여보세요."}
         </p>
+      )}
+      {archive && (archivedNotes.hasNextPage || archivedNotes.isFetchNextPageError) && (
+        <button
+          className="button secondary"
+          type="button"
+          disabled={archivedNotes.isFetching}
+          onClick={() => void archivedNotes.fetchNextPage()}
+        >
+          {archivedNotes.isFetchingNextPage ? "불러오는 중…" : archivedNotes.isFetchNextPageError ? "다음 쪽지 다시 불러오기" : "보관한 쪽지 더 보기"}
+        </button>
       )}
       {!archive && (
         <form onSubmit={create}>

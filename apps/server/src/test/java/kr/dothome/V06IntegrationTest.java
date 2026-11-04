@@ -52,6 +52,26 @@ class V06IntegrationTest {
   assertEquals(10,notes.list(h,a,"fridge").size());
   assertEquals(1,notes.archive(h,a).size());
  }
+ @Test void archivePagesUseStableOrderAcrossIdenticalTimestamps(){
+  String owner=user(),h=house(owner),member=homes.requireMember(h,owner).id;
+  Instant created=Instant.now().minusSeconds(60).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+  for(int i=0;i<5;i++){
+   var note=new ObjectNote();
+   note.householdId=h;note.objectId="fridge";note.authorMemberId=member;note.body="보관 쪽지 "+i;
+   note.createdAt=created;note.state="TAKEN";note.takenByMemberId=member;note.takenAt=created;
+   noteRows.saveAndFlush(note);
+  }
+  var first=notes.archivePage(h,owner,null,2);
+  var second=notes.archivePage(h,owner,first.nextCursor(),2);
+  var last=notes.archivePage(h,owner,second.nextCursor(),2);
+  assertNull(last.nextCursor());
+  var ids=java.util.stream.Stream.of(first,second,last).flatMap(page->page.items().stream()).map(ObjectNoteView::id).toList();
+  assertEquals(5,ids.size());
+  assertEquals(notes.archive(h,owner).stream().map(ObjectNoteView::id).sorted(Comparator.reverseOrder()).toList(),ids);
+  assertThrows(ApiException.class,()->notes.archivePage(h,owner,"invalid",2));
+  assertThrows(ApiException.class,()->notes.archivePage(h,owner,null,101));
+  assertThrows(ApiException.class,()->notes.archivePage(h,user(),first.nextCursor(),2));
+ }
  CalendarInput allDay(long version){return new CalendarInput("생일","가족 일정","BIRTHDAY",true,LocalDate.of(2026,11,3),LocalDate.of(2026,11,3),null,null,"Asia/Seoul",version);}
  @Test void calendarDatesVersionsAndScope(){String a=user(),h=house(a),b=join(h,a);var e=calendar.save(h,a,null,allDay(0));assertEquals(LocalDate.of(2026,11,3),e.startDate());assertEquals(1,calendar.range(h,b,LocalDate.of(2026,11,1),LocalDate.of(2026,11,30)).size());var changed=calendar.save(h,b,e.id(),allDay(e.version()));assertEquals(homes.requireMember(h,b).id,changed.updatedByMemberId());assertThrows(ApiException.class,()->calendar.save(h,a,e.id(),allDay(e.version())));assertThrows(ApiException.class,()->calendar.range(h,user(),LocalDate.of(2026,11,1),LocalDate.of(2026,11,30)));assertThrows(ApiException.class,()->calendar.range(h,a,LocalDate.of(2026,1,1),LocalDate.of(2028,1,1)));calendar.delete(h,a,e.id(),changed.version());assertTrue(calendar.range(h,b,LocalDate.of(2026,11,1),LocalDate.of(2026,11,30)).isEmpty());}
  @Test void timedCalendarUsesUtcAndSeoulRange(){String a=user(),h=house(a);var i=new CalendarInput("자정 약속","","GENERAL",false,null,null,Instant.parse("2026-11-02T15:00:00Z"),Instant.parse("2026-11-02T16:00:00Z"),"Asia/Seoul",0);calendar.save(h,a,null,i);assertTrue(calendar.range(h,a,LocalDate.of(2026,11,2),LocalDate.of(2026,11,2)).isEmpty());assertEquals(1,calendar.range(h,a,LocalDate.of(2026,11,3),LocalDate.of(2026,11,3)).size());assertThrows(ApiException.class,()->CalendarService.validate(new CalendarInput("거꾸로","","GENERAL",false,null,null,i.endAt(),i.startAt(),"Asia/Seoul",0)));assertThrows(ApiException.class,()->CalendarService.validate(new CalendarInput("혼합","","GENERAL",true,LocalDate.now(),LocalDate.now(),Instant.now(),null,"Asia/Seoul",0)));}

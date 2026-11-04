@@ -58,7 +58,7 @@ it("쪽지 본문은 HTML 실행 없이 표시하고 떼기와 보관함을 API�
       return { ...note, state: "TAKEN" } as never;
     }
     return (
-      path.endsWith("archive") ? [note] : attached ? [note] : []
+      path.endsWith("archive/page") ? { items: [note], nextCursor: null } : attached ? [note] : []
     ) as never;
   });
   const { container } = show(
@@ -75,6 +75,21 @@ it("쪽지 본문은 HTML 실행 없이 표시하고 떼기와 보관함을 API�
   );
   fireEvent.click(screen.getByRole("button", { name: "가족 보관함" }));
   expect(await screen.findByText(note.body)).toBeTruthy();
+});
+it("보관함의 다음 페이지를 기존 쪽지 아래에 이어 보여 준다", async () => {
+  const note = { id: "n", objectId: "fridge", authorMemberId: "a", state: "TAKEN", createdAt: new Date().toISOString(), version: 0 };
+  mocked.mockImplementation(async (path) => {
+    if (path.includes("?cursor=")) return { items: [{ ...note, id: "n2", body: "두 번째 페이지" }], nextCursor: null } as never;
+    if (path.endsWith("archive/page")) return { items: [{ ...note, body: "첫 번째 페이지" }], nextCursor: "next" } as never;
+    return [] as never;
+  });
+  show(<ObjectNotes householdId="h" memberId="a" isOwner />);
+  fireEvent.click(screen.getByRole("button", { name: "가족 보관함" }));
+  expect(await screen.findByText("첫 번째 페이지")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "보관한 쪽지 더 보기" }));
+  expect(await screen.findByText("두 번째 페이지")).toBeTruthy();
+  expect(screen.getByText("첫 번째 페이지")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "보관한 쪽지 더 보기" })).toBeNull();
 });
 it("쪽지 작성 실패 시 본문을 보존한다", async () => {
   mocked.mockImplementation(async (_path, method) => {

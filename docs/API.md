@@ -70,7 +70,8 @@
 - GET /api/households/{h}/objects/{object}/notes → ATTACHED 쪽지 배열.
 - POST 같은 경로, `{body}` → 생성된 쪽지. 새 본문은 앞뒤 공백 제거 후 Unicode 코드 포인트 1~300자. 사물에 붙은 쪽지가 10장이면 409이며, 떼거나 삭제하면 자리가 생긴다.
 - POST /api/households/{h}/notes/{id}/take, `{version}` → TAKEN 쪽지. 오래된 버전/이미 떼어낸 경우 409.
-- GET /api/households/{h}/notes/archive → TAKEN 쪽지 배열.
+- GET /api/households/{h}/notes/archive → 기존 TAKEN 쪽지 배열.
+- GET /api/households/{h}/notes/archive/page?cursor={cursor}&limit=20 → `{items,nextCursor}`. limit 기본 20·최대 100, 최초 요청은 cursor 생략. 생성 시각과 ID 내림차순이며, nextCursor가 null이면 마지막 페이지다.
 - DELETE /api/households/{h}/notes/{id}?version=N → 204. 작성자 또는 대표만.
 
 쪽지 DTO: `{id,objectId,authorMemberId,body,state,createdAt,takenByMemberId,takenAt,version}`. 본문은 일반 텍스트이며, 기존 300자 초과 쪽지는 원문 그대로 조회·보관할 수 있다. 작성자/가구/상태는 클라이언트가 지정하지 않는다.
