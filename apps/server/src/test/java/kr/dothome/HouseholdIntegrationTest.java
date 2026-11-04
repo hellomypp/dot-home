@@ -18,6 +18,7 @@ import java.time.*;
 class HouseholdIntegrationTest {
     @Autowired HomeService homes; @Autowired IdentityService identity; @Autowired Invitations invitations; @Autowired Members members; @Autowired MemberExpressions expressions; @Autowired MovementService movement; @Autowired Environment env; @Autowired ObjectMapper json;
     @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired MembershipLifecycle membership;
     String user(){return identity.resolve("test",UUID.randomUUID().toString(),"검증 구성원").id;}
     @Test void nicknameIsOwnHouseholdProfileAndSurvivesRelogin(){
         String key=UUID.randomUUID().toString(),owner=user();
@@ -86,6 +87,24 @@ class HouseholdIntegrationTest {
         assertEquals(1L,updated.version());assertEquals("베타",updated.speciesName());
         assertThrows(ApiException.class,()->homes.editPet(h,owner,fish.id(),new Api.PetEdit("충돌",null,PetSpecies.FISH,null,null,0L)));
         assertEquals(updated,homes.world(h,owner).pets().getFirst());
+    }
+    @Test void parallelFreshInvitesAfterDepartureKeepOneActiveMembership()throws Exception{
+        String owner=user(),family=user(),h=house(owner).household().id();
+        var old=homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("첫 가입","sage"));
+        membership.leave(h,family,new LeaveHouse("leave"));
+        var first=homes.invite(h,owner);
+        var second=homes.invite(h,owner);
+        try(var pool=Executors.newFixedThreadPool(2)){
+            var start=new CountDownLatch(1);
+            var a=pool.submit(()->{start.await();return homes.accept(first.token(),family,new Api.Accept("재가입","sage"));});
+            var b=pool.submit(()->{start.await();return homes.accept(second.token(),family,new Api.Accept("재가입","sage"));});
+            start.countDown();
+            String active=a.get(10,TimeUnit.SECONDS).meMemberId();
+            assertEquals(active,b.get(10,TimeUnit.SECONDS).meMemberId());
+            assertNotEquals(old.meMemberId(),active);
+        }
+        assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM membership WHERE household_id=? AND user_id=?",Integer.class,h,family));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM membership WHERE household_id=? AND user_id=? AND active=TRUE",Integer.class,h,family));
     }
     @Test void sameUserConcurrentDifferentInvitesNeverCreateDuplicateMembership()throws Exception{
         String owner=user(),guest=user(),h=house(owner).household().id();var a=homes.invite(h,owner);var b=homes.invite(h,owner);
