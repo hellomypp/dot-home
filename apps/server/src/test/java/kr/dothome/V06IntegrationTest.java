@@ -73,12 +73,48 @@ class V06IntegrationTest {
   assertThrows(ApiException.class,()->notes.archivePage(h,user(),first.nextCursor(),2));
  }
  CalendarInput allDay(long version){return new CalendarInput("생일","가족 일정","BIRTHDAY",true,LocalDate.of(2026,11,3),LocalDate.of(2026,11,3),null,null,"Asia/Seoul",version);}
- @Test void calendarDatesVersionsAndScope(){String a=user(),h=house(a),b=join(h,a);var e=calendar.save(h,a,null,allDay(0));assertEquals(LocalDate.of(2026,11,3),e.startDate());assertEquals(1,calendar.range(h,b,LocalDate.of(2026,11,1),LocalDate.of(2026,11,30)).size());var changed=calendar.save(h,b,e.id(),allDay(e.version()));assertEquals(homes.requireMember(h,b).id,changed.updatedByMemberId());assertThrows(ApiException.class,()->calendar.save(h,a,e.id(),allDay(e.version())));assertThrows(ApiException.class,()->calendar.range(h,user(),LocalDate.of(2026,11,1),LocalDate.of(2026,11,30)));assertThrows(ApiException.class,()->calendar.range(h,a,LocalDate.of(2026,1,1),LocalDate.of(2028,1,1)));calendar.delete(h,a,e.id(),changed.version());assertTrue(calendar.range(h,b,LocalDate.of(2026,11,1),LocalDate.of(2026,11,30)).isEmpty());}
+ @Test void calendarDatesVersionsAndScope(){String a=user(),h=house(a),b=join(h,a);var e=calendar.save(h,a,null,allDay(0));assertEquals(LocalDate.of(2026,11,3),e.startDate());assertEquals(1,calendar.range(h,b,LocalDate.of(2026,11,1),LocalDate.of(2026,11,30)).size());assertEquals(403,assertThrows(ApiException.class,()->calendar.save(h,b,e.id(),allDay(e.version()))).status.value());var changed=calendar.save(h,a,e.id(),allDay(e.version()));assertEquals(homes.requireMember(h,a).id,changed.updatedByMemberId());assertThrows(ApiException.class,()->calendar.save(h,a,e.id(),allDay(e.version())));assertThrows(ApiException.class,()->calendar.range(h,user(),LocalDate.of(2026,11,1),LocalDate.of(2026,11,30)));assertThrows(ApiException.class,()->calendar.range(h,a,LocalDate.of(2026,1,1),LocalDate.of(2028,1,1)));calendar.delete(h,a,e.id(),changed.version());assertTrue(calendar.range(h,b,LocalDate.of(2026,11,1),LocalDate.of(2026,11,30)).isEmpty());}
+ @Test void personalCalendarScopeRestrictsEditingAndModeratesVisibility(){
+  String owner=user(),h=house(owner),creator=join(h,owner),other=join(h,owner);
+  LocalDate date=LocalDate.of(2026,11,3);
+  var personal=new CalendarInput("개인 공유","개인 메모","CARE",true,date,date,null,null,"Asia/Seoul",0,"PERSONAL_SHARED");
+  var created=calendar.save(h,creator,null,personal);
+  assertEquals("PERSONAL_SHARED",created.scope());
+  assertTrue(created.canEdit());
+  assertFalse(calendar.range(h,owner,date,date).getFirst().canEdit());
+  assertEquals(403,assertThrows(ApiException.class,()->calendar.save(h,owner,created.id(),personal)).status.value());
+  assertEquals(403,assertThrows(ApiException.class,()->calendar.hide(h,other,created.id(),created.version(),true)).status.value());
+  calendar.hide(h,owner,created.id(),created.version(),true);
+  assertTrue(calendar.range(h,owner,date,date).isEmpty());
+  assertTrue(calendar.range(h,other,date,date).isEmpty());
+  assertEquals(403,assertThrows(ApiException.class,()->calendar.hidden(h,other,date,date)).status.value());
+  var metadata=calendar.hidden(h,owner,date,date).getFirst();
+  assertEquals(created.id(),metadata.id());
+  var hidden=calendar.range(h,creator,date,date).getFirst();
+  assertNotNull(hidden.hiddenAt());
+  calendar.hide(h,owner,created.id(),metadata.version(),false);
+  assertEquals(created.id(),calendar.range(h,other,date,date).getFirst().id());
+
+  var member=members.findById(created.createdByMemberId()).orElseThrow();
+  member.active=false;members.saveAndFlush(member);
+  assertTrue(calendar.range(h,owner,date,date).isEmpty());
+ }
+ @Test void optionalQueryTimezoneChangesTimedDayButNotAllDayDates(){
+  String owner=user(),h=house(owner);
+  LocalDate date=LocalDate.of(2026,11,3);
+  Instant instant=Instant.parse("2026-11-03T02:00:00Z");
+  var timed=calendar.save(h,owner,null,new CalendarInput("시각","", "GENERAL",false,null,null,instant,null,"America/New_York",0));
+  assertEquals(timed.startAt(),timed.endAt());
+  var allDay=calendar.save(h,owner,null,allDay(0));
+  assertEquals(Set.of(timed.id(),allDay.id()),calendar.range(h,owner,date,date).stream().map(CalendarView::id).collect(java.util.stream.Collectors.toSet()));
+  assertEquals(List.of(allDay.id()),calendar.range(h,owner,date,date,"America/New_York").stream().map(CalendarView::id).toList());
+  assertEquals(List.of(timed.id()),calendar.range(h,owner,date.minusDays(1),date.minusDays(1),"America/New_York").stream().map(CalendarView::id).toList());
+ }
  @Test void timedCalendarUsesUtcAndSeoulRange(){String a=user(),h=house(a);var i=new CalendarInput("자정 약속","","GENERAL",false,null,null,Instant.parse("2026-11-02T15:00:00Z"),Instant.parse("2026-11-02T16:00:00Z"),"Asia/Seoul",0);calendar.save(h,a,null,i);assertTrue(calendar.range(h,a,LocalDate.of(2026,11,2),LocalDate.of(2026,11,2)).isEmpty());assertEquals(1,calendar.range(h,a,LocalDate.of(2026,11,3),LocalDate.of(2026,11,3)).size());assertThrows(ApiException.class,()->CalendarService.validate(new CalendarInput("거꾸로","","GENERAL",false,null,null,i.endAt(),i.startAt(),"Asia/Seoul",0)));assertThrows(ApiException.class,()->CalendarService.validate(new CalendarInput("혼합","","GENERAL",true,LocalDate.now(),LocalDate.now(),Instant.now(),null,"Asia/Seoul",0)));}
  @Test void visitsNeverCreateFamilyMembershipAndRevocationRemovesAccess(){String a=user(),h=house(a),guest=user();var link=visits.create(h,a);String token=token(link);assertNotEquals(token,links.findById(link.id()).orElseThrow().tokenHash);assertThrows(ApiException.class,()->visits.world(token,guest));assertEquals("공유 집",visits.enter(token,guest).householdName());visits.enter(token,guest);assertTrue(members.findByUserIdAndActiveTrue(guest).isEmpty());assertEquals(1,homes.world(h,a).members().size());assertThrows(ApiException.class,()->homes.world(h,guest));assertThrows(ApiException.class,()->notes.list(h,guest,"fridge"));assertThrows(ApiException.class,()->calendar.range(h,guest,LocalDate.now(),LocalDate.now()));assertThrows(ApiException.class,()->visits.create(h,guest));visits.revoke(h,a,link.id());assertThrows(ApiException.class,()->visits.world(token,guest));assertThrows(ApiException.class,()->visits.enter(token,guest));}
  @Test void guestbookIsIdempotentLimitedAndModerated(){String a=user(),h=house(a),guest=user();var link=visits.create(h,a);String t=token(link);visits.enter(t,guest);var input=new GuestbookInput("request-1","<img src=x onerror=alert(1)>");var e=visits.write(t,guest,input);assertEquals(e.id(),visits.write(t,guest,input).id());assertThrows(ApiException.class,()->visits.write(t,guest,new GuestbookInput("request-2","반복")));assertEquals(1,visits.world(t,guest).guestbook().size());assertThrows(ApiException.class,()->visits.manage(h,guest));visits.hide(h,a,e.id());assertTrue(visits.world(t,guest).guestbook().isEmpty());assertTrue(visits.manage(h,a).getFirst().hidden());}
  @Test void expiredAndForeignVisitLinksAreDenied(){String a=user(),h=house(a),other=user(),h2=house(other);var link=visits.create(h,a);var row=links.findById(link.id()).orElseThrow();row.expiresAt=Instant.now().minusSeconds(1);links.saveAndFlush(row);assertThrows(ApiException.class,()->visits.enter(token(link),user()));assertThrows(ApiException.class,()->visits.revoke(h2,other,link.id()));}
- @Test void concurrentCalendarEditUsesOneVersion()throws Exception {String a=user(),h=house(a),b=join(h,a);var e=calendar.save(h,a,null,allDay(0));try(var pool=Executors.newFixedThreadPool(2)){var start=new CountDownLatch(1);var futures=List.of(a,b).stream().map(u->pool.submit(()->{start.await();try{calendar.save(h,u,e.id(),allDay(e.version()));return 1;}catch(ApiException ex){assertEquals(409,ex.status.value());return 0;}})).toList();start.countDown();assertEquals(1,futures.get(0).get(10,TimeUnit.SECONDS)+futures.get(1).get(10,TimeUnit.SECONDS));}}
+ @Test void concurrentCalendarEditUsesOneVersion()throws Exception {String a=user(),h=house(a),b=join(h,a);var e=calendar.save(h,b,null,allDay(0));try(var pool=Executors.newFixedThreadPool(2)){var start=new CountDownLatch(1);var futures=List.of(a,b).stream().map(u->pool.submit(()->{start.await();try{calendar.save(h,u,e.id(),allDay(e.version()));return 1;}catch(ApiException ex){assertEquals(409,ex.status.value());return 0;}})).toList();start.countDown();assertEquals(1,futures.get(0).get(10,TimeUnit.SECONDS)+futures.get(1).get(10,TimeUnit.SECONDS));}}
  @Test void foreignRecordIdsCannotCrossHouseholds(){String a=user(),h=house(a),b=user(),other=house(b);var n=notes.create(h,a,"fridge",new NoteInput("비공개"));assertThrows(ApiException.class,()->notes.take(other,b,n.id(),n.version()));var e=calendar.save(h,a,null,allDay(0));assertThrows(ApiException.class,()->calendar.delete(other,b,e.id(),e.version()));}
  @Test void concurrentGuestbookReplayCreatesOneEntry()throws Exception{String a=user(),h=house(a),guest=user();String t=token(visits.create(h,a));visits.enter(t,guest);try(var pool=Executors.newFixedThreadPool(2)){var start=new CountDownLatch(1);var input=new GuestbookInput("same-request","방문 인사");var one=pool.submit(()->{start.await();return visits.write(t,guest,input).id();});var two=pool.submit(()->{start.await();return visits.write(t,guest,input).id();});start.countDown();assertEquals(one.get(10,TimeUnit.SECONDS),two.get(10,TimeUnit.SECONDS));}assertEquals(1,visits.manage(h,a).size());}
  @Test void timedEventEndingAtMidnightDoesNotLeakIntoNextDay(){String a=user(),h=house(a);calendar.save(h,a,null,new CalendarInput("자정까지","","GENERAL",false,null,null,Instant.parse("2026-11-02T14:00:00Z"),Instant.parse("2026-11-02T15:00:00Z"),"Asia/Seoul",0));assertEquals(1,calendar.range(h,a,LocalDate.of(2026,11,2),LocalDate.of(2026,11,2)).size());assertTrue(calendar.range(h,a,LocalDate.of(2026,11,3),LocalDate.of(2026,11,3)).isEmpty());}

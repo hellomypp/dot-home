@@ -1195,7 +1195,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             studio ? (
               <p>일정은 실제 가족의 집에서 사용할 수 있어요.</p>
             ) : (
-              <FamilyCalendar householdId={snapshot.household.id} />
+              <FamilyCalendar householdId={snapshot.household.id} isOwner={own.role === "OWNER"} />
             )
           ) : panel === "story" ? (
             studio ? (

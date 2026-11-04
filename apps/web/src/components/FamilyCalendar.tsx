@@ -5,7 +5,7 @@ export interface CalendarEvent {
   id: string;
   title: string;
   description: string;
-  category: "GENERAL" | "BIRTHDAY" | "ANNIVERSARY";
+  category: "GENERAL" | "BIRTHDAY" | "ANNIVERSARY" | "CARE";
   allDay: boolean;
   startDate: string | null;
   endDate: string | null;
@@ -13,6 +13,10 @@ export interface CalendarEvent {
   endAt: string | null;
   timeZone: string;
   version: number;
+  scope?: "HOUSEHOLD" | "PERSONAL_SHARED";
+  hiddenAt?: string | null;
+  canEdit?: boolean;
+  canHide?: boolean;
 }
 export function seoulDate(value = new Date()) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -45,13 +49,15 @@ export function occurs(event: CalendarEvent, date: string) {
           ),
         ) >= date;
 }
-export function FamilyCalendar({ householdId }: { householdId: string }) {
+export function FamilyCalendar({ householdId, isOwner = false }: { householdId: string; isOwner?: boolean }) {
   const titleField = useRef<HTMLInputElement>(null);
   const today = seoulDate(),
     [month, setMonth] = useState(today.slice(0, 7)),
     [day, setDay] = useState(today),
     [edit, setEdit] = useState<CalendarEvent | null>(null),
     [form, setForm] = useState(false),
+    [showHidden, setShowHidden] = useState(false),
+    [scope, setScope] = useState<NonNullable<CalendarEvent["scope"]>>("HOUSEHOLD"),
     [title, setTitle] = useState(""),
     [description, setDescription] = useState(""),
     [category, setCategory] = useState("GENERAL"),
@@ -71,6 +77,14 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
     queryFn: () =>
       api<CalendarEvent[]>(`${root}?from=${month}-01&to=${month}-${days}`),
   });
+  const hidden = useQuery({
+    queryKey: ["calendar", householdId, "moderation", month],
+    queryFn: () => api<{ id: string; hiddenAt: string; version: number }[]>(
+      `${root}/moderation?from=${month}-01&to=${month}-${days}`,
+    ),
+    enabled: isOwner && showHidden,
+    retry: false,
+  });
   useEffect(() => {
     if (form) {
       titleField.current?.focus({ preventScroll: true });
@@ -88,6 +102,7 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
     setTitle(e?.title || "");
     setDescription(e?.description || "");
     setCategory(e?.category || "GENERAL");
+    setScope(e?.scope ?? "HOUSEHOLD");
     setAllDay(e?.allDay ?? true);
     setStart(e ? (e.allDay ? e.startDate! : seoulTime(e.startAt!)) : day);
     setEnd(e ? (e.allDay ? e.endDate! : seoulTime(e.endAt!)) : day);
@@ -109,9 +124,10 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
         startDate: allDay ? start : null,
         endDate: allDay ? end : null,
         startAt: allDay ? null : new Date(start + ":00+09:00").toISOString(),
-        endAt: allDay ? null : new Date(end + ":00+09:00").toISOString(),
-        timeZone: "Asia/Seoul",
+        endAt: allDay || !end ? null : new Date(end + ":00+09:00").toISOString(),
+        timeZone: edit?.timeZone ?? "Asia/Seoul",
         version: edit?.version || 0,
+        ...(!edit && scope !== "HOUSEHOLD" ? { scope } : {}),
       });
       setForm(false);
       await client.invalidateQueries({ queryKey: ["calendar", householdId] });
@@ -133,6 +149,22 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
       setError((e as Error).message);
       void query.refetch();
     } finally {
+      setBusy(false);
+    }
+  }
+  async function moderate(event: { id: string; version: number }, hide: boolean) {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await api(root + "/" + event.id + (hide ? "/hide" : "/unhide"), "POST", { version: event.version });
+      await client.invalidateQueries({ queryKey: ["calendar", householdId] });
+    } catch (e) {
+      setError((e as Error).message);
+      void client.invalidateQueries({ queryKey: ["calendar", householdId] });
+    } finally {
+      lock.current = false;
       setBusy(false);
     }
   }
@@ -227,24 +259,23 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
                         GENERAL: "일반",
                         BIRTHDAY: "생일",
                         ANNIVERSARY: "기념일",
+                        CARE: "돌봄",
                       }[e.category]
                     }
+                    {e.scope === "PERSONAL_SHARED" ? " · 개인 공유" : " · 공동 일정"}
+                    {e.hiddenAt ? " · 가족 화면에서 숨김" : ""}
                   </small>
                   <p>{e.description}</p>
                   <div>
-                    <button
-                      className="button secondary"
-                      onClick={() => open(e)}
-                    >
-                      상세 / 수정
-                    </button>
-                    <button
-                      disabled={busy}
-                      className="button secondary"
-                      onClick={() => void remove(e)}
-                    >
-                      삭제
-                    </button>
+                    {e.canEdit !== false && (
+                      <>
+                        <button className="button secondary" onClick={() => open(e)}>상세 / 수정</button>
+                        <button disabled={busy} className="button secondary" onClick={() => void remove(e)}>삭제</button>
+                      </>
+                    )}
+                    {e.canHide && !e.hiddenAt && (
+                      <button disabled={busy} className="button secondary" onClick={() => void moderate(e, true)}>가족 화면에서 숨기기</button>
+                    )}
                   </div>
                 </article>
               ))
@@ -254,6 +285,23 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
             </p>
           )}
         </>
+      )}
+      {isOwner && (
+        <details onToggle={(event) => setShowHidden(event.currentTarget.open)}>
+          <summary>숨긴 개인 일정 관리</summary>
+          {showHidden && (
+            <div className="calendar-moderation">
+              {hidden.isPending ? <p role="status">숨긴 일정을 확인하고 있어요…</p>
+                : hidden.error ? <p role="alert">{hidden.error.message}</p>
+                : hidden.data?.length ? hidden.data.map((event) => (
+                  <div key={event.id}>
+                    <span>숨긴 일정 · {seoulTime(event.hiddenAt).replace("T", " ")}</span>
+                    <button className="button secondary" disabled={busy} onClick={() => void moderate(event, false)}>숨김 해제</button>
+                  </div>
+                )) : <p className="muted">이 달에 숨긴 개인 일정이 없어요.</p>}
+            </div>
+          )}
+        </details>
       )}
       <button className="button primary" onClick={() => open(null)}>
         일정 등록
@@ -283,6 +331,14 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
               onChange={(e) => setDescription(e.target.value)}
             />
           </label>
+          {!edit && (
+            <label>공유 종류
+              <select value={scope} onChange={(event) => setScope(event.target.value as typeof scope)}>
+                <option value="HOUSEHOLD">공동 일정 · 작성자와 집 대표가 수정</option>
+                <option value="PERSONAL_SHARED">개인 공유 · 나만 수정</option>
+              </select>
+            </label>
+          )}
           <label>
             종류
             <select
@@ -292,6 +348,7 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
               <option value="GENERAL">일반 일정</option>
               <option value="BIRTHDAY">생일</option>
               <option value="ANNIVERSARY">기념일</option>
+              <option value="CARE">돌봄</option>
             </select>
           </label>
           <label className="checkbox-label">
@@ -316,9 +373,9 @@ export function FamilyCalendar({ householdId }: { householdId: string }) {
             />
           </label>
           <label>
-            종료
+            종료{!allDay && " · 선택"}
             <input
-              required
+              required={allDay}
               min={start}
               type={allDay ? "date" : "datetime-local"}
               value={end}

@@ -63,6 +63,12 @@
 
 기존 POST /api/households의 appearance 문자열은 구형 sage/rose/blue/amber 외에 `v1:HTBA`를 사용한다. H/T/B/A는 각각 헤어/상의/하의/액세서리 인덱스 0~3이며 예시는 `v1:3212`다. 기존 24자 저장 필드·DTO·API 경로는 변경하지 않았다. world의 appearance를 그대로 보존하고 프런트 공통 변환기로 해석한다. [화면·저장·호환 검증](ONBOARDING.md).
 
+## v0.9 달력 공유 범위
+
+- 월간 조회의 `timeZone`은 선택 사항이며 기본 `Asia/Seoul`이다. 종일 일정의 LocalDate는 변환하지 않는다. 종료를 생략한 시간 일정은 시작 시각과 같은 순간으로 저장한다.
+- 생성 시 `scope`는 `HOUSEHOLD`(기본) 또는 `PERSONAL_SHARED`다. 공동 일정은 작성자와 집 대표, 개인 공유 일정은 작성자만 수정·삭제한다. 등록 후 공유 종류는 고정한다. `CARE` 유형을 지원한다.
+- 집 대표만 `POST /{id}/hide` 또는 `/unhide`에 `{version}`을 보내 개인 일정을 숨김·복원할 수 있다. `GET /moderation?from=…&to=…`는 숨긴 일정의 ID·숨김 시각·버전만 반환한다. 숨긴 일정은 작성자만 원문을 읽을 수 있고, 작성자가 비활성 상태이면 다른 가족에게 개인 일정이 노출되지 않는다.
+
 ## v0.9 생활 요청
 
 - `GET /api/households/{h}/requests` → `{items,nextCursor}`. `state`는 쉼표로 분리한 상태, `limit` 기본 20·최대 100, `cursor`는 앞 페이지의 nextCursor다. 생성 시각과 ID 내림차순.

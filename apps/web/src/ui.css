@@ -1663,3 +1663,23 @@ textarea {
   border-color: #9bb08c;
   background: #e5eddd;
 }
+
+
+.family-calendar details summary {
+  min-height: 44px;
+  padding-block: 10px;
+  color: #4b6044;
+  cursor: pointer;
+}
+.calendar-moderation {
+  display: grid;
+  gap: 8px;
+}
+.calendar-moderation > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}

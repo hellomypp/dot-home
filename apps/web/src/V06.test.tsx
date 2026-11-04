@@ -148,6 +148,21 @@ it("캘린더는 월 탐색과 종일 일정 생성을 연결한다", async () =
     ),
   );
 });
+it("개인 공유 일정은 대표에게 내용 수정 대신 숨기기를 제공한다", async () => {
+  const today = seoulDate();
+  mocked.mockResolvedValue([{
+    id: "p", title: "개인 진료", description: "오전 일정", category: "GENERAL", allDay: true,
+    startDate: today, endDate: today, scope: "PERSONAL_SHARED", canEdit: false, canHide: true, version: 3,
+  }] as never);
+  show(<FamilyCalendar householdId="h" isOwner />);
+  expect(await screen.findByText("개인 진료")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "상세 / 수정" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "삭제" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "가족 화면에서 숨기기" }));
+  await waitFor(() => expect(mocked).toHaveBeenCalledWith(
+    "/api/households/h/calendar-events/p/hide", "POST", { version: 3 },
+  ));
+});
 it("UTC 자정 경계와 종일 날짜는 브라우저 로컬 시간대에 의존하지 않는다", () => {
   const timed = {
     allDay: false,

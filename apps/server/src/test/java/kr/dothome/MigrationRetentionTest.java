@@ -51,4 +51,27 @@ class MigrationRetentionTest {
         }
     }
 
+    @Test void v15KeepsExistingCalendarEventsAsHouseholdEvents()throws Exception{
+        String url=url();
+        Flyway.configure().dataSource(url,username(),password()).target("14").load().migrate();
+        try(var connection=DriverManager.getConnection(url,username(),password());var sql=connection.createStatement()){
+            sql.executeUpdate("INSERT INTO app_user(id,provider,subject,name) VALUES('user','test','v15','기존 계정')");
+            sql.executeUpdate("INSERT INTO household(id,name,owner_id,revision) VALUES('house','기존 집','user',1)");
+            sql.executeUpdate("INSERT INTO membership(id,household_id,user_id,name,appearance,role,place,mood,food,thought,x,y,action,active) VALUES('member','house','user','기존 이름','sage','OWNER','home','','','',224,260,'idle',true)");
+            sql.executeUpdate("""
+                INSERT INTO household_calendar_event(id,household_id,title,description,category,all_day,start_date,end_date,
+                    time_zone,created_by_member_id,updated_by_member_id,created_at,updated_at,version)
+                VALUES('event','house','기존 생일','그대로 남는 메모','BIRTHDAY',true,'2026-11-04','2026-11-04',
+                    'Asia/Seoul','member','member','2026-11-01 00:00:00','2026-11-01 00:00:00',3)
+                """);
+            Flyway.configure().dataSource(url,username(),password()).load().migrate();
+            try(var row=sql.executeQuery("SELECT event_scope,hidden_at,title,description,version FROM household_calendar_event WHERE id='event'")){
+                assertTrue(row.next());
+                assertEquals("HOUSEHOLD",row.getString(1));assertNull(row.getTimestamp(2));
+                assertEquals("기존 생일",row.getString(3));assertEquals("그대로 남는 메모",row.getString(4));
+                assertEquals(3,row.getLong(5));
+            }
+        }
+    }
+
 }
