@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { ActorNameplate } from "./ActorNameplate";
 import { makeCat } from "./art";
 import {
   assetBase,
@@ -20,7 +21,7 @@ import type { WorldView, WorldEvent, WorldHandle } from "./types";
 type Actor = {
   id: string;
   sprite: Phaser.GameObjects.Image;
-  label: Phaser.GameObjects.Text;
+  label: ActorNameplate;
   bubble: Phaser.GameObjects.Text;
   path: Point[];
   direction: number;
@@ -267,17 +268,12 @@ class NativeHome extends Phaser.Scene {
         }
     const p = nearest(point, this.map, pet),
       sprite = this.add.image(p.x, p.y, texture).setOrigin(0.5, 1),
-      label = this.add
-        .text(p.x, p.y + 2, name, {
-          fontFamily: "sans-serif",
-          fontSize: "9px",
-          color: "#44251b",
-          backgroundColor: "#fff6dc",
-          padding: { x: 3, y: 1 },
-          wordWrap: { width: 100 },
-        })
-        .setOrigin(0.5, 0)
-        .setDepth(11000),
+      label = new ActorNameplate(
+        this,
+        name,
+        pet ? "pet" : id === this.view.ownMemberId ? "own" : "member",
+        11000,
+      ).setPosition(p.x, p.y + 4),
       bubble = this.add
         .text(0, 0, "", {
           fontFamily: "sans-serif",
@@ -288,7 +284,8 @@ class NativeHome extends Phaser.Scene {
           padding: { x: 5, y: 3 },
         })
         .setOrigin(0.5, 1)
-        .setDepth(11001);
+        .setDepth(11002)
+        .setVisible(false);
     return {
       id,
       sprite,
@@ -321,7 +318,7 @@ class NativeHome extends Phaser.Scene {
         this.actors.set(m.id, a);
       }
       a.kind = kind;
-      a.label.setText(m.name + (m.id === this.view.ownMemberId ? " · 나" : ""));
+      a.label.setLabel(m.name);
       a.bubble.setText(m.status || "").setVisible(!!m.status);
       const key = `${m.x},${m.y}`;
       if (a.remote !== key && m.x !== undefined && m.y !== undefined) {
@@ -351,7 +348,7 @@ class NativeHome extends Phaser.Scene {
         this.pets.set(p.id, a);
       }
       a.kind = p.kind || "cat";
-      a.label.setText(p.name);
+      a.label.setLabel(p.name);
     }
     for (const marker of this.markers) marker.destroy();
     this.markers = [];
@@ -500,7 +497,7 @@ class NativeHome extends Phaser.Scene {
           a.direction * 4 + a.frame,
         );
       a.sprite.setDepth(Math.round(a.sprite.y));
-      a.label.setPosition(Math.round(a.sprite.x), Math.round(a.sprite.y + 2));
+      a.label.setPosition(Math.round(a.sprite.x), Math.round(a.sprite.y + 4));
       a.bubble.setPosition(Math.round(a.sprite.x), Math.round(a.sprite.y - 42));
     }
     for (const o of this.objects) {
