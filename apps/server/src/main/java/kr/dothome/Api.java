@@ -12,7 +12,7 @@ public final class Api {
     public record CreateHouse(@NotBlank @Size(max=80) String name,@NotBlank @Size(max=40) String memberName,@NotBlank @Size(max=24) String appearance,@Size(max=32) String presetId) {public CreateHouse(String name,String memberName,String appearance){this(name,memberName,appearance,null);}}
     public record Profile(@NotBlank @Size(max=40) String memberName,@Size(max=24) String appearance) {public Profile(String memberName){this(memberName,null);}}
     public record Accept(@NotBlank @Size(max=40) String memberName,@NotBlank @Size(max=24) String appearance) {}
-    public record Status(@NotNull @Pattern(regexp="home|office|school|outside") String place,@NotNull @Size(max=80) String mood,@NotNull @Size(max=80) String food,@NotNull @Size(max=200) String thought,@Min(1) @Max(1440) int expiresInMinutes) {}
+    public record Status(@Pattern(regexp="home|office|school|outside") String place,@Size(max=80) String mood,@Size(max=80) String food,@Size(max=200) String thought,@Min(1) @Max(1440) Integer expiresInMinutes) {}
     public record CreatePantry(@NotBlank @Size(max=80) String name,@NotBlank @Size(max=40) String location,@PositiveOrZero double quantity,@NotBlank @Size(max=16) String unit,LocalDate expiresOn) {}
     public record UpdatePantry(@PositiveOrZero double quantity,@PositiveOrZero long version) {}
     public record CreateEvent(@NotBlank @Size(max=80) String requestId,@NotNull @Pattern(regexp="ARRIVED_HOME|LEFT_WORK|PARCEL_ARRIVED|NOTE") String type,@NotBlank @Size(max=300) String message) {}
@@ -21,7 +21,7 @@ public final class Api {
     public record MembershipView(String householdId,String householdName,String memberId,String role) {}
     public record Me(UserView user,List<MembershipView> memberships) {}
     public record HouseView(String id,String name,String ownerId) {}
-    public record MemberView(String id,String userId,String name,String appearance,String role,String place,String mood,String food,String thought,Instant statusExpiresAt,Instant statusUpdatedAt,double x,double y,String action) {}
+    public record MemberView(String id,String userId,String name,String appearance,String role,String place,String mood,String food,String thought,Instant statusExpiresAt,Instant statusUpdatedAt,double x,double y,String action,java.util.Map<String,ExpressionValue> currentState) {}
     public record PetView(String id,String name,String kind,String appearance) {}
     public record PantryView(String id,String name,String location,double quantity,String unit,LocalDate expiresOn,long version,Instant updatedAt) {}
     public record EventView(String id,String type,String message,String authorMemberId,String authorName,Instant createdAt) {}

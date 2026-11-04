@@ -4,6 +4,7 @@ import { SpaceSettings } from "./components/SpaceSettings";
 import { CharacterChoices } from "./components/CharacterStyleForm";
 import { PetManager } from "./components/PetManager";
 import { VisitPage, HousewarmingPanel } from "./components/Housewarming";
+import { ExpressionForm } from "./components/ExpressionForm";
 import { FamilyCalendar } from "./components/FamilyCalendar";
 import { ObjectNotes, type ObjectNote } from "./components/ObjectNotes";
 import { Onboarding, OnboardingPreview } from "./onboarding/Onboarding";
@@ -1162,20 +1163,30 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               <FamilyCalendar householdId={snapshot.household.id} />
             )
           ) : panel === "story" ? (
-            <StoryForm
-              snapshot={snapshot}
-              studio={studio}
-              onSaved={async (data) => {
-                if (studio) setSample(data);
-                else await refresh();
+            studio ? (
+              <StoryForm snapshot={snapshot} studio onSaved={(data) => {
+                setSample(data);
                 setPanel(null);
-                setToast(
-                  studio
-                    ? "시안에 반영했어요. 저장되지는 않아요."
-                    : "내 이야기를 공유했어요.",
-                );
-              }}
-            />
+                setToast("시안에 반영했어요. 저장되지는 않아요.");
+              }} />
+            ) : (
+              <ExpressionForm
+                householdId={snapshot.household.id}
+                householdName={snapshot.household.name}
+                currentPlace={own.place}
+                onPlaceSaved={() => void refresh()}
+                legacy={<StoryForm snapshot={snapshot} studio={false} onSaved={async () => {
+                  await refresh();
+                  setPanel(null);
+                  setToast("내 이야기를 공유했어요.");
+                }} />}
+                onSaved={() => {
+                  void refresh();
+                  setPanel(null);
+                  setToast("내 이야기를 공유했어요.");
+                }}
+              />
+            )
           ) : panel === "pantry" ? (
             <>
               <nav className="fridge-tabs" aria-label="냉장고 기능">

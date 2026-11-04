@@ -1,7 +1,8 @@
 import type {SpaceDesign} from '../game/spaces';
+import { expressionLabel, type ExpressionField, type ExpressionValue } from './expressions';
 import type { Place } from '../game/types';
 
-export interface Member { id:string;userId:string;name:string;appearance:string;role:'OWNER'|'MEMBER';place:Place;mood:string;food:string;thought:string;statusExpiresAt:string|null;statusUpdatedAt:string;x:number;y:number;action:string }
+export interface Member { id:string;userId:string;name:string;appearance:string;role:'OWNER'|'MEMBER';place:Place;mood:string;food:string;thought:string;statusExpiresAt:string|null;statusUpdatedAt:string;x:number;y:number;action:string;currentState?:Partial<Record<ExpressionField,ExpressionValue>> }
 export interface PantryItem { id:string;name:string;location:string;quantity:number;unit:string;expiresOn:string|null;version:number;updatedAt:string }
 export interface LifeEvent { id:string;type:string;message:string;authorMemberId:string;authorName:string;createdAt:string }
 export interface Snapshot { design?:SpaceDesign;household:{id:string;name:string;ownerId:string};meMemberId:string;revision:number;serverTime:string;members:Member[];pets:{id:string;name:string;kind:string;appearance:string}[];pantryItems:PantryItem[];events:LifeEvent[] }
@@ -24,4 +25,16 @@ export async function logout() { await api('/api/logout','POST');csrf=null; }
 export const colors:Record<string,string>={sage:'#7c9170',rose:'#bb7975',blue:'#6e88a1',amber:'#bd9556'};
 export const places:Record<Place,string>={home:'우리 집',office:'직장',school:'학교',outside:'밖'};
 
-export function statusText(member:Member) {if(member.statusExpiresAt && Date.parse(member.statusExpiresAt)<=Date.now())return '';return member.thought|| (member.food?`${member.food} 먹고 싶어`:member.mood);}
+export function statusText(member: Member) {
+  if (member.currentState) {
+    const now = Date.now();
+    for (const field of ["thought", "food", "mood", "physical", "availability"] as const) {
+      const item = member.currentState[field];
+      if (item?.value && item.expiresAt && Date.parse(item.expiresAt) > now)
+        return field === "food" ? `${item.value} 먹고 싶어` : expressionLabel(field, item.value);
+    }
+    return "";
+  }
+  if (member.statusExpiresAt && Date.parse(member.statusExpiresAt) <= Date.now()) return "";
+  return member.thought || (member.food ? `${member.food} 먹고 싶어` : member.mood);
+}

@@ -1,0 +1,88 @@
+package kr.dothome;
+
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+
+@SpringBootTest @ActiveProfiles({"dev","test"})
+class ExpressionsIntegrationTest {
+    @Autowired HomeService homes;
+    @Autowired IdentityService identity;
+    @Autowired ObjectMapper json;
+    @Autowired Members members;
+    @Autowired MemberExpressions rows;
+
+    String user(){return identity.resolve("test",UUID.randomUUID().toString(),"검증 가족").id;}
+    Api.World house(String owner){return homes.create(owner,new Api.CreateHouse("검증 집","대표","sage"));}
+    ExpressionPatch patch(String id,String changes){
+        Map<String,JsonNode> fields=new TreeMap<>();
+        json.readTree(changes).properties().forEach(e->fields.put(e.getKey(),e.getValue()));
+        return new ExpressionPatch(id,fields);
+    }
+    @Test void expressionsHaveIndependentClocksAndClears(){
+        String owner=user(),h=house(owner).household().id();
+        var original=homes.expressions(h,owner,patch("initial","""
+            {"mood":{"value":"CALM","version":0},"food":{"value":"수프","version":0}}
+            """));
+        var mood=original.expressions().get("mood");
+        var changed=homes.expressions(h,owner,patch("food-only","""
+            {"food":{"value":"김밥","version":1}}
+            """));
+        assertEquals(mood,changed.expressions().get("mood"));
+        assertEquals("김밥",changed.expressions().get("food").value());
+        assertEquals(360,ChronoUnit.MINUTES.between(changed.expressions().get("food").updatedAt(),changed.expressions().get("food").expiresAt()));
+        var clear=homes.expressions(h,owner,patch("clear-food","""
+            {"food":{"value":null,"version":2}}
+            """));
+        assertNull(clear.expressions().get("food").value());
+        assertEquals(mood,clear.expressions().get("mood"));
+        assertEquals(Set.of("mood"),homes.world(h,owner).members().getFirst().currentState().keySet());
+    }
+    @Test void requestReplayIsStableAndConflictsRollBackWholeBatch(){
+        String owner=user(),h=house(owner).household().id();
+        var input=patch("same","""
+            {"thought":{"value":"안녕","version":0},"mood":{"value":"HAPPY","version":0}}
+            """);
+        var created=homes.expressions(h,owner,input);
+        assertEquals(created,homes.expressions(h,owner,input));
+        assertEquals(409,assertThrows(ApiException.class,()->homes.expressions(h,owner,patch("same","{}"))).status.value());
+        var stale=patch("stale","""
+            {"food":{"value":"국수","version":0},"mood":{"value":"WORRIED","version":0}}
+            """);
+        assertEquals(409,assertThrows(ApiException.class,()->homes.expressions(h,owner,stale)).status.value());
+        var unchanged=homes.expressions(h,owner,patch("unchanged","""
+            {"mood":{"value":"HAPPY","version":1}}
+            """));
+        assertEquals(created.revision(),unchanged.revision());
+        assertNull(unchanged.expressions().get("food").value());
+        assertEquals(403,assertThrows(ApiException.class,()->homes.expressions(h,user())).status.value());
+        assertEquals(400,assertThrows(ApiException.class,()->homes.expressions(h,owner,patch("missing","""
+            {"food":{"version":0}}
+            """))).status.value());
+    }
+    @Test void legacyFieldsAreReadAndMissingLegacyPatchFieldsRemainUntouched(){
+        String owner=user();
+        var created=house(owner);
+        String h=created.household().id();
+        var member=members.findById(created.meMemberId()).orElseThrow();
+        member.mood="기존 기분";
+        member.statusExpiresAt=Instant.now().plusSeconds(600);
+        members.saveAndFlush(member);
+        var old=homes.expressions(h,owner).expressions().get("mood");
+        assertEquals("기존 기분",old.value());
+        homes.status(h,owner,new Api.Status(null,null,"새 음식",null,60));
+        assertEquals(old,homes.expressions(h,owner).expressions().get("mood"));
+        var food=rows.findByMemberIdIn(List.of(member.id)).getFirst();
+        food.expiresAt=Instant.now().minusSeconds(1);
+        rows.saveAndFlush(food);
+        assertEquals(Set.of("mood"),homes.world(h,owner).members().getFirst().currentState().keySet());
+        assertNull(homes.expressions(h,owner).expressions().get("food").value());
+    }
+}

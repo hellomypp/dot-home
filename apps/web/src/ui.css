@@ -1515,3 +1515,37 @@ textarea {
 .home-selection > .button {
   width: 100%;
 }
+
+
+.expression-panel,
+.expression-form fieldset {
+  display: grid;
+  gap: 10px;
+}
+.expression-form fieldset {
+  min-width: 0;
+  border: 1px solid #e0e6d9;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.expression-form legend {
+  padding-inline: 4px;
+  font-weight: 700;
+}
+.expression-form fieldset small {
+  color: #526649;
+}
+.expression-panel summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 12px;
+}
+.expression-form .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
