@@ -922,7 +922,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
           </div>
           <div className="main-columns">
             <section className="world-section">
-              <div className="scene-card">
+              <div className={`scene-card${place === "home" && !neutral ? " home-scene-card" : ""}`}>
                 <div className={`scene-wrap ${palette}`}>
                   {neutral ? (
                     <div className="neutral-scene">
@@ -964,11 +964,11 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                       )}
                       {place === "home" && !neutral && (
                         <button
-                          className="scene-control"
+                          className="scene-control scene-zoom"
                           type="button"
-                          aria-label="확대 보기"
+                          aria-label="2배 확대"
                           aria-pressed={closeView}
-                          title={closeView ? "넓게 보기" : "가까이 보기"}
+                          title={closeView ? "전체 집 보기" : "2배 확대"}
                           onClick={() => setCloseView((zoomed) => !zoomed)}
                         >
                           {closeView ? (
@@ -976,6 +976,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                           ) : (
                             <ZoomIn size={21} aria-hidden="true" />
                           )}
+                          <span aria-hidden="true">{closeView ? "2×" : "1×"}</span>
                         </button>
                       )}
                     </div>

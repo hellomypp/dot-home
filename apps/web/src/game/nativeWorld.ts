@@ -24,6 +24,9 @@ import {
   type RuntimeMap,
 } from "./spaces";
 import type { WorldView, WorldEvent, WorldHandle } from "./types";
+// All three house backdrops share the same outer walls and doorstep.
+const homeFrame = { x: 40, y: 32, width: 368, height: 270 };
+
 type Actor = {
   id: string;
   sprite: Phaser.GameObjects.Image;
@@ -257,7 +260,7 @@ class NativeHome extends Phaser.Scene {
     this.map.objects.forEach(add);
     this.updateWindowSky();
     this.cameras.main
-      .setBounds(0, 0, 448, 320)
+      .setBounds(homeFrame.x, homeFrame.y, homeFrame.width, homeFrame.height)
       .setRoundPixels(true)
       .setBackgroundColor("#e8d9bf");
   }
@@ -588,9 +591,17 @@ class NativeHome extends Phaser.Scene {
         ),
       );
     }
-    const target = this.actors.get(this.view.observedMemberId || this.view.ownMemberId);
-    this.cameras.main.setZoom(this.view.closeView ? 2 : 1);
-    if(target)this.cameras.main.centerOn(Math.round(target.sprite.x),Math.round(target.sprite.y));
+    const camera = this.cameras.main;
+    const baseZoom = Math.min(camera.width / homeFrame.width, camera.height / homeFrame.height);
+    const zoom = baseZoom * (this.view.closeView ? 2 : 1);
+    if (camera.zoom !== zoom) camera.setZoom(zoom);
+    const target = this.view.closeView
+      ? this.actors.get(this.view.observedMemberId || this.view.ownMemberId)
+      : undefined;
+    camera.centerOn(
+      target ? Math.round(target.sprite.x) : homeFrame.x + homeFrame.width / 2,
+      target ? Math.round(target.sprite.y) : homeFrame.y + homeFrame.height / 2,
+    );
   }
 }
 export function mountNativeWorld(
@@ -603,8 +614,8 @@ export function mountNativeWorld(
     game = new Phaser.Game({
       type: Phaser.AUTO,
       parent,
-      width: 320,
-      height: 256,
+      width: homeFrame.width,
+      height: homeFrame.height,
       pixelArt: true,
       roundPixels: true,
       antialias: false,
@@ -614,17 +625,13 @@ export function mountNativeWorld(
       audio: { noAudio: true },
       render: { preserveDrawingBuffer: true },
     });
-  const mobileLayout = window.matchMedia("(max-width: 760px)");
   const resize = () => {
-    const mobile = mobileLayout.matches;
-    const height = mobile ? 300 : 256;
-    const width = mobile ? Math.max(1, parent.clientWidth) : 320;
-    const zoom = mobile ? 1 : Math.max(1, Math.min(2, Math.floor(parent.clientWidth / width)));
-    parent.style.height = height * zoom + "px";
+    const width = Math.min(homeFrame.width * 2, Math.max(1, parent.clientWidth));
+    const height = Math.max(1, Math.round(width * homeFrame.height / homeFrame.width));
+    if (parent.style.height !== height + "px") parent.style.height = height + "px";
     if (game.isBooted) {
       const size = game.scale.gameSize;
       if (size.width !== width || size.height !== height) game.scale.resize(width, height);
-      if (game.scale.zoom !== zoom) game.scale.setZoom(zoom);
     }
   };
   // Layout can shift after the canvas loads. Refresh Phaser's page offset
@@ -636,14 +643,12 @@ export function mountNativeWorld(
   parent.addEventListener("mousedown", refreshInputBounds, true);
   const observer = new ResizeObserver(resize);
   observer.observe(parent);
-  mobileLayout.addEventListener("change", resize);
   game.events.once("ready", resize);
   resize();
   return {
     update: (view) => scene.setView(view),
     destroy: () => {
       observer.disconnect();
-      mobileLayout.removeEventListener("change", resize);
       parent.removeEventListener("touchstart", refreshInputBounds, true);
       parent.removeEventListener("mousedown", refreshInputBounds, true);
       game.destroy(true);
