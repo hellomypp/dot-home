@@ -36,6 +36,7 @@ class HouseholdCalendarEvent extends Row {
     @Version long version;
 }
 interface CalendarEvents extends JpaRepository<HouseholdCalendarEvent,String> {
+    List<HouseholdCalendarEvent> findByHouseholdIdAndEventScopeOrderByCreatedAtAscIdAsc(String house,String scope,org.springframework.data.domain.Pageable page);
     @org.springframework.data.jpa.repository.Query("""
         select e from HouseholdCalendarEvent e where e.householdId=:h and
         (:moderation=false and (e.eventScope='HOUSEHOLD' or (

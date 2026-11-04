@@ -94,6 +94,7 @@ interface NoticeAcknowledgements extends JpaRepository<NoticeAcknowledgement,Str
 }
 
 interface HouseholdRequests extends JpaRepository<HouseholdRequest,String> {
+    List<HouseholdRequest> findByHouseholdIdOrderByCreatedAtAscIdAsc(String house,Pageable page);
     Optional<HouseholdRequest> findByIdAndHouseholdId(String id,String householdId);
     List<HouseholdRequest> findByHouseholdIdAndAssigneeMemberIdAndState(String house,String member,RequestState state);
     boolean existsByCareRuleIdAndCareScheduledAt(String ruleId,Instant occurrence);

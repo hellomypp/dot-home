@@ -1,6 +1,7 @@
 import { petGroup, petSpecies } from "./lib/pets";
 import { AccountSettings } from "./components/AccountSettings";
 import { MembershipPanel } from "./components/MembershipPanel";
+import { HouseholdExportPanel } from "./components/HouseholdExportPanel";
 import { ShareLink } from "./components/ShareLink";
 import { SpaceSettings } from "./components/SpaceSettings";
 import { CharacterChoices } from "./components/CharacterStyleForm";
@@ -549,6 +550,7 @@ type Panel =
   | "housewarming"
   | "pets"
   | "membership"
+  | "exports"
   | "design"
   | null;
 function HouseholdRoute() {
@@ -1169,6 +1171,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               design: "우리 집 설정 · 집 분위기",
               pets: "우리 집 돌봄 프로필",
               membership: "가족 구성원 · 집 참여",
+              exports: "공동 기록 내보내기",
               settings: "내 계정과 보기 설정",
             }[panel]
           }
@@ -1196,6 +1199,8 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                 refresh={() => qc.invalidateQueries({ queryKey: ["world", id] })}
               />
             )
+          ) : panel === "exports" ? (
+            <HouseholdExportPanel householdId={snapshot.household.id} />
           ) : panel === "membership" ? (
             <MembershipPanel snapshot={snapshot} refresh={refresh} onLeave={() => {
               live.current?.destroy();

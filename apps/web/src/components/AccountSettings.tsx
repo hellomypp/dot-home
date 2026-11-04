@@ -4,6 +4,7 @@ import {
   Users,
   Paintbrush,
   DoorOpen,
+  Download,
   ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -31,7 +32,7 @@ export function AccountSettings({
   reduced: boolean;
   onPalette: (p: "warm" | "dusk") => void;
   onReduced: (v: boolean) => void;
-  onOpen: (p: "design" | "housewarming" | "invite" | "membership") => void;
+  onOpen: (p: "design" | "housewarming" | "invite" | "membership" | "exports") => void;
   onSaved: (s: Snapshot) => void;
   onLogout: () => void;
 }) {
@@ -87,6 +88,13 @@ export function AccountSettings({
             <button onClick={() => onOpen("membership")}>
               <Users size={20} />
               <span>가족 구성원 · 집 참여</span>
+              <ChevronRight size={18} />
+            </button>
+          )}
+          {!studio && (
+            <button onClick={() => onOpen("exports")}>
+              <Download size={20} />
+              <span>공동 기록 내보내기</span>
               <ChevronRight size={18} />
             </button>
           )}

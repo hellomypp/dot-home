@@ -32,6 +32,7 @@ interface Invitations extends JpaRepository<Invitation,String> {
 interface PantryItems extends JpaRepository<PantryItem,String> { List<PantryItem> findByHouseholdIdOrderByName(String householdId); }
 interface PantryChanges extends JpaRepository<PantryChange,String> {}
 interface LifeEvents extends JpaRepository<LifeEvent,String> {
+    List<LifeEvent> findByHouseholdIdOrderByCreatedAtAscIdAsc(String house,org.springframework.data.domain.Pageable page);
     List<LifeEvent> findTop100ByHouseholdIdOrderByCreatedAtDesc(String householdId);
     Optional<LifeEvent> findByHouseholdIdAndAuthorMemberIdAndRequestId(String householdId,String memberId,String requestId);
 }

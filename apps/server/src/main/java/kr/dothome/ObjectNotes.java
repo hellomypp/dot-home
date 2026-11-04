@@ -29,6 +29,7 @@ class ObjectNote extends Row {
     @Version long version;
 }
 interface ObjectNotes extends JpaRepository<ObjectNote,String> {
+    List<ObjectNote> findByHouseholdIdOrderByCreatedAtAscIdAsc(String house,Pageable page);
     List<ObjectNote> findByHouseholdIdAndObjectIdAndStateOrderByCreatedAtDesc(String householdId,String objectId,String state);
     List<ObjectNote> findByHouseholdIdAndStateOrderByCreatedAtDescIdDesc(String householdId,String state,Pageable page);
     @Query("""
