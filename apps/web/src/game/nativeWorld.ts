@@ -459,15 +459,12 @@ class NativeHome extends Phaser.Scene {
           x = to.x - a.sprite.x,
           y = to.y - a.sprite.y,
           dist = Math.hypot(x, y);
-        if (dist < 0.01) {
-          a.path.shift();
-          continue;
-        }
-        const step = Math.min(dist, remaining),
-          next = {
-            x: a.sprite.x + (x / dist) * step,
-            y: a.sprite.y + (y / dist) * step,
-          };
+        const reached = dist <= remaining;
+        const step = reached ? dist : remaining;
+        const next = reached ? to : {
+          x: a.sprite.x + (x / dist) * step,
+          y: a.sprite.y + (y / dist) * step,
+        };
         if (!canStand(next, this.map, a.pet)) {
           a.path = [];
           break;
@@ -476,7 +473,7 @@ class NativeHome extends Phaser.Scene {
         dy += next.y - a.sprite.y;
         a.sprite.setPosition(next.x, next.y);
         remaining -= step;
-        if (dist <= step + 0.01) a.path.shift();
+        if (reached) a.path.shift();
       }
       if (Math.abs(dx) + Math.abs(dy) > 0.01) {
         a.direction =
