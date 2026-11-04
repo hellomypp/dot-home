@@ -538,7 +538,7 @@ export function mountNativeWorld(
       type: Phaser.AUTO,
       parent,
       width: 320,
-      height: 224,
+      height: 256,
       pixelArt: true,
       roundPixels: true,
       antialias: false,
@@ -548,13 +548,16 @@ export function mountNativeWorld(
       audio: { noAudio: true },
       render: { preserveDrawingBuffer: true },
     });
+  const mobileLayout = window.matchMedia("(max-width: 760px)");
   const resize = () => {
-    const mobile = window.matchMedia("(max-width: 760px)").matches;
+    const mobile = mobileLayout.matches;
+    const height = mobile ? 300 : 256;
     const width = mobile ? Math.max(1, parent.clientWidth) : 320;
     const zoom = mobile ? 1 : Math.max(1, Math.min(2, Math.floor(parent.clientWidth / width)));
-    parent.style.height = 224 * zoom + "px";
+    parent.style.height = height * zoom + "px";
     if (game.isBooted) {
-      if (game.scale.gameSize.width !== width) game.scale.resize(width, 224);
+      const size = game.scale.gameSize;
+      if (size.width !== width || size.height !== height) game.scale.resize(width, height);
       if (game.scale.zoom !== zoom) game.scale.setZoom(zoom);
     }
   };
@@ -567,12 +570,14 @@ export function mountNativeWorld(
   parent.addEventListener("mousedown", refreshInputBounds, true);
   const observer = new ResizeObserver(resize);
   observer.observe(parent);
+  mobileLayout.addEventListener("change", resize);
   game.events.once("ready", resize);
   resize();
   return {
     update: (view) => scene.setView(view),
     destroy: () => {
       observer.disconnect();
+      mobileLayout.removeEventListener("change", resize);
       parent.removeEventListener("touchstart", refreshInputBounds, true);
       parent.removeEventListener("mousedown", refreshInputBounds, true);
       game.destroy(true);

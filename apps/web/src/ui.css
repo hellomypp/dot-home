@@ -217,39 +217,6 @@ textarea {
   border-radius: 18px;
   overflow: hidden;
 }
-.scene-topbar {
-  padding: 8px 12px;
-  gap: 4px;
-}
-.place-tabs {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  gap: 3px;
-}
-.place-tabs button {
-  justify-content: center;
-  min-width: 0;
-  min-height: 44px;
-  gap: 6px;
-  font-size: 13px;
-  padding: 9px 12px;
-  flex: 1;
-  white-space: nowrap;
-}
-.place-tabs .selected {
-  background: #e4eddb;
-  color: #3f623b;
-  font-weight: 700;
-}
-.my-view {
-  width: 44px;
-  flex-shrink: 0;
-  padding: 8px;
-}
-.my-view span {
-  display: none;
-}
 .scene-wrap .scene-caption {
   top: 10px;
   left: 12px;
@@ -282,6 +249,19 @@ textarea {
 }
 .interaction-hint {
   display: none;
+}
+.scene-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.scene-return {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: #3e5c39;
+  border-radius: 9px;
 }
 .scene-zoom {
   display: flex;
@@ -1184,24 +1164,6 @@ textarea {
     line-height: 1.4;
     letter-spacing: -0.6px;
   }
-  .scene-topbar {
-    padding: 6px;
-    gap: 2px;
-  }
-  .place-tabs button {
-    font-size: 12px;
-    padding: 8px 6px;
-    gap: 5px;
-    min-height: 44px;
-  }
-  .place-tabs svg {
-    width: 16px;
-    height: 16px;
-  }
-  .my-view {
-    width: 40px;
-    min-width: 40px;
-  }
   .scene-card {
     border-radius: 15px;
   }
@@ -1445,18 +1407,6 @@ textarea {
   }
 }
 @media (max-width: 360px) {
-  .scene-topbar {
-    padding: 4px;
-  }
-  .place-tabs button {
-    gap: 3px;
-    padding-inline: 3px;
-    font-size: 11px;
-  }
-  .my-view {
-    min-width: 36px;
-    width: 36px;
-  }
   .modal-body {
     padding: 12px;
   }
@@ -1540,7 +1490,7 @@ textarea {
 @media(max-width:760px){.house-step{padding:14px 20px 22px}.house-step .chapter{display:none}.house-step .step-copy h1{font-size:22px}.house-step .step-copy p{font-size:14px}.house-step .cottage-preview{margin:14px 0}.house-step .cottage-preview .space-preview{height:136px}.house-step .cottage-preview figcaption{padding:7px}.house-step .preset-picker{margin:0 0 6px}.house-step .onboarding-actions{margin-top:8px}.house-step .onboarding-actions .button{font-size:13px}.house-step>form{gap:14px}}
 .character-bubble{transform:none}.onboarding-shell label{margin-bottom:0}.onboarding-shell .primary{background:#49684e;box-shadow:none}.onboarding-shell .secondary{color:#42583f}.onboarding-shell .story-choice.new-home{border-color:#b5c6a7}
 .family-calendar:has(.calendar-form)>:not(.calendar-form):not(.muted):not(.error-message){display:none}.calendar-form{border-top:0;padding-top:0;margin:14px 0 0}.calendar-form>h3:first-child{margin-top:0}.character-bubble::after{display:none}
-@media(max-width:760px){.my-view{width:44px;min-width:44px}.calendar-grid{gap:1px}}
+@media(max-width:760px){.calendar-grid{gap:1px}}
 
 
 .space-preview.full-room {

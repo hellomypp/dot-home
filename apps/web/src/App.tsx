@@ -149,12 +149,6 @@ const fixture: Snapshot = {
   ],
   events: [],
 };
-const placeIcons: Record<Place, ReactNode> = {
-  home: <Home size={17} />,
-  office: <Coffee size={17} />,
-  school: <span className="school-icon">▤</span>,
-  outside: <Leaf size={17} />,
-};
 const eventTypes: Record<
   string,
   { label: string; icon: ReactNode; message: string }
@@ -523,7 +517,6 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     enabled: !studio && Boolean(query.data),
   });
   const [sample, setSample] = useState(fixture),
-    [place, setPlace] = useState<Place>("home"),
     [observed, setObserved] = useState(""),
     [panel, setPanel] = useState<Panel>(null),
     [connection, setConnection] = useState<ConnectionState>("connecting"),
@@ -554,19 +547,9 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     const interval = setInterval(() => setTick((v) => v + 1), 30_000);
     return () => clearInterval(interval);
   }, []);
-  const followedPlace = snapshot?.members.find((m) => m.id === observed)?.place;
   useEffect(() => {
-    if (followedPlace) setPlace(followedPlace);
-  }, [followedPlace]);
-  useEffect(() => {
-    if (own) {
-      setObserved(own.id);
-      setPlace(own.place);
-    }
+    if (own) setObserved(own.id);
   }, [own?.id]);
-  useEffect(() => {
-    if (own && observed === own.id) setPlace(own.place);
-  }, [own?.place]);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 4200);
@@ -654,6 +637,8 @@ function GamePage({ studio = false }: { studio?: boolean }) {
       );
     return <Loading />;
   }
+  const observedMember = snapshot.members.find((m) => m.id === observed) || own;
+  const place = observedMember.place;
   const view: WorldView = {
     closeView,
     design: snapshot.design,
@@ -663,7 +648,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     })),
     place,
     ownMemberId: own.id,
-    observedMemberId: observed,
+    observedMemberId: observedMember.id,
     members: snapshot.members.map((m) => ({
       id: m.id,
       name: m.name,
@@ -678,7 +663,6 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     reducedMotion: reduced,
   };
   void tick;
-  const observedMember = snapshot.members.find((m) => m.id === observed) || own;
   return (
     <div className="game-app">
       <header className="app-header">
@@ -739,10 +723,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               <button
                 key={m.id}
                 className={`member-card ${observed === m.id ? "active" : ""}`}
-                onClick={() => {
-                  setObserved(m.id);
-                  setPlace(m.place);
-                }}
+                onClick={() => setObserved(m.id)}
               >
                 <Portrait appearance={m.appearance} />
                 <span className="member-description">
@@ -847,31 +828,6 @@ function GamePage({ studio = false }: { studio?: boolean }) {
           <div className="main-columns">
             <section className="world-section">
               <div className="scene-card">
-                <div className="scene-topbar">
-                  <nav className="place-tabs" aria-label="가상 공간 둘러보기">
-                    {(Object.keys(places) as Place[]).map((p) => (
-                      <button
-                        key={p}
-                        className={place === p ? "selected" : ""}
-                        onClick={() => setPlace(p)}
-                      >
-                        {placeIcons[p]}
-                        <span>{places[p]}</span>
-                      </button>
-                    ))}
-                  </nav>
-                  <button
-                    className="my-view"
-                    aria-label="내 화면으로"
-                    onClick={() => {
-                      setObserved(own.id);
-                      setPlace(own.place);
-                    }}
-                  >
-                    <Home size={14} />
-                    <span>내 화면으로</span>
-                  </button>
-                </div>
                 <div className={`scene-wrap ${palette}`}>
                   <span className="scene-caption" aria-hidden="true">
                     <i /> {places[place]}{" "}
@@ -898,16 +854,27 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                       · 사물을 눌러 사용
                     </span>
                   </p>
-                  {place === "home" && (
-                    <button
-                      className="scene-zoom"
-                      aria-pressed={closeView}
-                      onClick={() => setCloseView(!closeView)}
-                    >
-                      {closeView ? <ZoomOut size={17} /> : <ZoomIn size={17} />}{" "}
-                      {closeView ? "넓게 보기" : "가까이 보기"}
-                    </button>
-                  )}
+                  <div className="scene-actions">
+                    {observedMember.id !== own.id && (
+                      <button
+                        className="scene-return"
+                        aria-label="내 화면으로"
+                        onClick={() => setObserved(own.id)}
+                      >
+                        <Home size={17} />
+                      </button>
+                    )}
+                    {place === "home" && (
+                      <button
+                        className="scene-zoom"
+                        aria-pressed={closeView}
+                        onClick={() => setCloseView(!closeView)}
+                      >
+                        {closeView ? <ZoomOut size={17} /> : <ZoomIn size={17} />}{" "}
+                        {closeView ? "넓게 보기" : "가까이 보기"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="action-bar">
@@ -954,8 +921,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               <div className="gentle-tip">
                 <CircleHelp size={15} />
                 <span>
-                  장소 탭은 둘러보기예요. 내 공유 장소는 ‘내 이야기’에서 바꿀 수
-                  있어요.
+                  가족의 얼굴을 누르면 그 가족의 모습을 볼 수 있어요.
                 </span>
                 <button
                   onClick={() => setPanel("settings")}
