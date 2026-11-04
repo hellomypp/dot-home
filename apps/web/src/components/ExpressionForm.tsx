@@ -1,18 +1,16 @@
 import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError, places } from "../lib/api";
-import type { Place } from "../game/types";
+import { api, ApiError } from "../lib/api";
 import {
-  expressionFields, expressionKeys, expressionLabel,
+  expressionFields, expressionKeys, expressionLabel, sharedPlaces,
   type ExpressionField, type ExpressionState,
 } from "../lib/expressions";
 
 export function ExpressionForm({
-  householdId, householdName, currentPlace, onSaved, onPlaceSaved, legacy,
+  householdId, householdName, onSaved, onPlaceSaved, legacy,
 }: {
   householdId: string;
   householdName: string;
-  currentPlace: Place;
   onSaved: () => void;
   onPlaceSaved: () => void;
   legacy: ReactNode;
@@ -38,7 +36,7 @@ export function ExpressionForm({
       <Editor initial={query.data} path={path} householdName={householdName} onSaved={onSaved} />
       <details>
         <summary>공유 장소 바꾸기</summary>
-        <PlaceForm householdId={householdId} initial={currentPlace} onSaved={onPlaceSaved} />
+        <PlaceForm path={path} initial={query.data} onSaved={onPlaceSaved} />
       </details>
     </div>
   );
@@ -178,45 +176,109 @@ function Editor({
 }
 
 
-function PlaceForm({ householdId, initial, onSaved }: {
-  householdId: string;
-  initial: Place;
+function PlaceForm({ path, initial, onSaved }: {
+  path: string;
+  initial: ExpressionState;
   onSaved: () => void;
 }) {
-  const [place, setPlace] = useState(initial);
-  const [savedPlace, setSavedPlace] = useState(initial);
-  const [saved, setSaved] = useState(false);
+  const [base, setBase] = useState(initial);
+  const [enabled, setEnabled] = useState(initial.sharing.enabled);
+  const [place, setPlace] = useState(initial.place.value ?? "");
+  const [duration, setDuration] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [latest, setLatest] = useState<ExpressionState>();
+  const pending = useRef(false);
+  const receipt = useRef<{ body: string; id: string } | null>(null);
+  const placeChanged = enabled && ((place || null) !== base.place.value || (place && duration));
+  const changed = enabled !== base.sharing.enabled || Boolean(placeChanged);
+
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (busy || place === savedPlace) return;
+    if (pending.current || !changed || latest) return;
+    pending.current = true;
     setBusy(true);
+    setSaved(false);
     setError("");
+    const changes = {
+      ...(enabled !== base.sharing.enabled ? { sharing: { enabled, version: base.sharing.version } } : {}),
+      ...(placeChanged ? { place: {
+        value: place || null, version: base.place.version,
+        ...(place && duration ? { ttlMinutes: duration } : {}),
+      } } : {}),
+    };
+    const body = JSON.stringify(changes);
+    if (receipt.current?.body !== body) receipt.current = { body, id: crypto.randomUUID() };
     try {
-      await api(`/api/households/${householdId}/me/status`, "PATCH", { place });
-      setSavedPlace(place);
+      const result = await api<ExpressionState>(path, "PATCH", { requestId: receipt.current.id, changes });
+      setBase(result);
+      setPlace(result.place.value ?? "");
+      setDuration(0);
       setSaved(true);
       onSaved();
     } catch (err) {
       setError((err as Error).message);
+      if (err instanceof ApiError && err.status === 409) {
+        try { setLatest(await api<ExpressionState>(path)); } catch {}
+      }
     } finally {
+      pending.current = false;
       setBusy(false);
     }
   }
   return (
     <form onSubmit={save}>
-      <label>내가 공유할 장소
-        <select value={place} onChange={(event) => {
-          setPlace(event.target.value as Place);
+      <p className="muted">직접 고른 장소만 이 집 가족에게 공유해요.</p>
+      <label className="checkbox-label">
+        <input type="checkbox" checked={enabled} disabled={busy} onChange={(e) => {
+          setEnabled(e.target.checked);
           setSaved(false);
-        }}>
-          {Object.entries(places).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-        </select>
+        }} />
+        이 집에 장소 공유
       </label>
+      {enabled && (
+        <>
+          <label>내가 공유할 장소
+            <select value={place} disabled={busy} onChange={(e) => {
+              setPlace(e.target.value);
+              setSaved(false);
+            }}>
+              <option value="">선택하지 않아요</option>
+              {Object.entries(sharedPlaces).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </select>
+          </label>
+          {place && (
+            <label>장소 공개 시간
+              <select value={duration} disabled={busy} onChange={(e) => {
+                setDuration(Number(e.target.value));
+                setSaved(false);
+              }}>
+                <option value={0}>{place === base.place.value ? "현재 기한 유지" : "기본 · 2시간"}</option>
+                <option value={15}>15분</option><option value={30}>30분</option>
+                <option value={60}>1시간</option><option value={120}>2시간</option>
+              </select>
+            </label>
+          )}
+          {base.place.value && base.place.expiresAt && (
+            <p className="muted">현재 공개 기한 {new Date(base.place.expiresAt).toLocaleString("ko-KR")}</p>
+          )}
+        </>
+      )}
       {error && <p role="alert" className="error-message">{error}</p>}
+      {latest && (
+        <div>
+          <p>최신 상태 · {latest.sharing.enabled && latest.place.value
+            ? sharedPlaces[latest.place.value] : "공유 중인 장소 없음"}</p>
+          <button type="button" className="button secondary" onClick={() => {
+            setBase(latest);
+            setLatest(undefined);
+            setError("");
+          }}>최신값 확인 · 내 입력 유지</button>
+        </div>
+      )}
       {saved && <p role="status">공유 장소를 저장했어요.</p>}
-      <button type="submit" className="button secondary" disabled={busy || place === savedPlace}>장소 저장</button>
+      <button type="submit" className="button secondary" disabled={busy || !changed || Boolean(latest)}>장소 저장</button>
     </form>
   );
 }

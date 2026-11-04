@@ -11,6 +11,7 @@ const path = "/api/households/h/me/state";
 const empty = { value: null, updatedAt: null, expiresAt: null, version: 0 };
 const active = { value: "CALM", updatedAt: "2026-11-05T00:00:00Z", expiresAt: "2026-11-05T04:00:00Z", version: 2 };
 const state: ExpressionState = {
+  place: empty, sharing: { enabled: false, version: 0 },
   revision: 1,
   serverTime: active.updatedAt,
   expressions: { thought: empty, food: empty, mood: active, physical: empty, availability: empty },
@@ -20,7 +21,7 @@ function show() {
   const saved = vi.fn();
   render(
     <QueryClientProvider client={client}>
-      <ExpressionForm householdId="h" householdName="우리 집" currentPlace="home"
+      <ExpressionForm householdId="h" householdName="우리 집"
         onSaved={saved} onPlaceSaved={vi.fn()} legacy={null} />
     </QueryClientProvider>,
   );
@@ -69,5 +70,23 @@ it("asks for explicit review before retrying with the latest field version", asy
   fireEvent.click(screen.getByRole("button", { name: "표현 공유하기" }));
   await waitFor(() => expect(mocked).toHaveBeenCalledWith(path, "PATCH", {
     requestId: expect.any(String), changes: { mood: { value: null, version: 3 } },
+  }));
+});
+
+it("requires home-specific consent before sharing a manual place and sends both versions", async () => {
+  mocked.mockResolvedValue(state as never);
+  show();
+  const consent = await screen.findByLabelText("이 집에 장소 공유");
+  expect(screen.queryByLabelText("내가 공유할 장소")).toBeNull();
+  fireEvent.click(consent);
+  fireEvent.change(screen.getByLabelText("내가 공유할 장소"), { target: { value: "OFFICE" } });
+  fireEvent.change(screen.getByLabelText("장소 공개 시간"), { target: { value: "15" } });
+  fireEvent.click(screen.getByRole("button", { name: "장소 저장" }));
+  await waitFor(() => expect(mocked).toHaveBeenCalledWith(path, "PATCH", {
+    requestId: expect.any(String),
+    changes: {
+      sharing: { enabled: true, version: 0 },
+      place: { value: "OFFICE", version: 0, ttlMinutes: 15 },
+    },
   }));
 });

@@ -65,11 +65,12 @@
 
 ## v0.9 독립 표현
 
-- GET `/api/households/{h}/me/state` → `{expressions,revision,serverTime}`. 본인의 `thought`, `food`, `mood`, `physical`, `availability`에 값·수정 시각·만료 시각·버전을 반환한다. 만료한 값은 null이다.
+- GET `/api/households/{h}/me/state` → `{expressions,place,sharing,revision,serverTime}`. 본인의 `thought`, `food`, `mood`, `physical`, `availability`에 값·수정 시각·만료 시각·버전을 반환한다. 만료한 값은 null이다.
 - PATCH 같은 경로, `{requestId,changes:{food:{value:"김밥",version:0,ttlMinutes:30}}}`. 생략한 항목은 보존하고 null은 해제한다. 값이 같고 TTL을 명시하지 않으면 버전과 기한을 유지한다. 표현은 30~1440분이며 기본 한마디 2시간, 음식 6시간, 나머지 4시간이다.
 - 버전 충돌은 409이며 같은 배치 전체를 롤백한다. 24시간 안에 같은 명령 ID와 정규화된 입력으로 재시도하면 원래 결과를 반환한다. 다른 입력으로 같은 ID를 재사용하면 409다.
 - 가족 world의 `members[].currentState`에는 현재 유효한 표현만 들어간다. 기존 평면 필드와 `/me/status`를 계속 읽을 수 있다. V10은 새 테이블 두 개를 추가하며 기존 멤버 행을 수정하지 않는다. 새 값이 저장되기 전까지는 각 기존 표현의 원래 만료 시각을 그대로 읽는다.
-- 장소와 공유 동의의 독립 만료는 별도 작업이다. 현재 장소 변경은 기존 `/me/status`의 place만 사용한다.
+- 같은 changes에 `sharing:{enabled,version}`과 `place:{value,version,ttlMinutes?}`를 보낼 수 있다. 수동 장소 공개는 집별 동의가 필요하며 15~120분, 기본 120분이다. 공유를 끄면 마지막 수동 장소도 지운다. 구형 `/me/status`의 명시적 place 입력은 수동 공유로 변환한다.
+- `members[].sharedPlace`는 `MANUAL`(현재 수동 장소), `UNKNOWN`(현재 미확인, 만료한 장소는 마지막 참고), `UNSHARED`(장소·시각 모두 숨김)를 구분한다. 다른 가족의 미확인/미공유 외부 가상 장면과 좌표는 중립 처리한다. 자신의 가상 장면과 집 내 아바타 움직임은 실제 위치와 별개다. 자동 위치 판정은 별도 작업이다.
 
 ## v0.6 사물 쪽지
 

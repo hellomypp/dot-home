@@ -23,6 +23,8 @@ export interface ExpressionValue {
 }
 export interface ExpressionState {
   expressions: Record<ExpressionField, ExpressionValue>;
+  place: ExpressionValue;
+  sharing: { enabled: boolean; version: number };
   revision: number;
   serverTime: string;
 }
@@ -30,4 +32,31 @@ export function expressionLabel(field: ExpressionField, value: string) {
   const config = expressionFields[field];
   if (!("options" in config)) return value;
   return (config.options as Record<string, string>)[value] ?? value;
+}
+
+
+export const sharedPlaces: Record<string, string> = {
+  HOME: "우리 집", OFFICE: "직장", SCHOOL: "학교", TRANSIT: "이동 중",
+  MEAL: "식사 중", EXERCISE: "운동 중", ERRAND: "볼일 중", TRAVEL: "여행 중", OUTSIDE: "밖",
+};
+export interface SharedPlace {
+  status: "MANUAL" | "UNKNOWN" | "UNSHARED";
+  place: string | null;
+  lastPlace: string | null;
+  sharedAt: string | null;
+  expiresAt: string | null;
+}
+export function currentSharedPlace(presence: SharedPlace | undefined, now = Date.now()) {
+  if (presence?.status === "MANUAL" && presence.expiresAt && Date.parse(presence.expiresAt) <= now) {
+    return { ...presence, status: "UNKNOWN" as const, place: null, lastPlace: presence.place };
+  }
+  return presence;
+}
+
+
+export function sharedPlaceLabel(presence: SharedPlace | undefined, fallback: string) {
+  const current = currentSharedPlace(presence);
+  if (!current) return fallback;
+  if (current.status === "UNSHARED") return "위치 미공유";
+  return current.place ? sharedPlaces[current.place] : "현재 장소 미확인";
 }

@@ -1549,3 +1549,20 @@ textarea {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+
+.neutral-scene {
+  display: grid;
+  min-height: 300px;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 32px 48px;
+  text-align: center;
+  background: #edf2e7;
+  color: #486048;
+}
+.neutral-scene p, .neutral-scene small {
+  font-size: 13px;
+  line-height: 1.6;
+}

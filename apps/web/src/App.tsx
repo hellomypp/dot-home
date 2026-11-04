@@ -84,6 +84,7 @@ import {
 } from "./lib/auth";
 import { connectWorld, type ConnectionState } from "./lib/realtime";
 import { homeDestination, rememberHome } from "./lib/lastHome";
+import { currentSharedPlace, sharedPlaceLabel, sharedPlaces } from "./lib/expressions";
 import { useWindowSky } from "./lib/windowWeather";
 import type { Place, WorldEvent, WorldView } from "./game/types";
 
@@ -597,7 +598,9 @@ function GamePage({ studio = false }: { studio?: boolean }) {
   const observedMember = snapshot?.members.find((m) => m.id === observed) ?? own;
   const accessStatus = query.error instanceof ApiError ? query.error.status : 0;
   const accessLost = accessStatus === 401 || accessStatus === 403 || accessStatus === 404;
-  const windowSky = useWindowSky(!accessLost && observedMember?.place === "home");
+  const observedPresence = currentSharedPlace(observedMember?.sharedPlace);
+  const neutral = observedMember?.id !== own?.id && Boolean(observedPresence && observedPresence.status !== "MANUAL");
+  const windowSky = useWindowSky(!accessLost && !neutral && observedMember?.place === "home");
   useEffect(() => {
     if (!studio && !query.isError && query.data && own)
       rememberHome(own.userId, query.data.household.id);
@@ -794,7 +797,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                     {m.name}
                     {m.id === own.id && <em>나</em>}
                   </strong>
-                  <small>{places[m.place]}</small>
+                  <small>{sharedPlaceLabel(m.sharedPlace, places[m.place])}</small>
                 </span>
                 <ChevronRight size={15} />
               </button>
@@ -892,21 +895,31 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             <section className="world-section">
               <div className="scene-card">
                 <div className={`scene-wrap ${palette}`}>
-                  <span className="scene-caption" aria-hidden="true">
-                    <i /> {places[place]}{" "}
-                    <span>
-                      · {palette === "warm" ? "포근한 오후" : "차분한 저녁"}
-                    </span>
-                  </span>
-                  <Suspense
-                    fallback={
-                      <div className="world-canvas" role="status">
-                        우리 집을 그리고 있어요…
-                      </div>
-                    }
-                  >
-                    <WorldCanvas view={view} onEvent={event} />
-                  </Suspense>
+                  {neutral ? (
+                    <div className="neutral-scene">
+                      <Leaf size={36} strokeWidth={1.4} aria-hidden="true" />
+                      <strong>{observedPresence?.status === "UNSHARED" ? "위치 미공유" : "현재 장소 미확인"}</strong>
+                      <p>{observedMember.name}님의 현재 장소는 표시되지 않아요.</p>
+                      {observedPresence?.lastPlace && observedPresence.sharedAt && (
+                        <small>마지막 공유 · {sharedPlaces[observedPresence.lastPlace]} · {new Date(observedPresence.sharedAt).toLocaleString("ko-KR")}</small>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <span className="scene-caption" aria-hidden="true">
+                        <i /> {observedPresence?.place ? sharedPlaces[observedPresence.place] : places[place]}
+                      </span>
+                      <Suspense
+                        fallback={
+                          <div className="world-canvas" role="status">
+                            우리 집을 그리고 있어요…
+                          </div>
+                        }
+                      >
+                        <WorldCanvas view={view} onEvent={event} />
+                      </Suspense>
+                    </>
+                  )}
                   {(place === "home" || observedMember.id !== own.id) && (
                     <div className="scene-actions" role="group" aria-label="장면 조작">
                       {observedMember.id !== own.id && (
@@ -920,7 +933,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                           <Home size={20} aria-hidden="true" />
                         </button>
                       )}
-                      {place === "home" && (
+                      {place === "home" && !neutral && (
                         <button
                           className="scene-control"
                           type="button"
@@ -1173,7 +1186,6 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               <ExpressionForm
                 householdId={snapshot.household.id}
                 householdName={snapshot.household.name}
-                currentPlace={own.place}
                 onPlaceSaved={() => void refresh()}
                 legacy={<StoryForm snapshot={snapshot} studio={false} onSaved={async () => {
                   await refresh();

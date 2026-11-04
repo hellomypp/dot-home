@@ -131,35 +131,41 @@ class HomeService {
         Member me=requireMember(householdId,userId);
         Instant now=Instant.now();
         var saved=expressions.load(me);
-        boolean changed=false;
-        if(input.place()!=null&&!me.place.equals(input.place())){
-            if(input.expiresInMinutes()!=null&&input.expiresInMinutes()>120)
-                throw ApiException.invalid("장소를 공유하는 시간은 최대 120분이에요.");
-            var spawn=Spaces.spawn(house.presetId,0);
-            me.place=input.place();
-            me.x=me.place.equals("home")?spawn[0]:320;
-            me.y=me.place.equals("home")?spawn[1]:288;
-            me.avatarSpace="v62";
-            me.action="idle";
-            me.avatarUpdatedAt=now;
-            changed=true;
-        }
+        boolean changed=expressions.legacyPlace(me,saved,input.place(),input.expiresInMinutes(),now);
+        if(changed)moveToSharedScene(house,me,input.place(),now);
         changed|=expressions.legacy(me,saved,"mood",input.mood(),input.expiresInMinutes(),now);
         changed|=expressions.legacy(me,saved,"food",input.food(),input.expiresInMinutes(),now);
         changed|=expressions.legacy(me,saved,"thought",input.thought(),input.expiresInMinutes(),now);
-        if(changed)emit(house,"STATUS_CHANGED",memberView(me,house.presetId,saved,now));
+        if(changed)emit(house,"STATUS_CHANGED",memberView(me,house.presetId,saved,now,false));
         return snapshot(house,me.id);
+    }
+    private static void moveToSharedScene(Household house,Member member,String place,Instant now){
+        String scene=switch(place.toUpperCase(Locale.ROOT)){
+            case "HOME"->"home";
+            case "OFFICE"->"office";
+            case "SCHOOL"->"school";
+            default->"outside";
+        };
+        if(member.place.equals(scene))return;
+        var spawn=Spaces.spawn(house.presetId,0);
+        member.place=scene;
+        member.x=scene.equals("home")?spawn[0]:320;
+        member.y=scene.equals("home")?spawn[1]:288;
+        member.avatarSpace="v62";
+        member.action="idle";
+        member.avatarUpdatedAt=now;
     }
     ExpressionState expressions(String householdId,String userId){
         Household house=lock(householdId,userId);
         Member me=requireMember(householdId,userId);
         Instant now=Instant.now();
-        return new ExpressionState(expressions.state(me,expressions.load(me),now,true),house.revision,now);
+        return expressions.response(house,me,expressions.load(me),now);
     }
     ExpressionState expressions(String householdId,String userId,ExpressionPatch patch){
         Household house=lock(householdId,userId);
         Member me=requireMember(householdId,userId);
-        return expressions.patch(house,me,patch,()->emit(house,"STATUS_CHANGED",Map.of("memberId",me.id)));
+        return expressions.patch(house,me,patch,place->moveToSharedScene(house,me,place,Instant.now()),
+            ()->emit(house,"STATUS_CHANGED",Map.of("memberId",me.id)));
     }
     List<Api.PantryView> pantry(String householdId,String userId) { requireMember(householdId,userId);return pantry.findByHouseholdIdOrderByName(householdId).stream().map(HomeService::pantryView).toList(); }
     Api.PantryView addPantry(String householdId,String userId,Api.CreatePantry input) {
@@ -192,22 +198,26 @@ class HomeService {
         var householdMembers=members.findByHouseholdIdAndActiveTrueOrderById(household.id);
         var saved=expressions.load(householdMembers);
         var memberViews=householdMembers.stream()
-            .map(member->memberView(member,household.presetId,saved.getOrDefault(member.id,Map.of()),now)).toList();
+            .map(member->memberView(member,household.presetId,saved.getOrDefault(member.id,Map.of()),now,member.id.equals(meId))).toList();
         return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,now,memberViews,pets.findByHouseholdIdOrderById(household.id).stream().map(p->new Api.PetView(p.id,p.name,p.kind,p.appearance)).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),events.findTop100ByHouseholdIdOrderByCreatedAtDesc(household.id).stream().map(HomeService::eventView).toList(),Spaces.view(household));
     }
     Api.MemberView memberView(Member m,String preset){
-        return memberView(m,preset,expressions.load(m),Instant.now());
+        return memberView(m,preset,expressions.load(m),Instant.now(),false);
     }
-    private Api.MemberView memberView(Member m,String preset,Map<String,MemberExpression> saved,Instant now){
-        double[] point="home".equals(m.place)?Spaces.position(m,preset):new double[]{m.x,m.y};
+    private Api.MemberView memberView(Member m,String preset,Map<String,MemberExpression> saved,Instant now,boolean own){
+        var shared=expressions.publicPlace(m,saved,now);
+        // Unshared external scenes never carry their last coordinates to another member.
+        boolean mask=!own&&!"MANUAL".equals(shared.status())&&!"home".equals(m.place);
+        String place=mask?"outside":m.place;
+        double[] point=mask?new double[]{320,288}:"home".equals(place)?Spaces.position(m,preset):new double[]{m.x,m.y};
         var current=expressions.state(m,saved,now,false);
         Instant expires=current.values().stream().map(ExpressionValue::expiresAt).max(Comparator.naturalOrder()).orElse(null);
         Instant updated=current.values().stream().map(ExpressionValue::updatedAt).max(Comparator.naturalOrder()).orElse(m.statusUpdatedAt);
-        return new Api.MemberView(m.id,m.userId,m.name,m.appearance,m.role,m.place,
+        return new Api.MemberView(m.id,m.userId,m.name,m.appearance,m.role,place,
             current.containsKey("mood")?current.get("mood").value():"",
             current.containsKey("food")?current.get("food").value():"",
             current.containsKey("thought")?current.get("thought").value():"",
-            expires,updated,point[0],point[1],m.action,current);
+            expires,updated,point[0],point[1],mask?"idle":m.action,current,shared);
     }
     static Api.PantryView pantryView(PantryItem p) { return new Api.PantryView(p.id,p.name,p.location,p.quantity,p.unit,p.expiresOn,p.version,p.updatedAt); }
     static Api.EventView eventView(LifeEvent e) { return new Api.EventView(e.id,e.type,e.message,e.authorMemberId,e.authorName,e.createdAt); }

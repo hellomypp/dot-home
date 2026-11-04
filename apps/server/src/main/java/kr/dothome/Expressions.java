@@ -18,6 +18,7 @@ import java.security.Principal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.function.Consumer;
 
 @Entity @Table(name="member_expression")
 class MemberExpression extends Row {
@@ -52,8 +53,10 @@ record ExpressionValue(String value,Instant updatedAt,Instant expiresAt,long ver
     boolean currentAt(Instant now){return value!=null && expiresAt!=null && expiresAt.isAfter(now);}
     ExpressionValue at(Instant now){return currentAt(now)?this:new ExpressionValue(null,updatedAt,expiresAt,version);}
 }
-record ExpressionState(Map<String,ExpressionValue> expressions,long revision,Instant serverTime) {}
-record ExpressionPatch(@NotBlank @Size(max=80) String requestId,@NotNull @Size(max=5) Map<String,JsonNode> changes) {}
+record SharingValue(boolean enabled,long version) {}
+record SharedPlace(String status,String place,String lastPlace,Instant sharedAt,Instant expiresAt) {}
+record ExpressionState(Map<String,ExpressionValue> expressions,ExpressionValue place,SharingValue sharing,long revision,Instant serverTime) {}
+record ExpressionPatch(@NotBlank @Size(max=80) String requestId,@NotNull @Size(max=7) Map<String,JsonNode> changes) {}
 
 @Component
 class ExpressionStore {
@@ -66,6 +69,8 @@ class ExpressionStore {
         "physical",new Field(0,240,Set.of("OK","SLEEPY","FATIGUED","UNWELL","RESTING")),
         "availability",new Field(0,240,Set.of("TALK","ENCOURAGE_ONLY","QUIET"))
     );
+
+    private static final Field PLACE=new Field(0,120,Set.of("HOME","OFFICE","SCHOOL","TRANSIT","MEAL","EXERCISE","ERRAND","TRAVEL","OUTSIDE"));
 
     final MemberExpressions rows;
     final ExpressionCommands commands;
@@ -86,6 +91,10 @@ class ExpressionStore {
     private ExpressionValue read(Member member,Map<String,MemberExpression> saved,String field){
         var row=saved.get(field);
         if(row!=null)return new ExpressionValue(row.expressionValue,row.updatedAt,row.expiresAt,row.version);
+        if(field.equals("sharing"))return new ExpressionValue(
+            Boolean.toString(member.statusExpiresAt!=null),null,null,0);
+        if(field.equals("place")&&member.statusExpiresAt!=null)
+            return new ExpressionValue(member.place.toUpperCase(Locale.ROOT),member.statusUpdatedAt,member.statusExpiresAt,0);
         String legacy=switch(field){case "thought"->member.thought;case "food"->member.food;case "mood"->member.mood;default->"";};
         return legacy.isBlank()?new ExpressionValue(null,null,null,0)
             :new ExpressionValue(legacy,member.statusUpdatedAt,member.statusExpiresAt,0);
@@ -98,15 +107,36 @@ class ExpressionStore {
         }
         return result;
     }
+    SharingValue sharing(Member member,Map<String,MemberExpression> saved){
+        var value=read(member,saved,"sharing");
+        return new SharingValue(Boolean.parseBoolean(value.value()),value.version());
+    }
+    SharedPlace publicPlace(Member member,Map<String,MemberExpression> saved,Instant now){
+        if(!sharing(member,saved).enabled())return new SharedPlace("UNSHARED",null,null,null,null);
+        var place=read(member,saved,"place");
+        if(place.currentAt(now))return new SharedPlace("MANUAL",place.value(),null,place.updatedAt(),place.expiresAt());
+        return new SharedPlace("UNKNOWN",null,place.value(),place.updatedAt(),place.expiresAt());
+    }
+    ExpressionState response(Household house,Member member,Map<String,MemberExpression> saved,Instant now){
+        return new ExpressionState(state(member,saved,now,true),read(member,saved,"place").at(now),
+            sharing(member,saved),house.revision,now);
+    }
     private static Change parse(String name,JsonNode input){
-        var field=FIELDS.get(name);
-        if(field==null||input==null||!input.isObject()||!input.has("value")||!input.has("version")||
-            input.properties().stream().anyMatch(e->!Set.of("value","version","ttlMinutes").contains(e.getKey())))
+        boolean sharing=name.equals("sharing");
+        String valueKey=sharing?"enabled":"value";
+        var field=name.equals("place")?PLACE:FIELDS.get(name);
+        if(!sharing&&field==null||input==null||!input.isObject()||!input.has(valueKey)||!input.has("version")||
+            input.properties().stream().anyMatch(e->!(sharing?Set.of("enabled","version"):Set.of("value","version","ttlMinutes")).contains(e.getKey())))
             throw ApiException.invalid("수정할 표현과 버전을 확인해 주세요.");
         var version=input.get("version");
-        var value=input.get("value");
-        if(!version.isIntegralNumber()||!version.canConvertToLong()||version.asLong()<0||!(value.isNull()||value.isTextual()))
-            throw ApiException.invalid("표현 값과 버전을 확인해 주세요.");
+        var value=input.get(valueKey);
+        if(!version.isIntegralNumber()||!version.canConvertToLong()||version.asLong()<0)
+            throw ApiException.invalid("표현 버전을 확인해 주세요.");
+        if(sharing){
+            if(!value.isBoolean())throw ApiException.invalid("장소 공유 설정을 확인해 주세요.");
+            return new Change(value.asText(),version.asLong(),null);
+        }
+        if(!(value.isNull()||value.isTextual()))throw ApiException.invalid("표현 값을 확인해 주세요.");
         String normalized=value.isNull()?null:value.asText().strip();
         if(normalized!=null && normalized.isEmpty())normalized=null;
         if(normalized!=null){
@@ -116,14 +146,17 @@ class ExpressionStore {
             if(!valid)throw ApiException.invalid("표현의 길이나 선택값을 확인해 주세요.");
         }
         var ttl=input.get("ttlMinutes");
-        if(ttl!=null&&(!ttl.isIntegralNumber()||!ttl.canConvertToInt()||ttl.asInt()<30||ttl.asInt()>1440||normalized==null))
-            throw ApiException.invalid("표현 유지 시간은 30분~24시간이에요.");
+        boolean place=name.equals("place");
+        if(ttl!=null&&(!ttl.isIntegralNumber()||!ttl.canConvertToInt()||
+            ttl.asInt()<(place?15:30)||ttl.asInt()>(place?120:1440)||normalized==null))
+            throw ApiException.invalid(place?"장소 공유 시간은 15~120분이에요.":"표현 유지 시간은 30분~24시간이에요.");
         return new Change(normalized,version.asLong(),ttl==null?null:ttl.asInt());
     }
     private boolean change(Member member,Map<String,MemberExpression> saved,String name,Change change,Instant now){
         var previous=read(member,saved,name);
         if(change.version()!=previous.version())throw ApiException.conflict("다른 화면에서 내 표현이 변경됐어요.");
-        var current=previous.at(now);
+        boolean setting=name.equals("sharing");
+        var current=setting?previous:previous.at(now);
         boolean unchanged=Objects.equals(change.value(),current.value()) &&
             (change.value()!=null || previous.value()==null);
         if(unchanged && change.ttlMinutes()==null)return false;
@@ -132,8 +165,9 @@ class ExpressionStore {
         });
         row.expressionValue=change.value();
         row.updatedAt=now;
-        row.expiresAt=change.value()==null?null:now.plus(
-            change.ttlMinutes()==null?FIELDS.get(name).defaultTtl():change.ttlMinutes(),ChronoUnit.MINUTES);
+        row.expiresAt=setting||change.value()==null?null:now.plus(
+            change.ttlMinutes()!=null?change.ttlMinutes():name.equals("place")?PLACE.defaultTtl():FIELDS.get(name).defaultTtl(),
+            ChronoUnit.MINUTES);
         row.version=previous.version()+1;
         rows.save(row);
         return true;
@@ -146,7 +180,16 @@ class ExpressionStore {
         if(Objects.equals(next,previous.at(now).value()))return false;
         return change(member,saved,field,new Change(next,previous.version(),next==null?null:ttl),now);
     }
-    ExpressionState patch(Household house,Member member,ExpressionPatch input,Runnable changed){
+    boolean legacyPlace(Member member,Map<String,MemberExpression> saved,String place,Integer ttl,Instant now){
+        if(place==null)return false;
+        String value=place.toUpperCase(Locale.ROOT);
+        var old=read(member,saved,"place");
+        if(Objects.equals(old.at(now).value(),value)&&sharing(member,saved).enabled())return false;
+        if(ttl!=null&&ttl>120)throw ApiException.invalid("장소를 공유하는 시간은 최대 120분이에요.");
+        change(member,saved,"sharing",new Change("true",sharing(member,saved).version(),null),now);
+        return change(member,saved,"place",new Change(value,old.version(),ttl),now);
+    }
+    ExpressionState patch(Household house,Member member,ExpressionPatch input,Consumer<String> placeChanged,Runnable changed){
         Instant now=Instant.now().truncatedTo(ChronoUnit.MICROS);
         var changes=new TreeMap<String,Change>();
         input.changes().forEach((field,value)->changes.put(field,parse(field,value)));
@@ -157,10 +200,24 @@ class ExpressionStore {
             return json.readValue(receipt.responseJson,ExpressionState.class);
         }
         var saved=load(member);
+        var sharing=changes.get("sharing");
+        var place=changes.get("place");
+        boolean mayShare=sharing==null?sharing(member,saved).enabled():Boolean.parseBoolean(sharing.value());
+        if(place!=null&&place.value()!=null&&!mayShare)
+            throw ApiException.invalid("장소를 공유하려면 먼저 공유를 허용해 주세요.");
         boolean updated=false;
-        for(var entry:changes.entrySet())updated|=change(member,saved,entry.getKey(),entry.getValue(),now);
+        for(var entry:changes.entrySet()){
+            boolean fieldChanged=change(member,saved,entry.getKey(),entry.getValue(),now);
+            updated|=fieldChanged;
+            if(fieldChanged&&entry.getKey().equals("place")&&entry.getValue().value()!=null)
+                placeChanged.accept(entry.getValue().value());
+        }
+        if(sharing!=null&&!mayShare){
+            var oldPlace=read(member,saved,"place");
+            updated|=change(member,saved,"place",new Change(null,oldPlace.version(),null),now);
+        }
         if(updated)changed.run();
-        var result=new ExpressionState(state(member,saved,now,true),house.revision,now);
+        var result=response(house,member,saved,now);
         if(receipt==null){receipt=new ExpressionCommand();receipt.memberId=member.id;receipt.requestId=input.requestId();}
         receipt.bodyHash=hash;receipt.responseJson=json.writeValueAsString(result);receipt.expiresAt=now.plus(1,ChronoUnit.DAYS);
         commands.save(receipt);

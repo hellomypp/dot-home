@@ -67,6 +67,43 @@ class ExpressionsIntegrationTest {
             {"food":{"version":0}}
             """))).status.value());
     }
+    @Test void manualPlaceExpiresAndRevocationHidesLocationWithoutClearingExpressions(){
+        String owner=user(),guest=user();
+        var created=house(owner);
+        String h=created.household().id();
+        homes.accept(homes.invite(h,owner).token(),guest,new Api.Accept("가족","sage"));
+        assertEquals("UNSHARED",homes.world(h,guest).members().stream()
+            .filter(m->m.id().equals(created.meMemberId())).findFirst().orElseThrow().sharedPlace().status());
+        assertEquals(400,assertThrows(ApiException.class,()->homes.expressions(h,owner,patch("without-permission","""
+            {"place":{"value":"OFFICE","version":0}}
+            """))).status.value());
+        var start=homes.expressions(h,owner,patch("manual","""
+            {"sharing":{"enabled":true,"version":0},"place":{"value":"OFFICE","version":0,"ttlMinutes":15},
+             "thought":{"value":"잠시 쉬어요","version":0}}
+            """));
+        assertEquals("OFFICE",start.place().value());
+        assertEquals(15,ChronoUnit.MINUTES.between(start.place().updatedAt(),start.place().expiresAt()));
+        var before=homes.world(h,guest).members().stream().filter(m->m.id().equals(created.meMemberId())).findFirst().orElseThrow();
+        assertEquals("OFFICE",before.sharedPlace().place());
+        var stored=rows.findByMemberIdIn(List.of(created.meMemberId())).stream().filter(r->r.fieldName.equals("place")).findFirst().orElseThrow();
+        stored.expiresAt=Instant.now().minusSeconds(1);
+        rows.saveAndFlush(stored);
+        var expired=homes.world(h,guest).members().stream().filter(m->m.id().equals(created.meMemberId())).findFirst().orElseThrow();
+        assertEquals("UNKNOWN",expired.sharedPlace().status());
+        assertEquals("OFFICE",expired.sharedPlace().lastPlace());
+        assertNull(expired.sharedPlace().place());
+        assertEquals("outside",expired.place());
+        var revoked=homes.expressions(h,owner,patch("stop-sharing","""
+            {"sharing":{"enabled":false,"version":1}}
+            """));
+        assertFalse(revoked.sharing().enabled());
+        assertNull(revoked.place().value());
+        assertEquals("잠시 쉬어요",revoked.expressions().get("thought").value());
+        var hidden=homes.world(h,guest).members().stream().filter(m->m.id().equals(created.meMemberId())).findFirst().orElseThrow().sharedPlace();
+        assertEquals("UNSHARED",hidden.status());
+        assertNull(hidden.lastPlace());
+        assertNull(hidden.sharedAt());
+    }
     @Test void legacyFieldsAreReadAndMissingLegacyPatchFieldsRemainUntouched(){
         String owner=user();
         var created=house(owner);
