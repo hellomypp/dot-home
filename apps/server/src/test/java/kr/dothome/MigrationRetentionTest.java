@@ -47,7 +47,11 @@ class MigrationRetentionTest {
             Flyway.configure().dataSource(url,username(),password()).load().migrate();
             try(var r=sql.executeQuery("SELECT name,revision,preset_id,design_version,object_variants FROM household WHERE id='v8-house'")){assertTrue(r.next());assertEquals("기존 집",r.getString(1));assertEquals(8,r.getLong(2));assertEquals("classic_home",r.getString(3));assertEquals(0,r.getLong(4));assertEquals("{}",r.getString(5));}
             try(var r=sql.executeQuery("SELECT appearance,x,y,avatar_space FROM membership WHERE id='v8-member'")){assertTrue(r.next());assertEquals("v1:3212",r.getString(1));assertEquals(320,r.getDouble(2));assertEquals(288,r.getDouble(3));assertEquals("legacy",r.getString(4));}
-            try(var r=sql.executeQuery("SELECT name FROM pet WHERE id='v8-pet'")){assertTrue(r.next());assertEquals("모카",r.getString(1));}
+            try(var r=sql.executeQuery("SELECT name,kind,appearance,species_group,guardian_member_id,version FROM pet WHERE id='v8-pet'")){
+                assertTrue(r.next());assertEquals("모카",r.getString(1));assertEquals("cat",r.getString(2));
+                assertEquals("cream",r.getString(3));assertEquals("CAT",r.getString(4));
+                assertEquals("v8-member",r.getString(5));assertEquals(0,r.getLong(6));
+            }
         }
     }
 

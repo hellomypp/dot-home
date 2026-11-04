@@ -152,11 +152,11 @@ Google 인증한 방문자:
 
 ## 반려동물 관리
 
-- `POST /api/households/{id}/pets`: `{name:"모카",kind:"cat",appearance:"cream"}` → 갱신된 World. kind는 cat/dog, appearance는 현재 기본 cream. 이름 1~40자·공백 정리·제어문자 거절.
-- `PATCH /api/households/{id}/pets/{petId}`: `{name:"보리",kind:"dog"}` → 갱신된 World. 기존 appearance는 그대로 유지한다.
-- 목록은 기존 `GET /api/households/{id}/world`의 pets로 조회한다. 모든 활성 가족 조회 가능, 등록/수정은 대표만. 타 가구 petId·방문자·비대표는 403, 인증/CSRF/알 수 없는 필드 검증 유지.
-- 성공 커밋 후 `PETS_CHANGED` 이벤트와 revision 갱신. 서버 응답/이벤트의 World로 사이드바와 Phaser를 갱신하며 새로고침을 요구하지 않는다.
-- 삭제 API는 제공하지 않는다. 구형 POST households의 plannedPeople/pets는 제거된 계약이며 400이다. 계획 인원 PATCH는 제거했다.
+- `POST /api/households/{id}/pets`에 `{name,speciesGroup,speciesName?,guardianMemberId?}`를 보내면 갱신된 world를 반환한다. 활성 가족이 등록할 수 있고 보호자를 생략하면 본인이 맡는다. 이름은 1~40자, 직접 입력한 종명은 최대 80자다. 같은 집의 활성 가족만 보호자로 지정할 수 있다.
+- 종 분류는 `DOG|CAT|BIRD|SMALL_MAMMAL|REPTILE|AMPHIBIAN|FISH|INVERTEBRATE|OTHER`다. 종에 맞춰 `habitat`과 `appearanceId`가 정해진다. 기존 `{name,kind,appearance}`의 cat/dog 및 cream 입력과 조회값을 유지한다. 그 밖의 종은 구형 kind에서 other로 표시된다.
+- `PATCH /api/households/{id}/pets/{petId}`는 `{name,speciesGroup,speciesName?,guardianMemberId?,version}`을 받는다. 지정 보호자·집 대표만 수정하고 오래된 버전에는 409를 반환한다. 생략한 종명·보호자와 기존 appearance를 유지하며 빈 종명으로 지울 수 있다. 개·고양이의 구형 이름·종류 수정 요청을 계속 지원한다.
+- 목록은 기존 `GET /api/households/{id}/world`의 pets로 조회한다. 성공 커밋 후 `PETS_CHANGED`와 revision으로 Phaser와 관리 목록을 갱신한다. 집들이 방문자·다른 집은 조회나 수정 권한이 없다.
+- V17은 기존 이름·종류·외형을 보존하면서 종 분류와 기존 집 대표 보호자를 채운다. 삭제와 추억 모드는 후속 작업이다.
 
 ## v0.7 공유 집 디자인 (v6.2 자산)
 

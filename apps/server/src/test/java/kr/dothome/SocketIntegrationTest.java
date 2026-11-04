@@ -38,7 +38,8 @@ class SocketIntegrationTest {
                 assertEquals("보리",homes.world(h,family.user).pets().getFirst().name());
                 for(var denied:List.of(family,visitor)){
                     var response=denied.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/households/"+h+"/pets")).header("Content-Type","application/json").header("X-CSRF-TOKEN",denied.csrf).POST(HttpRequest.BodyPublishers.ofString("{\"name\":\"금지\",\"kind\":\"cat\",\"appearance\":\"cream\"}")).build(),HttpResponse.BodyHandlers.ofString());
-                    assertEquals(403,response.statusCode());
+                    assertEquals(denied==family?200:403,response.statusCode());
+                    if(denied==family)connected.take("PETS_CHANGED");
                     var edit=denied.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/households/"+h+"/pets/"+pet)).header("Content-Type","application/json").header("X-CSRF-TOKEN",denied.csrf).method("PATCH",HttpRequest.BodyPublishers.ofString("{\"name\":\"금지\",\"kind\":\"cat\"}")).build(),HttpResponse.BodyHandlers.ofString());assertEquals(403,edit.statusCode());
                 }
                 var noCsrf=owner.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/households/"+h+"/pets")).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString("{\"name\":\"금지\",\"kind\":\"cat\",\"appearance\":\"cream\"}")).build(),HttpResponse.BodyHandlers.ofString());assertEquals(403,noCsrf.statusCode());

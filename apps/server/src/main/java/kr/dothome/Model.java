@@ -52,6 +52,10 @@ class Pet extends Row {
     @Column(nullable = false, length = 40) String name;
     @Column(nullable = false, length = 24) String kind;
     @Column(nullable = false, length = 24) String appearance;
+    @Enumerated(EnumType.STRING) @Column(length = 24) PetSpecies speciesGroup;
+    @Column(length = 80) String speciesName;
+    @Column(length = 36) String guardianMemberId;
+    @Version long version;
     protected Pet() {}
 }
 @Entity @Table(name = "invitation")

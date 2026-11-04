@@ -1,3 +1,5 @@
+import { makePetHabitat } from "./petHabitat";
+import type { PetHabitat } from "../lib/pets";
 import Phaser from "phaser";
 import { ActorNameplate } from "./ActorNameplate";
 import { paintWindowSky } from "./windowSky";
@@ -31,6 +33,7 @@ type Actor = {
   frame: number;
   kind: string;
   pet: boolean;
+  habitat?: Exclude<PetHabitat, "FLOOR">;
   remote: string;
   manual: number;
   cycle: number;
@@ -261,13 +264,16 @@ class NativeHome extends Phaser.Scene {
     kind: string,
     point: Point,
     pet = false,
+    habitat?: Actor["habitat"],
   ): Actor {
-    const texture = pet
+    const texture = habitat ? "native-habitat-" + habitat : pet
       ? kind === "dog"
         ? "native-dog"
         : "native-cat-0"
       : kind;
-    if (pet && kind !== "dog")
+    if (habitat && !this.textures.exists(texture))
+      this.textures.addCanvas(texture, makePetHabitat(habitat));
+    if (pet && !habitat && kind !== "dog")
       for (let f = 0; f < 4; f++)
         if (!this.textures.exists("native-cat-" + f)) {
           const canvas = document.createElement("canvas");
@@ -308,6 +314,7 @@ class NativeHome extends Phaser.Scene {
       frame: 0,
       kind,
       pet,
+      habitat,
       remote: "",
       manual: Date.now(),
       cycle: -1,
@@ -349,18 +356,25 @@ class NativeHome extends Phaser.Scene {
     const people = Array.from(this.actors.values(), ({ sprite }) => sprite);
     for (const [i, p] of this.view.pets.entries()) {
       let a = this.pets.get(p.id);
+      const habitat = p.habitat === "FLOOR" ? undefined : p.habitat;
+      const kind = p.kind || "cat";
+      if (a && (a.habitat !== habitat || a.kind !== kind)) {
+        a.sprite.destroy();
+        a.label.destroy();
+        a.bubble.destroy();
+        a = undefined;
+      }
       if (!a) {
         const [x, y] = this.map.petSpawn;
-        const start = { x: x + i * 12, y };
+        const start = { x: x + i * (habitat ? 34 : 12), y };
         const free = nearestFreePoint(start, (point) =>
-          canStand(point, this.map, true) && petClearsPeople(point, people),
+          canStand(point, this.map, true) && (habitat != null || petClearsPeople(point, people)),
         );
-        a = this.actor(p.id, p.name, p.kind || "cat", free ?? start, true);
+        a = this.actor(p.id, p.name, kind, free ?? start, true, habitat);
         a.sprite.setVisible(free !== null);
         a.label.setVisible(free !== null);
         this.pets.set(p.id, a);
       }
-      a.kind = p.kind || "cat";
       a.label.setLabel(p.name);
     }
     for (const marker of this.markers) marker.destroy();
@@ -456,6 +470,12 @@ class NativeHome extends Phaser.Scene {
     const avoidsPeople = (point: Point) => petClearsPeople(point, people);
     const actors = [...this.actors.values(), ...this.pets.values()];
     for (const a of actors) {
+      if (a.habitat) {
+        a.sprite.setDepth(Math.round(a.sprite.y));
+        a.label.setPosition(Math.round(a.sprite.x), Math.round(a.sprite.y + 4))
+          .setVisible(a.sprite.visible && avoidsPeople(a.sprite));
+        continue;
+      }
       if (a.pet && (!a.sprite.visible || !avoidsPeople(a.sprite))) {
         const free = nearestFreePoint(a.sprite, (point) =>
           canStand(point, this.map, true) && avoidsPeople(point),

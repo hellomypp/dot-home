@@ -62,19 +62,65 @@ class HomeService {
         if(value==null||value.strip().isBlank()||value.length()>40||value.codePoints().anyMatch(Character::isISOControl))throw ApiException.invalid("반려동물 이름은 줄바꿈 없이 1~40자로 입력해 주세요.");
         return value.strip();
     }
-    static void petKind(String kind){if(!Set.of("cat","dog").contains(kind==null?"":kind))throw ApiException.invalid("고양이 또는 강아지를 선택해 주세요.");}
     Api.World addPet(String householdId,String userId,Api.PetInput input) {
-        Household household=lock(householdId,userId);owner(household,userId);
-        petKind(input.kind());if(!"cream".equals(input.appearance()))throw ApiException.invalid("지원하지 않는 반려동물 외형이에요.");
-        Pet pet=new Pet();pet.householdId=householdId;pet.name=petName(input.name());pet.kind=input.kind();pet.appearance=input.appearance();pets.save(pet);
-        emit(household,"PETS_CHANGED",Map.of("petId",pet.id));return snapshot(household,requireMember(householdId,userId).id);
+        Household household=lock(householdId,userId);
+        Member actor=requireMember(householdId,userId);
+        PetSpecies group=PetSpecies.resolve(input.speciesGroup(),input.kind());
+        if(input.appearance()!=null&&!"cream".equals(input.appearance()))
+            throw ApiException.invalid("지원하지 않는 반려동물 외형이에요.");
+        Pet pet=new Pet();
+        pet.householdId=householdId;
+        pet.name=petName(input.name());
+        pet.kind=group.legacyKind();
+        pet.appearance="cream";
+        pet.speciesGroup=group;
+        pet.speciesName=petSpeciesName(input.speciesName());
+        pet.guardianMemberId=input.guardianMemberId()==null?actor.id:petGuardian(householdId,input.guardianMemberId());
+        pets.save(pet);
+        emit(household,"PETS_CHANGED",Map.of("petId",pet.id));
+        return snapshot(household,actor.id);
     }
     Api.World editPet(String householdId,String userId,String petId,Api.PetEdit input) {
-        Household household=lock(householdId,userId);owner(household,userId);
+        Household household=lock(householdId,userId);
+        Member actor=requireMember(householdId,userId);
         Pet pet=pets.findById(petId).orElseThrow(ApiException::missing);
         if(!pet.householdId.equals(householdId))throw ApiException.forbidden();
-        petKind(input.kind());pet.name=petName(input.name());pet.kind=input.kind();
-        emit(household,"PETS_CHANGED",Map.of("petId",pet.id));return snapshot(household,requireMember(householdId,userId).id);
+        boolean owner=household.ownerId.equals(userId);
+        if(!owner&&!actor.id.equals(pet.guardianMemberId))throw ApiException.forbidden();
+        boolean legacy=input.version()==null&&input.kind()!=null&&input.speciesGroup()==null
+            &&input.speciesName()==null&&input.guardianMemberId()==null;
+        if(!legacy&&(input.version()==null||input.version()!=pet.version))
+            throw ApiException.conflict("다른 기기에서 반려동물 정보를 바꿨어요. 최신 정보를 확인해 주세요.");
+        PetSpecies group=PetSpecies.resolve(input.speciesGroup(),input.kind());
+        if(legacy&&!groupFor(pet).habitat.equals("FLOOR"))
+            throw ApiException.conflict("최신 반려동물 관리 화면에서 수정해 주세요.");
+        pet.name=petName(input.name());
+        pet.kind=group.legacyKind();
+        pet.speciesGroup=group;
+        if(input.speciesName()!=null)pet.speciesName=petSpeciesName(input.speciesName());
+        if(input.guardianMemberId()!=null)pet.guardianMemberId=petGuardian(householdId,input.guardianMemberId());
+        pets.flush();
+        emit(household,"PETS_CHANGED",Map.of("petId",pet.id));
+        return snapshot(household,actor.id);
+    }
+    private String petGuardian(String householdId,String memberId) {
+        return members.findById(memberId).filter(m->m.active&&m.householdId.equals(householdId))
+            .orElseThrow(()->ApiException.invalid("이 집의 가족을 보호자로 선택해 주세요.")).id;
+    }
+    private static String petSpeciesName(String value) {
+        if(value==null)return "";
+        if(value.length()>80||value.codePoints().anyMatch(Character::isISOControl))
+            throw ApiException.invalid("종 이름은 줄바꿈 없이 80자 이하로 입력해 주세요.");
+        return value.strip();
+    }
+    private static PetSpecies groupFor(Pet pet){
+        if(pet.speciesGroup!=null)return pet.speciesGroup;
+        return switch(pet.kind){case "cat" -> PetSpecies.CAT;case "dog" -> PetSpecies.DOG;default -> PetSpecies.OTHER;};
+    }
+    private static Api.PetView petView(Pet pet){
+        var group=groupFor(pet);
+        return new Api.PetView(pet.id,pet.name,pet.kind,pet.appearance,group,pet.speciesName==null?"":pet.speciesName,
+            group.habitat,pet.guardianMemberId,group.appearanceId,pet.version);
     }
     Api.InvitationView invite(String householdId,String userId) {
         Household household=lock(householdId,userId);owner(household,userId);
@@ -199,7 +245,7 @@ class HomeService {
         var saved=expressions.load(householdMembers);
         var memberViews=householdMembers.stream()
             .map(member->memberView(member,household.presetId,saved.getOrDefault(member.id,Map.of()),now,member.id.equals(meId))).toList();
-        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,now,memberViews,pets.findByHouseholdIdOrderById(household.id).stream().map(p->new Api.PetView(p.id,p.name,p.kind,p.appearance)).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),events.findTop100ByHouseholdIdOrderByCreatedAtDesc(household.id).stream().map(HomeService::eventView).toList(),Spaces.view(household));
+        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,now,memberViews,pets.findByHouseholdIdOrderById(household.id).stream().map(HomeService::petView).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),events.findTop100ByHouseholdIdOrderByCreatedAtDesc(household.id).stream().map(HomeService::eventView).toList(),Spaces.view(household));
     }
     Api.MemberView memberView(Member m,String preset){
         return memberView(m,preset,expressions.load(m),Instant.now(),false);

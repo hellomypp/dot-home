@@ -1,3 +1,4 @@
+import { petGroup, petSpecies } from "./lib/pets";
 import { AccountSettings } from "./components/AccountSettings";
 import { ShareLink } from "./components/ShareLink";
 import { SpaceSettings } from "./components/SpaceSettings";
@@ -826,11 +827,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             </button>
             <button
               className="button secondary sidebar-pet"
-              aria-label={
-                own.role === "OWNER"
-                  ? "반려동물 등록 · 관리"
-                  : "반려동물 목록 보기"
-              }
+              aria-label="반려동물 등록 · 관리"
               onClick={() => setPanel("pets")}
             >
               <PawPrint size={16} />
@@ -843,7 +840,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               {snapshot.pets.map((p) => (
                 <div className="pet-card" key={p.id}>
                   <span className="pet-face">
-                    {p.kind === "dog" ? "🐕" : "🐈"}
+                    {petSpecies[petGroup(p)].icon}
                   </span>
                   <span>
                     <strong>{p.name}</strong>

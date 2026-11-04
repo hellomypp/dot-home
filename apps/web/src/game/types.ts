@@ -1,3 +1,4 @@
+import type { PetHabitat } from "../lib/pets";
 import type {SpaceDesign} from './spaces';
 import type { WindowSky } from '../lib/windowWeather';
 export type Place = 'home' | 'office' | 'school' | 'outside';
@@ -13,7 +14,7 @@ export interface WorldMember {
   y?: number;
   action?: string;
 }
-export interface WorldPet { id: string; name: string; kind?: string; color?: string }
+export interface WorldPet { id: string; name: string; kind?: string; color?: string; habitat?: PetHabitat }
 export interface WorldView {
   closeView?:boolean;
   windowSky?: WindowSky;

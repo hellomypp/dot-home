@@ -52,7 +52,7 @@ class HouseholdIntegrationTest {
         assertEquals(Set.of("cat","dog"),restored.pets().stream().map(Api.PetView::kind).collect(java.util.stream.Collectors.toSet()));
         String legacy=user();assertEquals("sage",homes.world(house(legacy).household().id(),legacy).members().getFirst().appearance());
     }
-    @Test void legacyLimitDoesNotRestrictAdmissionAndPetsAreOwnerManaged(){
+    @Test void legacyLimitDoesNotRestrictAdmissionAndPetsStayHouseScoped(){
         String owner=user(),family=user(),outsider=user(),h=house(owner).household().id();
         jdbc.update("UPDATE household SET planned_people=1 WHERE id=?",h);
         homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("가족","blue"));
@@ -63,7 +63,7 @@ class HouseholdIntegrationTest {
         assertEquals("보리",changed.pets().getFirst().name());assertEquals("dog",changed.pets().getFirst().kind());
         assertEquals("cream",changed.pets().getFirst().appearance());
         assertEquals("보리",homes.world(h,family).pets().getFirst().name());
-        assertThrows(ApiException.class,()->homes.addPet(h,family,new Api.PetInput("금지","cat","cream")));
+        assertThrows(ApiException.class,()->homes.editPet(h,family,pet.id(),new Api.PetEdit("금지","cat")));
         assertThrows(ApiException.class,()->homes.editPet(h,outsider,pet.id(),new Api.PetEdit("금지","cat")));
         String other=house(owner).household().id();
         assertThrows(ApiException.class,()->homes.editPet(other,owner,pet.id(),new Api.PetEdit("위조","cat")));
@@ -71,6 +71,21 @@ class HouseholdIntegrationTest {
         assertThrows(ApiException.class,()->homes.addPet(h,owner,new Api.PetInput("이름","other","cream")));
         assertThrows(ApiException.class,()->homes.addPet(h,owner,new Api.PetInput("이름","cat","invalid")));
         assertEquals(1,homes.world(h,owner).pets().size());
+    }
+    @Test void petSpeciesAndGuardianAreScopedAndVersioned(){
+        String owner=user(),family=user(),outsider=user(),h=house(owner).household().id();
+        var membership=homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("가족","sage"));
+        String guardian=membership.meMemberId(), outsiderMember=house(outsider).meMemberId();
+        assertThrows(ApiException.class,()->homes.addPet(h,family,new Api.PetInput("별이",null,null,PetSpecies.FISH,"베타",outsiderMember)));
+        var fish=homes.addPet(h,family,new Api.PetInput("별이",null,null,PetSpecies.FISH," 베타 ",null)).pets().getFirst();
+        assertEquals("TANK",fish.habitat());assertEquals("tank",fish.appearanceId());assertEquals("other",fish.kind());
+        assertEquals("베타",fish.speciesName());assertEquals(guardian,fish.guardianMemberId());
+        assertEquals(2,homes.world(h,owner).members().size());
+        assertThrows(ApiException.class,()->homes.editPet(h,outsider,fish.id(),new Api.PetEdit("위조",null,PetSpecies.FISH,null,null,0L)));
+        var updated=homes.editPet(h,family,fish.id(),new Api.PetEdit("별밤",null,PetSpecies.FISH,null,null,0L)).pets().getFirst();
+        assertEquals(1L,updated.version());assertEquals("베타",updated.speciesName());
+        assertThrows(ApiException.class,()->homes.editPet(h,owner,fish.id(),new Api.PetEdit("충돌",null,PetSpecies.FISH,null,null,0L)));
+        assertEquals(updated,homes.world(h,owner).pets().getFirst());
     }
     @Test void sameUserConcurrentDifferentInvitesNeverCreateDuplicateMembership()throws Exception{
         String owner=user(),guest=user(),h=house(owner).household().id();var a=homes.invite(h,owner);var b=homes.invite(h,owner);
