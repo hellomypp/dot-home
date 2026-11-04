@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CareReactions } from "./CareReactions";
 import { api } from "../lib/api";
 export interface ObjectNote {
   id: string;
@@ -145,6 +146,7 @@ export function ObjectNotes({
                 </button>
               )}
             </div>
+            <CareReactions householdId={householdId} sourceType="NOTE" sourceId={n.id} />
           </article>
         ))
       ) : (

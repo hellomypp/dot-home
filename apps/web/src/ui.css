@@ -1640,3 +1640,26 @@ textarea {
   margin: 0;
   overflow-wrap: anywhere;
 }
+
+
+.care-reactions {
+  display: grid;
+  gap: 6px;
+  margin-block-start: 4px;
+}
+.care-trigger {
+  justify-self: start;
+}
+.care-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.care-reactions .button {
+  min-height: 44px;
+  padding: 7px 10px;
+}
+.care-options [aria-pressed="true"] {
+  border-color: #9bb08c;
+  background: #e5eddd;
+}

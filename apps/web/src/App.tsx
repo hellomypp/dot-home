@@ -4,6 +4,7 @@ import { SpaceSettings } from "./components/SpaceSettings";
 import { CharacterChoices } from "./components/CharacterStyleForm";
 import { PetManager } from "./components/PetManager";
 import { VisitPage, HousewarmingPanel } from "./components/Housewarming";
+import { CareReactions } from "./components/CareReactions";
 import { HouseholdRequestsPanel } from "./components/HouseholdRequestsPanel";
 import { ExpressionForm } from "./components/ExpressionForm";
 import { FamilyCalendar } from "./components/FamilyCalendar";
@@ -73,6 +74,7 @@ import {
   logout,
   places,
   statusText,
+  activeExpression,
   type Identity,
   type Snapshot,
   type PantryItem,
@@ -631,6 +633,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
           qc.invalidateQueries({ queryKey: ["object-notes", id] }),
           qc.invalidateQueries({ queryKey: ["calendar", id] }),
           qc.invalidateQueries({ queryKey: ["household-requests", id] }),
+          qc.invalidateQueries({ queryKey: ["household-reactions", id] }),
         ]);
         return data.revision;
       },
@@ -1018,22 +1021,25 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                     <Leaf size={16} />
                   </span>
                 </div>
-                {snapshot.members.map((m) => (
-                  <div className="thought-row" key={m.id}>
-                    <Portrait appearance={m.appearance} small />
-                    <div>
-                      <strong>
-                        {m.name} <span>{m.id === own.id ? "나" : ""}</span>
-                      </strong>
-                      <p>{statusText(m) || "아직 남긴 이야기가 없어요."}</p>
-                      <small>
-                        {statusText(m)
-                          ? "직접 공유한 이야기"
-                          : "기다리는 마음도 다정하게"}
-                      </small>
+                {snapshot.members.map((member) => {
+                  const expression = activeExpression(member);
+                  const text = statusText(member);
+                  const sourceId = expression ? `${member.id}.${expression.field}.${expression.version}` : "";
+                  return (
+                    <div className="thought-row" key={member.id}>
+                      <Portrait appearance={member.appearance} small />
+                      <div>
+                        <strong>{member.name} <span>{member.id === own.id ? "나" : ""}</span></strong>
+                        <p>{text || "아직 남긴 이야기가 없어요."}</p>
+                        <small>{text ? "직접 공유한 이야기" : "기다리는 마음도 다정하게"}</small>
+                        {!studio && expression && sourceId && (
+                          <CareReactions key={sourceId} householdId={snapshot.household.id} sourceType="EXPRESSION"
+                            sourceId={sourceId} meal={expression.field === "food"} />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <button
                   className="soft-button"
                   onClick={() => setPanel("story")}

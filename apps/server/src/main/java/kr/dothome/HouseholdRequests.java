@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -128,11 +129,11 @@ class HouseholdRequestService {
     final Members members;
     final HouseholdRequests requests;
     final RequestTransitions history;
-    final RequestCommands commands;
+    final HouseholdCommandReceipts receipts;
     final NoticeAcknowledgements acknowledgements;
     final ObjectMapper json;
-    HouseholdRequestService(HomeService homes,Members members,HouseholdRequests requests,RequestTransitions history,RequestCommands commands,NoticeAcknowledgements acknowledgements,ObjectMapper json){
-        this.homes=homes;this.members=members;this.requests=requests;this.history=history;this.commands=commands;this.acknowledgements=acknowledgements;this.json=json;
+    HouseholdRequestService(HomeService homes,Members members,HouseholdRequests requests,RequestTransitions history,HouseholdCommandReceipts receipts,NoticeAcknowledgements acknowledgements,ObjectMapper json){
+        this.homes=homes;this.members=members;this.requests=requests;this.history=history;this.receipts=receipts;this.acknowledgements=acknowledgements;this.json=json;
     }
     HouseholdRequestPage list(String house,String user,List<RequestState> filter,String cursor,int limit){
         Member member=homes.requireMember(house,user);
@@ -167,7 +168,7 @@ class HouseholdRequestService {
         var targets=input.targetMemberIds()==null?List.<String>of():input.targetMemberIds().stream().distinct().sorted().toList();
         String hash=HomeService.hash(json.writeValueAsString(List.of(input.kind(),title,body,targets,
             input.dueAt()==null?"":input.dueAt().toString())));
-        return once(member,"create",input.requestId(),hash,now,()->{
+        return receipts.once(member,"create",input.requestId(),hash,now,HouseholdRequestView.class,()->{
             validateTargets(h,targets);
             if(input.kind()==RequestKind.PROMISE&&!targets.isEmpty()&&!targets.contains(member.id))
                 throw ApiException.invalid("내가 맡는 약속의 대상에는 내 이름이 포함돼야 해요.");
@@ -200,7 +201,7 @@ class HouseholdRequestService {
         String reason=reasonRequired?text(input.reason(),1,200,"사유"):null;
         if(!reasonRequired&&input.reason()!=null)throw ApiException.invalid("이 동작은 사유를 받지 않아요.");
         String hash=HomeService.hash(json.writeValueAsString(List.of(input.version(),Objects.toString(reason,""))));
-        return once(actor,id+":"+action,input.requestId(),hash,now,()->{
+        return receipts.once(actor,id+":"+action,input.requestId(),hash,now,HouseholdRequestView.class,()->{
             var before=request.stateAt(now);
             if(before==RequestState.EXPIRED)throw new ApiException(HttpStatus.GONE,"EXPIRED","기한이 지난 요청이에요.");
             if(action.equals("claim")&&before==RequestState.CLAIMED&&!actor.id.equals(request.assigneeMemberId))
@@ -359,21 +360,6 @@ class HouseholdRequestService {
         row.requestId=r.id;row.actorMemberId=actor.id;row.previousState=before;row.nextState=r.state;
         row.reason=reason;row.occurredAt=now;history.save(row);
     }
-    private HouseholdRequestView once(Member member,String scope,String key,String hash,Instant now,
-        Supplier<HouseholdRequestView> write){
-        var saved=commands.findByMemberIdAndCommandScopeAndRequestKey(member.id,scope,key).orElse(null);
-        if(saved!=null&&saved.expiresAt.isAfter(now)){
-            if(!saved.bodyHash.equals(hash))throw new ApiException(HttpStatus.CONFLICT,"IDEMPOTENCY_CONFLICT","동일 요청 번호의 내용이 달라요.");
-            return json.readValue(saved.responseJson,HouseholdRequestView.class);
-        }
-        var result=write.get();
-        if(saved==null){saved=new RequestCommand();saved.memberId=member.id;saved.commandScope=scope;saved.requestKey=key;}
-        saved.bodyHash=hash;saved.responseJson=json.writeValueAsString(result);saved.expiresAt=now.plus(1,ChronoUnit.DAYS);
-        commands.save(saved);
-        return result;
-    }
-    @Scheduled(fixedDelay=3_600_000)
-    public void purgeReceipts(){commands.purge(now());}
     static String text(String value,int min,int max,String field){
         String cleaned=value==null?"":value.strip();
         int length=cleaned.codePointCount(0,cleaned.length());
@@ -409,6 +395,28 @@ class HouseholdRequestService {
             return Base64.getUrlEncoder().withoutPadding().encodeToString((row.createdAt+";"+row.id).getBytes(StandardCharsets.UTF_8));
         }
     }
+}
+
+@Component
+class HouseholdCommandReceipts {
+    private final RequestCommands commands;
+    private final ObjectMapper json;
+    HouseholdCommandReceipts(RequestCommands commands,ObjectMapper json){this.commands=commands;this.json=json;}
+    <T> T once(Member member,String scope,String key,String hash,Instant now,
+        Class<T> responseType,Supplier<T> write){
+        var saved=commands.findByMemberIdAndCommandScopeAndRequestKey(member.id,scope,key).orElse(null);
+        if(saved!=null&&saved.expiresAt.isAfter(now)){
+            if(!saved.bodyHash.equals(hash))throw new ApiException(HttpStatus.CONFLICT,"IDEMPOTENCY_CONFLICT","동일 요청 번호의 내용이 달라요.");
+            return json.readValue(saved.responseJson,responseType);
+        }
+        var result=write.get();
+        if(saved==null){saved=new RequestCommand();saved.memberId=member.id;saved.commandScope=scope;saved.requestKey=key;}
+        saved.bodyHash=hash;saved.responseJson=json.writeValueAsString(result);saved.expiresAt=now.plus(1,ChronoUnit.DAYS);
+        commands.save(saved);
+        return result;
+    }
+    @Scheduled(fixedDelay=3_600_000) @Transactional
+    public void purgeReceipts(){commands.purge(Instant.now());}
 }
 
 @RestController @RequestMapping("/api/households/{house}/requests")

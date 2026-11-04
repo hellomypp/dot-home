@@ -69,10 +69,16 @@
 - `POST` 같은 경로에 `{requestId,kind,title,body?,targetMemberIds?,dueAt?}`. 제목 1~80자, 본문 0~300자. `NOTICE`는 ACTIVE, `TASK`는 OPEN, `PROMISE`는 본인이 담당하는 CLAIMED로 시작한다. 활성 가족만 대상이 될 수 있다.
 - `GET /{id}`는 상세, `GET /{id}/history`는 상태 전이 이력. `POST /{id}/claim|release|complete|cancel|reopen`은 `{requestId,version,reason?}`. 취소·완료 취소에는 사유 1~200자가 필요하다. 다른 가족이 선점하면 409, 기한이 지난 요청의 전이는 410. 완료·취소는 기한이 지나도 기존 상태를 유지한다.
 - 기한 지정은 현재부터 30일 이내. 생략하면 공지는 서울 시간 다음 자정(23시 이후 12시간 뒤), 부탁·약속은 7일 뒤다. 상태 변경은 가구 잠금으로 직렬화한다. `HOUSEHOLD_REQUEST_CHANGED`는 커밋 후 레코드 ID만 발행한다.
-- 같은 작성/전이 명령 ID는 24시간 동안 같은 결과를 반환하며 다른 입력으로 재사용하면 409. 반응 및 알림 연결은 별도 작업이다.
+- 같은 작성/전이 명령 ID는 24시간 동안 같은 결과를 반환하며 다른 입력으로 재사용하면 409. 실행 약속의 원본 연결과 알림은 별도 작업이다.
 
 - `PATCH /{id}`는 `{version,title?,body?,targetMemberIds?,dueAt?}`로 진행 중인 요청의 작성자 또는 집 대표가 수정한다. 생략 필드는 유지하며 본문 null은 비움, 대상 []는 모든 가족, 기한 null은 작성 시각 기준 기본값으로 되돌린다. 이미 맡은 가족을 새 대상 목록에서 빼거나 다른 담당자로 덮어쓸 수 없다.
 - `POST /{id}/ack`는 게시 중인 공지에 요청자 자신의 확인만 기록한다. 동일 계정이 다시 호출하면 기존 `acknowledgedAt`을 받는다. 목록과 상세의 `acknowledgedByMe`는 요청자에게만 해당한다.
+
+### 배려 반응
+
+- `GET /api/households/{h}/reactions?sourceType=NOTE&sourceId={id}` → `{counts,mine}`. 가족에게 코드별 합계와 본인 반응만 반환한다.
+- `POST` 같은 경로에 `{requestId,sourceType,sourceId,code}`. 원본은 `NOTE|REQUEST|EXPRESSION`. 표현 ID는 `memberId.field.version`이며 만료·교체된 표현은 410이다. 원본이 속한 집과 활성 가입을 확인한다.
+- 코드 `THANKS|CHEER|ACK|SHARE_MEAL` 중 `SHARE_MEAL`은 현재 음식 표현에만 사용한다. 같은 구성원·원본·코드는 한 번만 집계한다. `DELETE /{id}`는 본인 반응만 지운다. 반응은 생활 요청·재고 변경을 만들지 않는다.
 
 ## v0.9 독립 표현
 

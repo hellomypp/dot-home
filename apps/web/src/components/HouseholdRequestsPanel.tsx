@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { CareReactions } from "./CareReactions";
 import { api, ApiError, type Snapshot } from "../lib/api";
 
 type Kind = "NOTICE" | "TASK" | "PROMISE";
@@ -337,6 +338,7 @@ function RequestCard({ row, root, snapshot, owner, onChanged }: {
         </form>
       )}
       {error && <p role="alert" className="error-message">{error}</p>}
+      <CareReactions householdId={snapshot.household.id} sourceType="REQUEST" sourceId={row.id} />
     </article>
   );
 }

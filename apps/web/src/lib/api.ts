@@ -25,15 +25,20 @@ export async function logout() { await api('/api/logout','POST');csrf=null; }
 export const colors:Record<string,string>={sage:'#7c9170',rose:'#bb7975',blue:'#6e88a1',amber:'#bd9556'};
 export const places:Record<Place,string>={home:'우리 집',office:'직장',school:'학교',outside:'밖'};
 
+export function activeExpression(member: Member) {
+  const now = Date.now();
+  for (const field of ["thought", "food", "mood", "physical", "availability"] as const) {
+    const item = member.currentState?.[field];
+    if (item?.value && item.expiresAt && Date.parse(item.expiresAt) > now)
+      return { field, value: item.value, version: item.version };
+  }
+  return undefined;
+}
 export function statusText(member: Member) {
   if (member.currentState) {
-    const now = Date.now();
-    for (const field of ["thought", "food", "mood", "physical", "availability"] as const) {
-      const item = member.currentState[field];
-      if (item?.value && item.expiresAt && Date.parse(item.expiresAt) > now)
-        return field === "food" ? `${item.value} 먹고 싶어` : expressionLabel(field, item.value);
-    }
-    return "";
+    const item = activeExpression(member);
+    if (!item) return "";
+    return item.field === "food" ? `${item.value} 먹고 싶어` : expressionLabel(item.field, item.value);
   }
   if (member.statusExpiresAt && Date.parse(member.statusExpiresAt) <= Date.now()) return "";
   return member.thought || (member.food ? `${member.food} 먹고 싶어` : member.mood);
