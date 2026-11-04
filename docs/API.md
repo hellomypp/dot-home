@@ -63,6 +63,14 @@
 
 기존 POST /api/households의 appearance 문자열은 구형 sage/rose/blue/amber 외에 `v1:HTBA`를 사용한다. H/T/B/A는 각각 헤어/상의/하의/액세서리 인덱스 0~3이며 예시는 `v1:3212`다. 기존 24자 저장 필드·DTO·API 경로는 변경하지 않았다. world의 appearance를 그대로 보존하고 프런트 공통 변환기로 해석한다. [화면·저장·호환 검증](ONBOARDING.md).
 
+## v0.9 생활 요청
+
+- `GET /api/households/{h}/requests` → `{items,nextCursor}`. `state`는 쉼표로 분리한 상태, `limit` 기본 20·최대 100, `cursor`는 앞 페이지의 nextCursor다. 생성 시각과 ID 내림차순.
+- `POST` 같은 경로에 `{requestId,kind,title,body?,targetMemberIds?,dueAt?}`. 제목 1~80자, 본문 0~300자. `NOTICE`는 ACTIVE, `TASK`는 OPEN, `PROMISE`는 본인이 담당하는 CLAIMED로 시작한다. 활성 가족만 대상이 될 수 있다.
+- `GET /{id}`는 상세, `GET /{id}/history`는 상태 전이 이력. `POST /{id}/claim|release|complete|cancel|reopen`은 `{requestId,version,reason?}`. 취소·완료 취소에는 사유 1~200자가 필요하다. 다른 가족이 선점하면 409, 기한이 지난 요청의 전이는 410. 완료·취소는 기한이 지나도 기존 상태를 유지한다.
+- 기한 지정은 현재부터 30일 이내. 생략하면 공지는 서울 시간 다음 자정(23시 이후 12시간 뒤), 부탁·약속은 7일 뒤다. 상태 변경은 가구 잠금으로 직렬화한다. `HOUSEHOLD_REQUEST_CHANGED`는 커밋 후 레코드 ID만 발행한다.
+- 같은 작성/전이 명령 ID는 24시간 동안 같은 결과를 반환하며 다른 입력으로 재사용하면 409. 내용 수정, 공지 확인, 반응 및 알림 연결은 별도 작업이다.
+
 ## v0.9 독립 표현
 
 - GET `/api/households/{h}/me/state` → `{expressions,place,sharing,revision,serverTime}`. 본인의 `thought`, `food`, `mood`, `physical`, `availability`에 값·수정 시각·만료 시각·버전을 반환한다. 만료한 값은 null이다.
