@@ -847,37 +847,37 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                   >
                     <WorldCanvas view={view} onEvent={event} />
                   </Suspense>
-                </div>
-                <div className="scene-footer">
-                  <p>
-                    <span className="desktop-hint">방향키 또는 </span>바닥을
-                    눌러 이동
-                    <span className="interaction-hint">
-                      {" "}
-                      · 사물을 눌러 사용
-                    </span>
-                  </p>
-                  <div className="scene-actions">
-                    {observedMember.id !== own.id && (
-                      <button
-                        className="scene-return"
-                        aria-label="내 화면으로"
-                        onClick={() => setObserved(own.id)}
-                      >
-                        <Home size={17} />
-                      </button>
-                    )}
-                    {place === "home" && (
-                      <button
-                        className="scene-zoom"
-                        aria-pressed={closeView}
-                        onClick={() => setCloseView(!closeView)}
-                      >
-                        {closeView ? <ZoomOut size={17} /> : <ZoomIn size={17} />}{" "}
-                        {closeView ? "넓게 보기" : "가까이 보기"}
-                      </button>
-                    )}
-                  </div>
+                  {(place === "home" || observedMember.id !== own.id) && (
+                    <div className="scene-actions" role="group" aria-label="장면 조작">
+                      {observedMember.id !== own.id && (
+                        <button
+                          className="scene-control"
+                          type="button"
+                          aria-label="내 화면으로"
+                          title="내 화면으로"
+                          onClick={() => setObserved(own.id)}
+                        >
+                          <Home size={20} aria-hidden="true" />
+                        </button>
+                      )}
+                      {place === "home" && (
+                        <button
+                          className="scene-control"
+                          type="button"
+                          aria-label="확대 보기"
+                          aria-pressed={closeView}
+                          title={closeView ? "넓게 보기" : "가까이 보기"}
+                          onClick={() => setCloseView((zoomed) => !zoomed)}
+                        >
+                          {closeView ? (
+                            <ZoomOut size={21} aria-hidden="true" />
+                          ) : (
+                            <ZoomIn size={21} aria-hidden="true" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="action-bar">

@@ -232,52 +232,39 @@ textarea {
 .scene-wrap .scene-caption > span {
   display: none;
 }
-.scene-footer {
-  min-height: 48px;
-  gap: 8px;
-  padding: 4px 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #586b4c;
-  font-size: 12px;
-  background: #fffef9;
-}
-.scene-footer p {
-  min-width: 0;
-  line-height: 1.5;
-}
-.interaction-hint {
-  display: none;
-}
 .scene-actions {
+  position: absolute;
+  inset-inline-end: 10px;
+  bottom: 10px;
+  z-index: 3;
   display: flex;
-  align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
-.scene-return {
+.scene-control {
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
-  color: #3e5c39;
-  border-radius: 9px;
+  padding: 0;
+  border: 1px solid #d6c9a4;
+  border-radius: 12px;
+  background: #324d39;
+  color: #fff8e9;
+  box-shadow: 0 2px 6px #30241640;
 }
-.scene-zoom {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-width: 100px;
-  min-height: 44px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 9px;
-  color: #3e5c39;
-  flex-shrink: 0;
+.scene-control[aria-pressed="true"] {
+  background: #fff8e9;
+  color: #324d39;
 }
-.scene-zoom[aria-pressed="true"] {
-  background: #e6eedf;
+.scene-control:focus-visible {
+  outline-color: #ffebad;
+  outline-offset: 2px;
+}
+@media (hover: hover) {
+  .scene-control:hover {
+    border-color: #fff3ce;
+    box-shadow: 0 3px 9px #30241665;
+  }
 }
 .action-bar {
   display: grid;
@@ -1172,18 +1159,6 @@ textarea {
     top: 8px;
     left: 8px;
     padding: 3px 7px;
-  }
-  .scene-footer {
-    padding: 2px 9px;
-    min-height: 46px;
-    font-size: 11px;
-  }
-  .desktop-hint {
-    display: none;
-  }
-  .scene-zoom {
-    font-size: 11px;
-    min-width: 96px;
   }
   .action-bar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
