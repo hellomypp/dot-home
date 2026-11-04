@@ -1,6 +1,7 @@
 import { makePetHabitat } from "./petHabitat";
 import type { PetHabitat } from "../lib/pets";
 import Phaser from "phaser";
+import { ActorSpeechBubble } from "./ActorSpeechBubble";
 import { ActorNameplate } from "./ActorNameplate";
 import { paintWindowSky } from "./windowSky";
 import { makeCat } from "./art";
@@ -31,7 +32,7 @@ type Actor = {
   id: string;
   sprite: Phaser.GameObjects.Image;
   label: ActorNameplate;
-  bubble: Phaser.GameObjects.Text;
+  bubble: ActorSpeechBubble;
   path: Point[];
   direction: number;
   frame: number;
@@ -301,18 +302,8 @@ class NativeHome extends Phaser.Scene {
         11000,
         pet ? undefined : (name) => this.emit({ type: "reveal-name", name }),
       ).setPosition(p.x, p.y + 4),
-      bubble = this.add
-        .text(0, 0, "", {
-          fontFamily: "sans-serif",
-          fontSize: "10px",
-          color: "#44251b",
-          backgroundColor: "#fff6dc",
-          wordWrap: { width: 110 },
-          padding: { x: 5, y: 3 },
-        })
-        .setOrigin(0.5, 1)
-        .setDepth(11002)
-        .setVisible(false);
+      bubble = new ActorSpeechBubble(this, id === this.view.ownMemberId, 11002,
+        (text) => this.emit({ type: "reveal-speech", text }));
     return {
       id,
       sprite,
@@ -347,7 +338,7 @@ class NativeHome extends Phaser.Scene {
       }
       a.kind = kind;
       a.label.setLabel(m.name);
-      a.bubble.setText(m.status || "").setVisible(!!m.status);
+      a.bubble.setSpeech(m.status || "");
       const key = `${m.x},${m.y}`;
       if (a.remote !== key && m.x !== undefined && m.y !== undefined) {
         a.remote = key;
@@ -570,7 +561,6 @@ class NativeHome extends Phaser.Scene {
         );
       a.sprite.setDepth(Math.round(a.sprite.y));
       a.label.setPosition(Math.round(a.sprite.x), Math.round(a.sprite.y + 4));
-      a.bubble.setPosition(Math.round(a.sprite.x), Math.round(a.sprite.y - 42));
     }
     for (const o of this.objects) {
       const target = actors.some((a) =>
@@ -605,6 +595,8 @@ class NativeHome extends Phaser.Scene {
       target ? Math.round(target.sprite.x) : homeFrame.x + homeFrame.width / 2,
       target ? Math.round(target.sprite.y) : homeFrame.y + homeFrame.height / 2,
     );
+    for (const actor of this.actors.values())
+      actor.bubble.follow(actor.sprite.x, actor.sprite.y, camera.worldView, 42);
   }
 }
 export function mountNativeWorld(

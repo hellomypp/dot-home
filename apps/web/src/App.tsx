@@ -608,12 +608,12 @@ function GamePage({ studio = false }: { studio?: boolean }) {
       localStorage.setItem("dot-home:reduced-motion", String(reduced));
     } catch {}
   }, [reduced]);
-  const [namePreview, setNamePreview] = useState<{ name: string } | null>(null);
+  const [scenePreview, setScenePreview] = useState<{ text: string; duration: number } | null>(null);
   useEffect(() => {
-    if (!namePreview) return;
-    const timer = window.setTimeout(() => setNamePreview(null), 3000);
+    if (!scenePreview) return;
+    const timer = window.setTimeout(() => setScenePreview(null), scenePreview.duration);
     return () => window.clearTimeout(timer);
-  }, [namePreview]);
+  }, [scenePreview]);
   const [tick, setTick] = useState(0);
   const live = useRef<ReturnType<typeof connectWorld> | null>(null);
   const snapshot = studio ? sample : query.data,
@@ -689,7 +689,8 @@ function GamePage({ studio = false }: { studio?: boolean }) {
   }
   function event(e: WorldEvent) {
     if (e.type === "activity") setActivity(e.text);
-    if (e.type === "reveal-name") setNamePreview({ name: e.name });
+    if (e.type === "reveal-name") setScenePreview({ text: e.name, duration: 3000 });
+    if (e.type === "reveal-speech") setScenePreview({ text: e.text, duration: 6000 });
     if (e.type === "interact") {
       if (e.target === "fridge") {
         setFridgeTab(e.label === "냉장고 쪽지" ? "notes" : "food");
@@ -837,7 +838,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                 onClick={(event) => {
                   setObserved(m.id);
                   const name = event.currentTarget.querySelector(".member-name-text");
-                  setNamePreview(name && name.scrollWidth > name.clientWidth ? { name: m.name } : null);
+                  setScenePreview(name && name.scrollWidth > name.clientWidth ? { text: m.name, duration: 3000 } : null);
                 }}
               >
                 <Portrait appearance={m.appearance} />
@@ -940,7 +941,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             <section className="world-section">
               <div className={`scene-card${place === "home" && !neutral ? " home-scene-card" : ""}`}>
                 <div className={`scene-wrap ${palette}`}>
-                  {namePreview && <div className="scene-name-preview" role="status">{namePreview.name}</div>}
+                  {scenePreview && <div className="scene-name-preview" role="status">{scenePreview.text}</div>}
                   {neutral ? (
                     <div className="neutral-scene">
                       <Leaf size={36} strokeWidth={1.4} aria-hidden="true" />
