@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { ActorNameplate } from "./ActorNameplate";
+import { paintWindowSky } from "./windowSky";
 import { makeCat } from "./art";
 import {
   assetBase,
@@ -59,6 +60,8 @@ class NativeHome extends Phaser.Scene {
   markers: Phaser.GameObjects.GameObject[] = [];
   lastInput = 0;
   designKey = "";
+  skyKey = "";
+  windowTexture!: Phaser.Textures.CanvasTexture;
   constructor(view: WorldView, emit: (e: WorldEvent) => void) {
     super("native-home");
     this.view = view;
@@ -99,6 +102,7 @@ class NativeHome extends Phaser.Scene {
       c.drawImage(makeCat(f, "#c79765"), 0, 0, 20, 16);
       this.textures.addCanvas("native-cat-" + f, canvas);
     }
+    this.windowTexture = this.textures.createCanvas("window-sky", 52, 37)!;
     this.draw();
     this.sync();
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
@@ -179,6 +183,11 @@ class NativeHome extends Phaser.Scene {
               ? -700
               : o.depth,
         );
+      if (o.id === "window" || o.id === "window_b") {
+        this.add.image(o.x, o.y, "window-sky")
+          .setOrigin(0, 0)
+          .setDepth(image.depth + 1);
+      }
       if (o.occlusion) this.objects.push({ meta: o, image });
       if (o.interactive) {
         image.setInteractive({
@@ -238,6 +247,7 @@ class NativeHome extends Phaser.Scene {
       }
     };
     this.map.objects.forEach(add);
+    this.updateWindowSky();
     this.cameras.main
       .setBounds(0, 0, 448, 320)
       .setRoundPixels(true)
@@ -384,11 +394,23 @@ class NativeHome extends Phaser.Scene {
       this.markers.push(marker);
     }
   }
+  updateWindowSky() {
+    const sky = this.view.windowSky;
+    const key = JSON.stringify([this.map.id, sky]);
+    if (this.skyKey === key) return;
+    this.skyKey = key;
+    const context = this.windowTexture.getContext();
+    if (sky) paintWindowSky(context, this.map.id, sky);
+    else context.clearRect(0, 0, 52, 37);
+    this.windowTexture.refresh();
+  }
+
   setView(view: WorldView) {
     this.view = view;
     if (!this.sys.isActive()) return;
     if (this.designKey !== JSON.stringify(view.design || defaultDesign))
       this.draw();
+    else this.updateWindowSky();
     this.sync();
   }
   move(a: Actor, to: Point, manual: boolean) {

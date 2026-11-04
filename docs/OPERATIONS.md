@@ -49,3 +49,10 @@ MySQL 논리 백업은 `mysqldump --single-transaction --no-tablespaces`를 사�
 ## 미리보기 실행 파일 보존
 
 `remote-preview.py start`는 bootJar 산출물을 `.tools/remote-preview/releases/server-<SHA256>.jar`로 복사해 읽기 전용으로 실행한다. 실행 중인 JAR를 Gradle 빌드가 교체하지 않도록 하기 위해서다. `scripts/server.sh preview`는 시작 도구가 지정한 `DOT_HOME_PREVIEW_JAR`만 실행한다. 새 소스를 서버에 적용하려면 stop 후 start한다. 이전 release 파일은 JVM 실행 중에 교체/삭제하지 않는다. 파일 DB 백업은 서버 정상 종료 후 수행한다. `python3 -m unittest discover -s scripts -p 'test_*.py'`로 빌드 교체 후 기존 실행 파일 보존·손상 파일 덮어쓰기 거부를 검사한다.
+
+
+## 창밖의 지역 날씨
+
+집 화면의 **날씨 연결**을 누르고 브라우저 위치 권한을 허용하면, 기기에서 위도·경도를 소수점 한 자리로 반올림하여 Open-Meteo에 직접 보낸다. 도트홈 서버, DB, 가족 동기화에는 위치를 보내지 않는다. 연결 상태는 열린 화면에서만 유지하며, 새로고침하거나 연결을 끄면 기기 시간으로 돌아간다.
+
+연결 중에는 위치의 시간대와 일조 여부, WMO 날씨 코드를 받아 창문 유리 안쪽에 표현한다. 날씨는 열린 화면에서 15분마다 조회한다. 권한이 없거나 이용 가능한 응답이 없으면 기기 시간만 표시한다. 외부에 공개하는 상업 서비스에서는 Open-Meteo의 요금제와 이용 조건을 확인한다. [Open-Meteo API 문서](https://open-meteo.com/en/docs)

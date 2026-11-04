@@ -82,6 +82,7 @@ import {
   type AuthConfig,
 } from "./lib/auth";
 import { connectWorld, type ConnectionState } from "./lib/realtime";
+import { useWindowWeather, weatherNames } from "./lib/windowWeather";
 import type { Place, WorldEvent, WorldView } from "./game/types";
 
 const now = new Date().toISOString();
@@ -509,6 +510,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     retry: false,
     refetchInterval: 30_000,
   });
+  const windowWeather = useWindowWeather();
   const [fridgeTab, setFridgeTab] = useState<"food" | "notes">("food");
   const attachedNotes = useQuery({
     queryKey: ["object-notes", id, false],
@@ -641,6 +643,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
   const place = observedMember.place;
   const view: WorldView = {
     closeView,
+    windowSky: windowWeather.sky,
     design: snapshot.design,
     objectNotes: attachedNotes.data?.map((n) => ({
       id: n.id,
@@ -876,6 +879,35 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                     )}
                   </div>
                 </div>
+                {place === "home" && (
+                  <div className="window-weather">
+                    <div>
+                      <p>
+                        <strong>{windowWeather.time}</strong>
+                        {windowWeather.sky.weather
+                          ? ` · ${weatherNames[windowWeather.sky.weather]}`
+                          : " · 기기 시간"}
+                      </p>
+                      {windowWeather.error ? (
+                        <p role="status">{windowWeather.error}</p>
+                      ) : windowWeather.connected ? (
+                        <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">날씨 제공 Open-Meteo</a>
+                      ) : (
+                        <p>날씨 연결 시 대략적인 위치를 Open-Meteo에 보내요.</p>
+                      )}
+                    </div>
+                    {windowWeather.connected && windowWeather.error && (
+                      <button type="button" onClick={windowWeather.retry} disabled={windowWeather.busy}>다시 시도</button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={!windowWeather.connected && windowWeather.busy}
+                      onClick={windowWeather.connected ? windowWeather.disconnect : windowWeather.connect}
+                    >
+                      {windowWeather.connected ? "연결 끄기" : windowWeather.busy ? "위치 확인 중…" : "날씨 연결"}
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="action-bar">
                 <button onClick={() => setPanel("calendar")}>
