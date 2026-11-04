@@ -26,6 +26,7 @@ class DependentProfile extends Row {
 
 interface DependentProfiles extends JpaRepository<DependentProfile,String> {
     List<DependentProfile> findByHouseholdIdAndArchivedAtIsNullOrderById(String householdId);
+    List<DependentProfile> findByHouseholdIdAndGuardianMemberIdAndArchivedAtIsNull(String householdId,String guardian);
 }
 
 record DependentInput(@Pattern(regexp="BABY") String type,@NotBlank @Size(max=40) String name,

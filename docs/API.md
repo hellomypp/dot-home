@@ -63,6 +63,13 @@
 
 기존 POST /api/households의 appearance 문자열은 구형 sage/rose/blue/amber 외에 `v1:HTBA`를 사용한다. H/T/B/A는 각각 헤어/상의/하의/액세서리 인덱스 0~3이며 예시는 `v1:3212`다. 기존 24자 저장 필드·DTO·API 경로는 변경하지 않았다. world의 appearance를 그대로 보존하고 프런트 공통 변환기로 해석한다. [화면·저장·호환 검증](ONBOARDING.md).
 
+## v0.9 집 참여 종료
+
+- `POST /api/households/{id}/me/leave`에 `{requestId}`를 보내 해당 집만 나간다. 같은 명령을 재시도해도 새 가입을 종료하지 않는다. 집 대표는 소유권을 이전해야 한다.
+- `DELETE /api/households/{id}/members/{memberId}?version=…`는 대표가 다른 활성 가족을 퇴실시키는 요청이다. 버전은 world 멤버의 `membershipVersion`을 사용한다.
+- 종료 후 해당 집 REST·STOMP 접근이 해제된다. 이전에 발급된 초대는 그 계정의 재가입에 사용할 수 없고, 이후 새 초대를 수락하면 새 Membership을 만든다.
+- 공동 기록의 작성자 표시는 ‘퇴실한 구성원’으로 남고 개인 공유 일정과 현재 상태는 숨긴다. 진행 중 담당 요청의 담당자를 해제하고 활성 돌봄 프로필의 보호자를 대표로 이전한다.
+
 ## v0.9 달력 공유 범위
 
 - 월간 조회의 `timeZone`은 선택 사항이며 기본 `Asia/Seoul`이다. 종일 일정의 LocalDate는 변환하지 않는다. 종료를 생략한 시간 일정은 시작 시각과 같은 순간으로 저장한다.

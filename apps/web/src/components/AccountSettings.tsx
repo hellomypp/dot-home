@@ -31,7 +31,7 @@ export function AccountSettings({
   reduced: boolean;
   onPalette: (p: "warm" | "dusk") => void;
   onReduced: (v: boolean) => void;
-  onOpen: (p: "design" | "housewarming" | "invite") => void;
+  onOpen: (p: "design" | "housewarming" | "invite" | "membership") => void;
   onSaved: (s: Snapshot) => void;
   onLogout: () => void;
 }) {
@@ -83,6 +83,13 @@ export function AccountSettings({
             <span>가족 초대 관리</span>
             <ChevronRight size={18} />
           </button>
+          {!studio && (
+            <button onClick={() => onOpen("membership")}>
+              <Users size={20} />
+              <span>가족 구성원 · 집 참여</span>
+              <ChevronRight size={18} />
+            </button>
+          )}
           {own.role === "OWNER" && (
             <button onClick={() => onOpen("housewarming")}>
               <DoorOpen size={20} />

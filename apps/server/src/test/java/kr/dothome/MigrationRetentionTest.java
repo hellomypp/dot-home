@@ -78,4 +78,25 @@ class MigrationRetentionTest {
         }
     }
 
+    @Test void v21PreservesHistoricalMembershipAndEnforcesSingleActiveGeneration()throws Exception{
+        String url=url();
+        Flyway.configure().dataSource(url,username(),password()).target("20").load().migrate();
+        try(var connection=DriverManager.getConnection(url,username(),password());var sql=connection.createStatement()){
+            sql.executeUpdate("INSERT INTO app_user(id,provider,subject,name) VALUES('user','test','v21','기존 계정')");
+            sql.executeUpdate("INSERT INTO household(id,name,owner_id,revision) VALUES('house','기존 집','user',1)");
+            String insert="""
+                INSERT INTO membership(id,household_id,user_id,name,appearance,role,place,mood,food,thought,x,y,action,active)
+                VALUES('%s','house','user','기존 가족','sage','MEMBER','home','','','',224,260,'idle',true)
+                """;
+            sql.executeUpdate(insert.formatted("old-member"));
+            Flyway.configure().dataSource(url,username(),password()).load().migrate();
+            assertThrows(SQLException.class,()->sql.executeUpdate(insert.formatted("duplicate")));
+            sql.executeUpdate("UPDATE membership SET active=FALSE,ended_at=CURRENT_TIMESTAMP WHERE id='old-member'");
+            sql.executeUpdate(insert.formatted("new-member"));
+            assertThrows(SQLException.class,()->sql.executeUpdate(insert.formatted("duplicate")));
+            try(var rows=sql.executeQuery("SELECT COUNT(*) FROM membership WHERE household_id='house' AND user_id='user'")){
+                assertTrue(rows.next());assertEquals(2,rows.getInt(1));
+            }
+        }
+    }
 }

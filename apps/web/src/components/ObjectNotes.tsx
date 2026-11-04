@@ -110,10 +110,10 @@ export function ObjectNotes({
           <article className="object-note" key={n.id}>
             <p>{n.body}</p>
             <small>
-              {members.find((m) => m.id === n.authorMemberId)?.name || "가족"} ·{" "}
+              {members.find((m) => m.id === n.authorMemberId)?.name || "퇴실한 구성원"} ·{" "}
               {new Date(n.createdAt).toLocaleString("ko-KR")}
               {n.takenAt
-                ? ` · ${members.find((m) => m.id === n.takenByMemberId)?.name || "가족"}님이 ${new Date(n.takenAt).toLocaleString("ko-KR")}에 보관`
+                ? ` · ${members.find((m) => m.id === n.takenByMemberId)?.name || "퇴실한 구성원"}님이 ${new Date(n.takenAt).toLocaleString("ko-KR")}에 보관`
                 : ""}
             </small>
             <div>

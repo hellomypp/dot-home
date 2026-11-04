@@ -12,11 +12,18 @@ interface Households extends JpaRepository<Household,String> {
 }
 interface Members extends JpaRepository<Member,String> {
     Optional<Member> findByHouseholdIdAndUserIdAndActiveTrue(String householdId,String userId);
+    @Lock(LockModeType.PESSIMISTIC_READ) @Query("select m from Member m where m.householdId=:householdId and m.userId=:userId and m.active=true")
+    Optional<Member> current(@Param("householdId") String householdId,@Param("userId") String userId);
+    Optional<Member> findFirstByHouseholdIdAndUserIdAndEndedAtIsNotNullOrderByEndedAtDesc(String house,String user);
+    boolean existsByHouseholdIdAndUserIdAndExitRequestId(String house,String user,String key);
     List<Member> findByHouseholdIdAndActiveTrueOrderById(String householdId);
     List<Member> findByUserIdAndActiveTrue(String userId);
     long countByHouseholdIdAndActiveTrue(String householdId);
 }
-interface Pets extends JpaRepository<Pet,String> { List<Pet> findByHouseholdIdAndArchivedAtIsNullOrderById(String householdId); }
+interface Pets extends JpaRepository<Pet,String> {
+    List<Pet> findByHouseholdIdAndArchivedAtIsNullOrderById(String householdId);
+    List<Pet> findByHouseholdIdAndGuardianMemberIdAndArchivedAtIsNull(String householdId,String guardian);
+}
 interface Invitations extends JpaRepository<Invitation,String> {
     Optional<Invitation> findByTokenHash(String hash);
     @Lock(LockModeType.PESSIMISTIC_WRITE) @Query("select i from Invitation i where i.id=:id")

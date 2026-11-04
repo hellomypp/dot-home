@@ -2,6 +2,7 @@ package kr.dothome;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import java.time.*;
@@ -12,7 +13,7 @@ import java.util.*;
 record CommittedSignal(String householdId,Api.Signal signal) {}
 
 @Service
-@Transactional
+@Transactional(isolation=Isolation.READ_COMMITTED)
 class HomeService {
     @jakarta.persistence.PersistenceContext jakarta.persistence.EntityManager entityManager;
     final Households households;
@@ -33,7 +34,9 @@ class HomeService {
     }
     Household lock(String householdId,String userId) {
         requireMember(householdId,userId);
-        return households.locked(householdId).orElseThrow(ApiException::missing);
+        Household household=households.locked(householdId).orElseThrow(ApiException::missing);
+        members.current(householdId,userId).orElseThrow(ApiException::forbidden);
+        return household;
     }
     void owner(Household household,String userId) { if(!household.ownerId.equals(userId)) throw ApiException.forbidden(); }
     Api.World create(String userId,Api.CreateHouse input) {
@@ -142,7 +145,7 @@ class HomeService {
     Api.InvitationView invite(String householdId,String userId) {
         Household household=lock(householdId,userId);owner(household,userId);
         byte[] bytes=new byte[32];new SecureRandom().nextBytes(bytes);String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        Invitation invitation=new Invitation();invitation.householdId=householdId;invitation.tokenHash=hash(token);invitation.expiresAt=Instant.now().plus(Duration.ofDays(7));invitations.save(invitation);
+        Invitation invitation=new Invitation();invitation.householdId=householdId;invitation.tokenHash=hash(token);invitation.createdAt=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);invitation.expiresAt=invitation.createdAt.plus(Duration.ofDays(7));invitations.save(invitation);
         return new Api.InvitationView(invitation.id,token,invitation.expiresAt,"/invite/"+token);
     }
     void cancel(String householdId,String userId,String invitationId) {
@@ -166,6 +169,9 @@ class HomeService {
         Household household=households.locked(first.householdId).orElseThrow(ApiException::missing);
         Invitation invitation=invitations.locked(first.id).orElseThrow(ApiException::missing);
         entityManager.refresh(invitation,jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        var previous=members.findFirstByHouseholdIdAndUserIdAndEndedAtIsNotNullOrderByEndedAtDesc(household.id,userId);
+        if(previous.isPresent()&&(invitation.createdAt==null||!invitation.createdAt.isAfter(previous.get().endedAt)))
+            throw new ApiException(org.springframework.http.HttpStatus.GONE,"INVITATION_BEFORE_EXIT","집을 나간 뒤에 발급된 새 초대가 필요해요.");
         if(userId.equals(invitation.acceptedBy)) return snapshot(household,requireMember(household.id,userId).id);
         available(invitation);
         Optional<Member> existing=members.findByHouseholdIdAndUserIdAndActiveTrue(household.id,userId);
@@ -245,7 +251,17 @@ class HomeService {
     }
     static void finiteQuantity(double quantity) { if(!Double.isFinite(quantity)||quantity<0||quantity>1_000_000_000) throw ApiException.invalid("수량은 0 이상의 유한한 값이어야 해요."); }
     void logChange(PantryItem item,String author,double previous) { PantryChange change=new PantryChange();change.householdId=item.householdId;change.itemId=item.id;change.authorMemberId=author;change.previousQuantity=previous;change.quantity=item.quantity;changes.save(change); }
-    List<Api.EventView> events(String householdId,String userId) { requireMember(householdId,userId);return events.findTop100ByHouseholdIdOrderByCreatedAtDesc(householdId).stream().map(HomeService::eventView).toList(); }
+    List<Api.EventView> events(String householdId,String userId) {
+        requireMember(householdId,userId);
+        return householdEvents(householdId,members.findByHouseholdIdAndActiveTrueOrderById(householdId));
+    }
+    private List<Api.EventView> householdEvents(String householdId,List<Member> active){
+        var activeIds=new HashSet<String>();
+        for(var member:active)activeIds.add(member.id);
+        return events.findTop100ByHouseholdIdOrderByCreatedAtDesc(householdId).stream().map(event->
+            activeIds.contains(event.authorMemberId)?eventView(event):new Api.EventView(
+                event.id,event.type,event.message,event.authorMemberId,"퇴실한 구성원",event.createdAt)).toList();
+    }
     Api.EventView event(String householdId,String userId,Api.CreateEvent input) {
         Household household=lock(householdId,userId);Member me=requireMember(householdId,userId);
         Optional<LifeEvent> old=events.findByHouseholdIdAndAuthorMemberIdAndRequestId(householdId,me.id,input.requestId());
@@ -265,7 +281,7 @@ class HomeService {
         var saved=expressions.load(householdMembers);
         var memberViews=householdMembers.stream()
             .map(member->memberView(member,household.presetId,saved.getOrDefault(member.id,Map.of()),now,member.id.equals(meId))).toList();
-        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,now,memberViews,pets.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(HomeService::petView).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),events.findTop100ByHouseholdIdOrderByCreatedAtDesc(household.id).stream().map(HomeService::eventView).toList(),Spaces.view(household),
+        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId),meId,household.revision,now,memberViews,pets.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(HomeService::petView).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),householdEvents(household.id,householdMembers),Spaces.view(household),
             dependents.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(DependentView::from).toList());
     }
     Api.MemberView memberView(Member m,String preset){
@@ -284,7 +300,7 @@ class HomeService {
             current.containsKey("mood")?current.get("mood").value():"",
             current.containsKey("food")?current.get("food").value():"",
             current.containsKey("thought")?current.get("thought").value():"",
-            expires,updated,point[0],point[1],mask?"idle":m.action,current,shared);
+            expires,updated,point[0],point[1],mask?"idle":m.action,current,shared,m.membershipVersion);
     }
     static Api.PantryView pantryView(PantryItem p) { return new Api.PantryView(p.id,p.name,p.location,p.quantity,p.unit,p.expiresOn,p.version,p.updatedAt); }
     static Api.EventView eventView(LifeEvent e) { return new Api.EventView(e.id,e.type,e.message,e.authorMemberId,e.authorName,e.createdAt); }

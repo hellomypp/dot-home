@@ -95,6 +95,7 @@ interface NoticeAcknowledgements extends JpaRepository<NoticeAcknowledgement,Str
 
 interface HouseholdRequests extends JpaRepository<HouseholdRequest,String> {
     Optional<HouseholdRequest> findByIdAndHouseholdId(String id,String householdId);
+    List<HouseholdRequest> findByHouseholdIdAndAssigneeMemberIdAndState(String house,String member,RequestState state);
     boolean existsByCareRuleIdAndCareScheduledAt(String ruleId,Instant occurrence);
     List<HouseholdRequest> findByCareRuleIdAndStateInAndDueAtAfter(String ruleId,Collection<RequestState> states,Instant now);
     @Query("""
@@ -250,6 +251,16 @@ class HouseholdRequestService {
             request.state=RequestState.CANCELLED;
             request.updatedAt=now;
             record(request,actor,before,"반복 돌봄이 종료됐어요.",now);
+            homes.emit(house,"HOUSEHOLD_REQUEST_CHANGED",request.id);
+        }
+    }
+
+    void releaseDeparted(Household house,Member actor,String memberId,Instant now){
+        for(var request:requests.findByHouseholdIdAndAssigneeMemberIdAndState(house.id,memberId,RequestState.CLAIMED)){
+            request.state=request.stateAt(now)==RequestState.EXPIRED?RequestState.EXPIRED:RequestState.OPEN;
+            request.assigneeMemberId=null;
+            request.updatedAt=now;
+            record(request,actor,RequestState.CLAIMED,"담당자의 집 참여가 종료됐어요.",now);
             homes.emit(house,"HOUSEHOLD_REQUEST_CHANGED",request.id);
         }
     }

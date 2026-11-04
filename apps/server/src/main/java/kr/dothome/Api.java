@@ -29,7 +29,7 @@ public final class Api {
     public record MembershipView(String householdId,String householdName,String memberId,String role) {}
     public record Me(UserView user,List<MembershipView> memberships) {}
     public record HouseView(String id,String name,String ownerId) {}
-    public record MemberView(String id,String userId,String name,String appearance,String role,String place,String mood,String food,String thought,Instant statusExpiresAt,Instant statusUpdatedAt,double x,double y,String action,java.util.Map<String,ExpressionValue> currentState,SharedPlace sharedPlace) {}
+    public record MemberView(String id,String userId,String name,String appearance,String role,String place,String mood,String food,String thought,Instant statusExpiresAt,Instant statusUpdatedAt,double x,double y,String action,java.util.Map<String,ExpressionValue> currentState,SharedPlace sharedPlace,long membershipVersion) {}
     public record PetView(String id,String name,String kind,String appearance,PetSpecies speciesGroup,String speciesName,
         String habitat,String guardianMemberId,String appearanceId,long version) {}
     public record PantryView(String id,String name,String location,double quantity,String unit,LocalDate expiresOn,long version,Instant updatedAt) {}

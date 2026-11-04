@@ -8,6 +8,8 @@ import java.security.Principal;
 import java.time.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.server.*;
 import org.springframework.messaging.*;
 import org.springframework.messaging.handler.annotation.*;
@@ -40,6 +42,24 @@ class SocketRegistry {
     void forget(String id){connections.remove(id);scopes.remove(id);controllers.entrySet().removeIf(e->e.getValue().equals(id));}
     void close(WebSocketSession session){try{session.close(CloseStatus.POLICY_VIOLATION);}catch(Exception ignored){}finally{forget(session.getId());}}
     void closeHttpSession(String id){connections.values().stream().filter(s->id.equals(s.getAttributes().get("httpSession"))).toList().forEach(this::close);}
+    synchronized void subscribe(String sessionId,String house,String user){
+        if(!connections.containsKey(sessionId)||members.findByHouseholdIdAndUserIdAndActiveTrue(house,user).isEmpty())
+            throw new org.springframework.security.access.AccessDeniedException("Membership ended");
+        scopes.computeIfAbsent(sessionId,k->ConcurrentHashMap.newKeySet()).add(house);
+        controllers.put(house+":"+user,sessionId);
+    }
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    @TransactionalEventListener(phase=TransactionPhase.AFTER_COMMIT)
+    void revoke(CommittedMembershipExit event){
+        List<WebSocketSession> affected;
+        synchronized(this){
+            affected=connections.values().stream().filter(session->session.getPrincipal()!=null
+                &&event.userId().equals(session.getPrincipal().getName())
+                &&scopes.getOrDefault(session.getId(),Set.of()).contains(event.householdId())).toList();
+            affected.forEach(session->forget(session.getId()));
+        }
+        affected.forEach(this::close);
+    }
     @Scheduled(fixedDelay=10_000) void expire(){for(WebSocketSession s:connections.values()){boolean revoked=scopes.getOrDefault(s.getId(),Set.of()).stream().anyMatch(h->s.getPrincipal()==null||members.findByHouseholdIdAndUserIdAndActiveTrue(h,s.getPrincipal().getName()).isEmpty());if(!alive(s.getAttributes())||revoked)close(s);}}
 }
 
@@ -65,8 +85,14 @@ class SocketConfiguration implements WebSocketMessageBrokerConfigurer {
             if(h.getUser()==null||!registry.alive(h.getSessionAttributes()))throw new org.springframework.security.access.AccessDeniedException("Session expired");
             if(h.getCommand()==StompCommand.CONNECT){String actual=h.getFirstNativeHeader("X-CSRF-TOKEN"),expected=Objects.toString(h.getSessionAttributes().get("csrf"),"");if(actual==null||!MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),actual.getBytes(StandardCharsets.UTF_8)))throw new org.springframework.security.access.AccessDeniedException("Invalid CSRF token");return message;}
             if(h.getCommand()==StompCommand.SEND||h.getCommand()==StompCommand.SUBSCRIBE){String destination=Objects.toString(h.getDestination(),"");if(h.getCommand()==StompCommand.SUBSCRIBE&&Set.of("/user/queue/errors","/user/queue/sync").contains(destination))return message;
-                String pattern=h.getCommand()==StompCommand.SEND?"/app/households/([a-f0-9-]{36})/(?:actions|sync)":"/topic/households/([a-f0-9-]{36})/events";var matcher=java.util.regex.Pattern.compile(pattern).matcher(destination);if(!matcher.matches())throw new org.springframework.security.access.AccessDeniedException("Destination denied");String householdId=matcher.group(1);homes.requireMember(householdId,h.getUser().getName());
-                String control=householdId+":"+h.getUser().getName();if(h.getCommand()==StompCommand.SUBSCRIBE){registry.scopes.computeIfAbsent(h.getSessionId(),k->ConcurrentHashMap.newKeySet()).add(householdId);registry.controllers.put(control,h.getSessionId());}else if(destination.endsWith("/actions")&&!h.getSessionId().equals(registry.controllers.get(control)))throw new org.springframework.security.access.AccessDeniedException("Another tab controls this character");
+                String pattern=h.getCommand()==StompCommand.SEND?"/app/households/([a-f0-9-]{36})/(?:actions|sync)":"/topic/households/([a-f0-9-]{36})/events";var matcher=java.util.regex.Pattern.compile(pattern).matcher(destination);if(!matcher.matches())throw new org.springframework.security.access.AccessDeniedException("Destination denied");String householdId=matcher.group(1);
+                if(h.getCommand()==StompCommand.SUBSCRIBE)registry.subscribe(h.getSessionId(),householdId,h.getUser().getName());
+                else {
+                    homes.requireMember(householdId,h.getUser().getName());
+                    String control=householdId+":"+h.getUser().getName();
+                    if(destination.endsWith("/actions")&&!h.getSessionId().equals(registry.controllers.get(control)))
+                        throw new org.springframework.security.access.AccessDeniedException("Another tab controls this character");
+                }
             }else if(h.getCommand()!=StompCommand.UNSUBSCRIBE)throw new org.springframework.security.access.AccessDeniedException("Unsupported command");
             return message;
             } catch(RuntimeException denied){var connection=registry.connections.get(h.getSessionId());if(connection!=null)registry.close(connection);return null;}

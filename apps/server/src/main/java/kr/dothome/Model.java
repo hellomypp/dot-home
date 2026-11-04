@@ -26,7 +26,7 @@ class Household extends Row {
     long revision;
     protected Household() {}
 }
-@Entity @Table(name = "membership", uniqueConstraints = @UniqueConstraint(columnNames = {"household_id", "user_id"}))
+@Entity @Table(name = "membership")
 class Member extends Row {
     @Column(nullable = false, length = 36) String householdId;
     @Column(nullable = false, length = 36) String userId;
@@ -44,6 +44,9 @@ class Member extends Row {
     @Column(nullable = false, length = 24) String action = "idle";
     Instant avatarUpdatedAt = Instant.now();
     boolean active = true;
+    Instant endedAt;
+    @Column(length=80) String exitRequestId;
+    long membershipVersion;
     protected Member() {}
 }
 @Entity @Table(name = "pet")
@@ -64,6 +67,7 @@ class Invitation extends Row {
     @Column(nullable = false, length = 36) String householdId;
     @Column(nullable = false, unique = true, length = 64) String tokenHash;
     Instant expiresAt;
+    Instant createdAt;
     boolean cancelled;
     @Column(length = 36) String acceptedBy;
     Instant acceptedAt;

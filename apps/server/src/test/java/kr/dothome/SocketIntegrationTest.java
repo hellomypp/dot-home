@@ -46,6 +46,25 @@ class SocketIntegrationTest {
             }
         }
     }
+    @Test void householdRemovalClosesOnlyThatHouseholdSubscription()throws Exception{
+        try(var owner=login();var family=login()){
+            String h=homes.create(owner.user,new Api.CreateHouse("첫 집","대표","sage")).household().id();
+            var joined=homes.accept(homes.invite(h,owner.user).token(),family.user,new Api.Accept("가족","blue"));
+            String other=homes.create(family.user,new Api.CreateHouse("두번째 집","대표","sage")).household().id();
+            try(var exited=socket(family);var stillActive=socket(family)){
+                subscribe(exited,h);subscribe(stillActive,other);
+                var response=owner.http.send(HttpRequest.newBuilder(URI.create(base()+"/api/households/"+h+"/members/"+joined.meMemberId()+"?version=0"))
+                    .header("X-CSRF-TOKEN",owner.csrf).DELETE().build(),HttpResponse.BodyHandlers.ofString());
+                assertEquals(204,response.statusCode());assertEquals("CLOSED 1008",exited.take("CLOSED"));
+                homes.event(other,family.user,new Api.CreateEvent("event","NOTE","다른 집은 유지"));
+                assertTrue(stillActive.take("LIFE_EVENT_CREATED").contains("다른 집은 유지"));
+                try(var denied=socket(family)){
+                    denied.send("SUBSCRIBE\nid:old\ndestination:/topic/households/"+h+"/events\n\n");
+                    assertEquals("CLOSED 1008",denied.take("CLOSED"));
+                }
+            }
+        }
+    }
     @Test void nicknamePatchNotifiesOtherFamilyAfterCommit()throws Exception{
         try(var owner=login();var family=login()){
             String h=homes.create(owner.user,new Api.CreateHouse("이름 공유","이전 이름","sage")).household().id();

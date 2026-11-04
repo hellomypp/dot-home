@@ -3,7 +3,7 @@ import type {SpaceDesign} from '../game/spaces';
 import { expressionLabel, type ExpressionField, type ExpressionValue, type SharedPlace } from './expressions';
 import type { Place } from '../game/types';
 
-export interface Member { id:string;userId:string;name:string;appearance:string;role:'OWNER'|'MEMBER';place:Place;mood:string;food:string;thought:string;statusExpiresAt:string|null;statusUpdatedAt:string;x:number;y:number;action:string;currentState?:Partial<Record<ExpressionField,ExpressionValue>>;sharedPlace?:SharedPlace }
+export interface Member { id:string;userId:string;name:string;appearance:string;role:'OWNER'|'MEMBER';place:Place;mood:string;food:string;thought:string;statusExpiresAt:string|null;statusUpdatedAt:string;x:number;y:number;action:string;currentState?:Partial<Record<ExpressionField,ExpressionValue>>;sharedPlace?:SharedPlace;membershipVersion?:number }
 export interface PantryItem { id:string;name:string;location:string;quantity:number;unit:string;expiresOn:string|null;version:number;updatedAt:string }
 export interface LifeEvent { id:string;type:string;message:string;authorMemberId:string;authorName:string;createdAt:string }
 export interface Dependent { id:string;type:"BABY";name:string;guardianMemberId:string;appearanceProfile:string;version:number }

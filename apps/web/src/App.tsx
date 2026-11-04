@@ -1,5 +1,6 @@
 import { petGroup, petSpecies } from "./lib/pets";
 import { AccountSettings } from "./components/AccountSettings";
+import { MembershipPanel } from "./components/MembershipPanel";
 import { ShareLink } from "./components/ShareLink";
 import { SpaceSettings } from "./components/SpaceSettings";
 import { CharacterChoices } from "./components/CharacterStyleForm";
@@ -392,6 +393,7 @@ export function LoginPage() {
 }
 
 function HomeSelectionPage() {
+  const notice = (useLocation().state as { membershipNotice?: string } | null)?.membershipNotice;
   const identity = useQuery({
     queryKey: ["me"],
     queryFn: () => api<Identity>("/api/me"),
@@ -401,7 +403,7 @@ function HomeSelectionPage() {
   if (identity.isPending || identity.isFetching) return <Loading />;
   if (identity.error instanceof ApiError && identity.error.status === 401)
     return <Navigate to="/login" replace />;
-  if (!identity.error && identity.data && !identity.data.memberships.length)
+  if (!identity.error && identity.data && !identity.data.memberships.length && !notice)
     return <Navigate to="/onboarding" replace />;
 
   return (
@@ -412,6 +414,7 @@ function HomeSelectionPage() {
           {identity.data && !identity.error && <SessionBar name={identity.data.user.name} />}
         </header>
         <h1>어느 집으로 갈까요?</h1>
+        {notice && <p role="status">{notice}</p>}
         {identity.error ? (
           <>
             <ErrorMessage message={identity.error.message} />
@@ -545,6 +548,7 @@ type Panel =
   | "calendar"
   | "housewarming"
   | "pets"
+  | "membership"
   | "design"
   | null;
 function HouseholdRoute() {
@@ -604,6 +608,10 @@ function GamePage({ studio = false }: { studio?: boolean }) {
   const observedMember = snapshot?.members.find((m) => m.id === observed) ?? own;
   const accessStatus = query.error instanceof ApiError ? query.error.status : 0;
   const accessLost = accessStatus === 401 || accessStatus === 403 || accessStatus === 404;
+  useEffect(() => {
+    if (!studio && accessLost)
+      qc.removeQueries({ predicate: (entry) => entry.queryKey[1] === id && entry.queryKey[0] !== "world" });
+  }, [studio, accessLost, id, qc]);
   const observedPresence = currentSharedPlace(observedMember?.sharedPlace);
   const neutral = observedMember?.id !== own?.id && Boolean(observedPresence && observedPresence.status !== "MANUAL");
   const windowSky = useWindowSky(!accessLost && !neutral && observedMember?.place === "home");
@@ -690,7 +698,9 @@ function GamePage({ studio = false }: { studio?: boolean }) {
       });
   }
   if (!studio && accessLost)
-    return <Navigate to="/homes" replace />;
+    return <Navigate to="/homes" replace state={accessStatus === 403 ? {
+      membershipNotice: "이 집에 접근할 수 없어요. 참여 중인 다른 집을 선택해 주세요.",
+    } : undefined} />;
   if (!snapshot || !own || !observedMember) {
     if (query.error)
       return (
@@ -1157,6 +1167,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               calendar: "가족 공유 캘린더",
               design: "우리 집 설정 · 집 분위기",
               pets: "우리 집 돌봄 프로필",
+              membership: "가족 구성원 · 집 참여",
               settings: "내 계정과 보기 설정",
             }[panel]
           }
@@ -1184,6 +1195,12 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                 refresh={() => qc.invalidateQueries({ queryKey: ["world", id] })}
               />
             )
+          ) : panel === "membership" ? (
+            <MembershipPanel snapshot={snapshot} refresh={refresh} onLeave={() => {
+              live.current?.destroy();
+              qc.removeQueries({ predicate: (entry) => entry.queryKey[1] === id });
+              nav("/homes", { replace: true, state: { membershipNotice: "이 집에서 나왔어요. 다른 집과 계정은 계속 이용할 수 있어요." } });
+            }} />
           ) : panel === "housewarming" ? (
             studio ? (
               <p>집들이는 실제 집에서 사용할 수 있어요.</p>
