@@ -1506,32 +1506,3 @@ textarea {
   max-height: 100%;
   object-fit: contain;
 }
-
-
-.window-weather {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 12px;
-  padding: 4px 12px;
-  border-top: 1px solid #e5e8de;
-  background: #f7f8f1;
-  color: #4b5d45;
-  font-size: 12px;
-}
-.window-weather > div {
-  flex: 1 1 170px;
-  min-width: 0;
-  line-height: 1.55;
-}
-.window-weather a {
-  display: inline-block;
-  text-decoration: underline;
-}
-.window-weather button {
-  min-height: 44px;
-  padding-inline: 6px;
-  color: #3e5c39;
-  font-weight: 700;
-}
