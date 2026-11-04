@@ -114,6 +114,24 @@ class HouseholdRequestsIntegrationTest {
         assertEquals(403,assertThrows(ApiException.class,()->service.acknowledge(h,user(),notice.id())).status.value());
         assertEquals(notice.version(),service.read(h,owner,notice.id()).version());
     }
+    @Test void linkedPromiseSurvivesSourceRemovalAndReplay(){
+        String owner=user(),h=house(owner),guest=join(h,owner);
+        homes.status(h,owner,new Api.Status(null,null,"수프",null,30));
+        String source=homes.requireMember(h,owner).id+".food.1";
+        var input=new CreateRequest("linked",RequestKind.PROMISE,"수프 준비하기","",null,null,ReactionSource.EXPRESSION,source);
+        var promise=service.create(h,guest,input);
+        assertEquals(RequestState.CLAIMED,promise.state());
+        assertEquals(homes.requireMember(h,guest).id,promise.assigneeMemberId());
+        assertTrue(service.source(h,owner,promise.id()).available());
+        homes.status(h,owner,new Api.Status(null,null,"",null,30));
+        assertFalse(service.source(h,owner,promise.id()).available());
+        assertEquals(promise,service.create(h,guest,input));
+        assertEquals(1,service.list(h,owner,null,null,20).items().size());
+        assertEquals(410,assertThrows(ApiException.class,()->service.create(h,guest,
+            new CreateRequest("late",RequestKind.PROMISE,"다른 준비","",null,null,ReactionSource.EXPRESSION,source))).status.value());
+        assertEquals(400,assertThrows(ApiException.class,()->service.create(h,guest,
+            new CreateRequest("wrong-kind",RequestKind.TASK,"잘못된 연결","",null,null,ReactionSource.EXPRESSION,source))).status.value());
+    }
     @Test void expiryFilteringAndNoticeAndPromiseStatesAreDistinct(){
         String a=user(),h=house(a);
         var notice=service.create(h,a,new CreateRequest("notice",RequestKind.NOTICE,"정리 안내",null,null,null));

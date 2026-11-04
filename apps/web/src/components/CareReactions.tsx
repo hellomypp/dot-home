@@ -10,8 +10,8 @@ const labels: Record<Code, string> = {
   THANKS: "고마워요", CHEER: "응원해요", ACK: "알겠어요", SHARE_MEAL: "같이 먹어요",
 };
 
-export function CareReactions({ householdId, sourceType, sourceId, meal = false }: {
-  householdId: string; sourceType: Source; sourceId: string; meal?: boolean;
+export function CareReactions({ householdId, sourceType, sourceId, meal = false, onPromise }: {
+  householdId: string; sourceType: Source; sourceId: string; meal?: boolean; onPromise?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -80,6 +80,11 @@ export function CareReactions({ householdId, sourceType, sourceId, meal = false 
                 );
               })}
             </div>
+          )}
+          {onPromise && summary.data && !summary.error && (
+            <button type="button" className="button secondary care-trigger" onClick={onPromise}>
+              약속 만들기
+            </button>
           )}
           {error && <p role="alert" className="error-message">{error}</p>}
         </>

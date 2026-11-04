@@ -1,8 +1,13 @@
 import { useRef, useState, type FormEvent } from "react";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CareReactions } from "./CareReactions";
 import { api, ApiError, type Snapshot } from "../lib/api";
 
+export interface PromiseDraft {
+  sourceType: "EXPRESSION" | "NOTE" | "REQUEST";
+  sourceId: string;
+  title: string;
+}
 type Kind = "NOTICE" | "TASK" | "PROMISE";
 type State = "ACTIVE" | "OPEN" | "CLAIMED" | "DONE" | "CANCELLED" | "EXPIRED";
 type Action = "claim" | "release" | "complete" | "cancel" | "reopen";
@@ -19,6 +24,7 @@ interface HouseholdRequest {
   completedByMemberId: string | null;
   version: number;
   acknowledgedByMe?: boolean;
+  sourceType?: PromiseDraft["sourceType"] | null;
 }
 interface RequestPage { items: HouseholdRequest[]; nextCursor: string | null }
 const kinds: Record<Kind, string> = { NOTICE: "공지", TASK: "부탁", PROMISE: "내 약속" };
@@ -38,9 +44,17 @@ const dateTime = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul", dateStyle: "medium", timeStyle: "short",
 });
 
-export function HouseholdRequestsPanel({ snapshot }: { snapshot: Snapshot }) {
+export function HouseholdRequestsPanel({ snapshot, promise, onPromiseClosed }: {
+  snapshot: Snapshot;
+  promise?: PromiseDraft;
+  onPromiseClosed?: () => void;
+}) {
   const [filter, setFilter] = useState<keyof typeof filters>("all");
-  const [compose, setCompose] = useState(false);
+  const [compose, setCompose] = useState(Boolean(promise));
+  function closeForm() {
+    setCompose(false);
+    if (promise) onPromiseClosed?.();
+  }
   const client = useQueryClient();
   const root = `/api/households/${snapshot.household.id}/requests`;
   const key = ["household-requests", snapshot.household.id];
@@ -72,12 +86,12 @@ export function HouseholdRequestsPanel({ snapshot }: { snapshot: Snapshot }) {
             </button>
           ))}
         </nav>
-        <button className="button primary" aria-expanded={compose} onClick={() => setCompose(!compose)}>
+        <button className="button primary" aria-expanded={compose} onClick={() => compose ? closeForm() : setCompose(true)}>
           {compose ? "작성 접기" : "새 요청"}
         </button>
       </div>
-      {compose && <CreateForm root={root} snapshot={snapshot} onSaved={() => {
-        setCompose(false);
+      {compose && <CreateForm root={root} snapshot={snapshot} promise={promise} onSaved={() => {
+        closeForm();
         setFilter("all");
         void refresh();
       }} />}
@@ -101,16 +115,17 @@ export function HouseholdRequestsPanel({ snapshot }: { snapshot: Snapshot }) {
   );
 }
 
-function CreateForm({ root, snapshot, onSaved, existing, onCancel }: {
+function CreateForm({ root, snapshot, onSaved, existing, onCancel, promise }: {
   root: string; snapshot: Snapshot; onSaved: () => void;
   existing?: HouseholdRequest;
+  promise?: PromiseDraft;
   onCancel?: () => void;
 }) {
   const [base, setBase] = useState(existing);
-  const [kind, setKind] = useState<Kind>(existing?.kind ?? "TASK");
-  const [title, setTitle] = useState(existing?.title ?? "");
+  const [kind, setKind] = useState<Kind>(existing?.kind ?? (promise ? "PROMISE" : "TASK"));
+  const [title, setTitle] = useState(existing?.title ?? promise?.title ?? "");
   const [body, setBody] = useState(existing?.body ?? "");
-  const [due, setDue] = useState(existing ? seoulInput(existing.dueAt) : "");
+  const [due, setDue] = useState(existing ? seoulInput(existing.dueAt) : promise ? seoulInput(new Date(Date.now() + 7 * 86_400_000).toISOString()) : "");
   const [targets, setTargets] = useState<string[]>(existing?.targetMemberIds ?? []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -129,6 +144,7 @@ function CreateForm({ root, snapshot, onSaved, existing, onCancel }: {
         kind, title: title.trim(), body: body.trim(),
         targetMemberIds: kind === "TASK" ? targets : [],
         ...(due ? { dueAt: new Date(due + ":00+09:00").toISOString() } : {}),
+        ...(promise ? { sourceType: promise.sourceType, sourceId: promise.sourceId } : {}),
       };
       if (base) {
         const updates = {
@@ -160,7 +176,8 @@ function CreateForm({ root, snapshot, onSaved, existing, onCancel }: {
   }
   return (
     <form className="request-compose" onSubmit={submit}>
-      {!base && (
+      {promise && <p className="form-intro">제목과 기한을 확인해 주세요. 저장하면 내가 맡은 약속으로 등록돼요.</p>}
+      {!base && !promise && (
         <label>종류
           <select value={kind} disabled={busy} onChange={(e) => setKind(e.target.value as Kind)}>
             {Object.entries(kinds).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -208,7 +225,7 @@ function CreateForm({ root, snapshot, onSaved, existing, onCancel }: {
       <div className="request-actions">
         {onCancel && <button type="button" className="button secondary" disabled={busy} onClick={onCancel}>수정 닫기</button>}
         <button type="submit" className="button primary" disabled={busy || !valid || Boolean(latest)}>
-          {busy ? "저장 중…" : base ? "수정 저장" : "가족에게 공유"}
+          {busy ? "저장 중…" : base ? "수정 저장" : promise ? "이 약속을 맡을게요" : "가족에게 공유"}
         </button>
       </div>
     </form>
@@ -296,6 +313,7 @@ function RequestCard({ row, root, snapshot, owner, onChanged }: {
       <header><span>{kinds[row.kind]}</span><span>{stateNames[row.state]}</span></header>
       <h3>{row.title}</h3>
       {row.body && <p>{row.body}</p>}
+      {row.sourceType && <PromiseSource householdId={snapshot.household.id} root={root} requestId={row.id} />}
       <dl>
         <div><dt>작성자</dt><dd>{name(row.authorMemberId)}</dd></div>
         <div><dt>기한</dt><dd>{dateTime.format(new Date(row.dueAt))}</dd></div>
@@ -340,5 +358,31 @@ function RequestCard({ row, root, snapshot, owner, onChanged }: {
       {error && <p role="alert" className="error-message">{error}</p>}
       <CareReactions householdId={snapshot.household.id} sourceType="REQUEST" sourceId={row.id} />
     </article>
+  );
+}
+
+
+function PromiseSource({ householdId, root, requestId }: { householdId: string; root: string; requestId: string }) {
+  const [open, setOpen] = useState(false);
+  const query = useQuery({
+    queryKey: ["promise-source", householdId, requestId],
+    queryFn: () => api<{ available: boolean }>(root + "/" + requestId + "/source"),
+    enabled: open,
+    staleTime: 0,
+    refetchInterval: open ? 30_000 : false,
+    retry: false,
+  });
+  return (
+    <div>
+      <button type="button" className="button secondary" aria-expanded={open} onClick={() => setOpen(!open)}>
+        원래 이야기 확인
+      </button>
+      {open && (
+        <p className="muted" role="status">
+          {query.isPending ? "원본 상태를 확인하고 있어요…" : query.error ? "지금은 원본 상태를 확인할 수 없어요."
+            : query.data.available ? "가족이 공유한 내용에서 시작한 약속이에요." : "원래 내용이 만료되었거나 삭제됐어요."}
+        </p>
+      )}
+    </div>
   );
 }

@@ -37,6 +37,8 @@ class HouseholdRequest extends Row {
     @Column(nullable=false,length=36) String householdId;
     @Column(nullable=false,length=36) String authorMemberId;
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=16) RequestKind kind;
+    @Enumerated(EnumType.STRING) @Column(length=16) ReactionSource sourceType;
+    @Column(length=128) String sourceId;
     @Column(nullable=false,length=80) String title;
     @Column(nullable=false,length=300) String body;
     @Column(nullable=false,columnDefinition="TEXT") String targetsJson;
@@ -112,12 +114,18 @@ interface RequestCommands extends JpaRepository<RequestCommand,String> {
 }
 
 record CreateRequest(@NotBlank @Size(max=80) String requestId,@NotNull RequestKind kind,
-    @NotBlank String title,String body,List<@NotBlank @Size(max=36) String> targetMemberIds,Instant dueAt) {}
+    @NotBlank String title,String body,List<@NotBlank @Size(max=36) String> targetMemberIds,Instant dueAt,
+    ReactionSource sourceType,@Size(max=128) String sourceId) {
+    CreateRequest(String requestId,RequestKind kind,String title,String body,List<String> targets,Instant dueAt){
+        this(requestId,kind,title,body,targets,dueAt,null,null);
+    }
+}
 record RequestAction(@NotBlank @Size(max=80) String requestId,@NotNull @PositiveOrZero Long version,String reason) {}
 record HouseholdRequestView(String id,RequestKind kind,String title,String body,String authorMemberId,
     List<String> targetMemberIds,String assigneeMemberId,RequestState state,Instant dueAt,String completedByMemberId,
-    Instant completedAt,long version,Instant createdAt,Instant updatedAt,boolean acknowledgedByMe) {}
+    Instant completedAt,long version,Instant createdAt,Instant updatedAt,boolean acknowledgedByMe,ReactionSource sourceType) {}
 record HouseholdRequestPage(List<HouseholdRequestView> items,String nextCursor) {}
+record PromiseSourceView(boolean available) {}
 record NoticeAcknowledgementView(Instant acknowledgedAt) {}
 record RequestHistoryItem(String actorMemberId,RequestState previousState,RequestState nextState,String reason,Instant occurredAt) {}
 
@@ -131,9 +139,10 @@ class HouseholdRequestService {
     final RequestTransitions history;
     final HouseholdCommandReceipts receipts;
     final NoticeAcknowledgements acknowledgements;
+    final HouseholdContentSources sources;
     final ObjectMapper json;
-    HouseholdRequestService(HomeService homes,Members members,HouseholdRequests requests,RequestTransitions history,HouseholdCommandReceipts receipts,NoticeAcknowledgements acknowledgements,ObjectMapper json){
-        this.homes=homes;this.members=members;this.requests=requests;this.history=history;this.receipts=receipts;this.acknowledgements=acknowledgements;this.json=json;
+    HouseholdRequestService(HomeService homes,Members members,HouseholdRequests requests,RequestTransitions history,HouseholdCommandReceipts receipts,NoticeAcknowledgements acknowledgements,HouseholdContentSources sources,ObjectMapper json){
+        this.homes=homes;this.members=members;this.requests=requests;this.history=history;this.receipts=receipts;this.acknowledgements=acknowledgements;this.sources=sources;this.json=json;
     }
     HouseholdRequestPage list(String house,String user,List<RequestState> filter,String cursor,int limit){
         Member member=homes.requireMember(house,user);
@@ -153,6 +162,18 @@ class HouseholdRequestService {
         Member member=homes.requireMember(house,user);
         return viewFor(scoped(house,id),now(),member);
     }
+    PromiseSourceView source(String house,String user,String id){
+        homes.requireMember(house,user);
+        var request=scoped(house,id);
+        if(request.sourceType==null)throw ApiException.missing();
+        try{
+            sources.validate(house,request.sourceType,request.sourceId,now());
+            return new PromiseSourceView(true);
+        }catch(ApiException e){
+            if(e.status==HttpStatus.FORBIDDEN||e.status==HttpStatus.GONE)return new PromiseSourceView(false);
+            throw e;
+        }
+    }
     List<RequestHistoryItem> history(String house,String user,String id){
         homes.requireMember(house,user);
         scoped(house,id);
@@ -166,9 +187,15 @@ class HouseholdRequestService {
         String title=text(input.title(),1,80,"제목");
         String body=text(input.body(),0,300,"내용");
         var targets=input.targetMemberIds()==null?List.<String>of():input.targetMemberIds().stream().distinct().sorted().toList();
-        String hash=HomeService.hash(json.writeValueAsString(List.of(input.kind(),title,body,targets,
-            input.dueAt()==null?"":input.dueAt().toString())));
+        boolean linked=input.sourceType()!=null||input.sourceId()!=null;
+        if(linked&&(input.kind()!=RequestKind.PROMISE||input.sourceType()==null||input.sourceId()==null||input.sourceId().isBlank()))
+            throw ApiException.invalid("원본은 약속을 만들 때만 연결할 수 있어요.");
+        var hashParts=new ArrayList<Object>(List.of(input.kind(),title,body,targets,
+            input.dueAt()==null?"":input.dueAt().toString()));
+        if(linked){hashParts.add(input.sourceType());hashParts.add(input.sourceId());}
+        String hash=HomeService.hash(json.writeValueAsString(hashParts));
         return receipts.once(member,"create",input.requestId(),hash,now,HouseholdRequestView.class,()->{
+            if(linked)sources.validate(h,input.sourceType(),input.sourceId(),now);
             validateTargets(h,targets);
             if(input.kind()==RequestKind.PROMISE&&!targets.isEmpty()&&!targets.contains(member.id))
                 throw ApiException.invalid("내가 맡는 약속의 대상에는 내 이름이 포함돼야 해요.");
@@ -176,6 +203,8 @@ class HouseholdRequestService {
             request.householdId=h;
             request.authorMemberId=member.id;
             request.kind=input.kind();
+            request.sourceType=input.sourceType();
+            request.sourceId=input.sourceId();
             request.title=title;
             request.body=body;
             request.targetsJson=json.writeValueAsString(targets);
@@ -353,7 +382,7 @@ class HouseholdRequestService {
     }
     private HouseholdRequestView view(HouseholdRequest r,Instant now,boolean acknowledged){
         return new HouseholdRequestView(r.id,r.kind,r.title,r.body,r.authorMemberId,targets(r),r.assigneeMemberId,
-            r.stateAt(now),r.dueAt,r.completedByMemberId,r.completedAt,r.version,r.createdAt,r.updatedAt,acknowledged);
+            r.stateAt(now),r.dueAt,r.completedByMemberId,r.completedAt,r.version,r.createdAt,r.updatedAt,acknowledged,r.sourceType);
     }
     private void record(HouseholdRequest r,Member actor,RequestState before,String reason,Instant now){
         var row=new RequestTransition();
@@ -430,6 +459,9 @@ class HouseholdRequestController {
     }
     @GetMapping("/{id}") HouseholdRequestView read(Principal p,@PathVariable String house,@PathVariable String id){
         return service.read(house,p.getName(),id);
+    }
+    @GetMapping("/{id}/source") PromiseSourceView source(Principal p,@PathVariable String house,@PathVariable String id){
+        return service.source(house,p.getName(),id);
     }
     @GetMapping("/{id}/history") List<RequestHistoryItem> history(Principal p,@PathVariable String house,@PathVariable String id){
         return service.history(house,p.getName(),id);

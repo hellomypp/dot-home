@@ -5,7 +5,7 @@ import { CharacterChoices } from "./components/CharacterStyleForm";
 import { PetManager } from "./components/PetManager";
 import { VisitPage, HousewarmingPanel } from "./components/Housewarming";
 import { CareReactions } from "./components/CareReactions";
-import { HouseholdRequestsPanel } from "./components/HouseholdRequestsPanel";
+import { HouseholdRequestsPanel, type PromiseDraft } from "./components/HouseholdRequestsPanel";
 import { ExpressionForm } from "./components/ExpressionForm";
 import { FamilyCalendar } from "./components/FamilyCalendar";
 import { ObjectNotes, type ObjectNote } from "./components/ObjectNotes";
@@ -564,6 +564,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     refetchInterval: 30_000,
     gcTime: 0,
   });
+  const [promise, setPromise] = useState<PromiseDraft>();
   const [activityTab, setActivityTab] = useState<"records" | "requests">("records");
   const [fridgeTab, setFridgeTab] = useState<"food" | "notes">("food");
   const attachedNotes = useQuery({
@@ -634,6 +635,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
           qc.invalidateQueries({ queryKey: ["calendar", id] }),
           qc.invalidateQueries({ queryKey: ["household-requests", id] }),
           qc.invalidateQueries({ queryKey: ["household-reactions", id] }),
+          qc.invalidateQueries({ queryKey: ["promise-source", id] }),
         ]);
         return data.revision;
       },
@@ -1034,7 +1036,15 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                         <small>{text ? "직접 공유한 이야기" : "기다리는 마음도 다정하게"}</small>
                         {!studio && expression && sourceId && (
                           <CareReactions key={sourceId} householdId={snapshot.household.id} sourceType="EXPRESSION"
-                            sourceId={sourceId} meal={expression.field === "food"} />
+                            sourceId={sourceId} meal={expression.field === "food"}
+                            onPromise={member.id === own.id ? undefined : () => {
+                              setPromise({
+                                sourceType: "EXPRESSION", sourceId,
+                                title: expression.field === "food" ? "함께 먹을 음식 준비하기" : "가족을 위해 내가 할 일",
+                              });
+                              setActivityTab("requests");
+                              setPanel("event");
+                            }} />
                         )}
                       </div>
                     </div>
@@ -1152,7 +1162,10 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               settings: "내 계정과 보기 설정",
             }[panel]
           }
-          onClose={() => setPanel(null)}
+          onClose={() => {
+            setPanel(null);
+            setPromise(undefined);
+          }}
         >
           {panel === "design" ? (
             studio ? (
@@ -1255,7 +1268,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                 </nav>
               )}
               {!studio && activityTab === "requests" ? (
-                <HouseholdRequestsPanel snapshot={snapshot} />
+                <HouseholdRequestsPanel snapshot={snapshot} promise={promise} onPromiseClosed={() => setPromise(undefined)} />
               ) : (
                   <EventForm
                     snapshot={snapshot}

@@ -69,10 +69,12 @@
 - `POST` 같은 경로에 `{requestId,kind,title,body?,targetMemberIds?,dueAt?}`. 제목 1~80자, 본문 0~300자. `NOTICE`는 ACTIVE, `TASK`는 OPEN, `PROMISE`는 본인이 담당하는 CLAIMED로 시작한다. 활성 가족만 대상이 될 수 있다.
 - `GET /{id}`는 상세, `GET /{id}/history`는 상태 전이 이력. `POST /{id}/claim|release|complete|cancel|reopen`은 `{requestId,version,reason?}`. 취소·완료 취소에는 사유 1~200자가 필요하다. 다른 가족이 선점하면 409, 기한이 지난 요청의 전이는 410. 완료·취소는 기한이 지나도 기존 상태를 유지한다.
 - 기한 지정은 현재부터 30일 이내. 생략하면 공지는 서울 시간 다음 자정(23시 이후 12시간 뒤), 부탁·약속은 7일 뒤다. 상태 변경은 가구 잠금으로 직렬화한다. `HOUSEHOLD_REQUEST_CHANGED`는 커밋 후 레코드 ID만 발행한다.
-- 같은 작성/전이 명령 ID는 24시간 동안 같은 결과를 반환하며 다른 입력으로 재사용하면 409. 실행 약속의 원본 연결과 알림은 별도 작업이다.
+- 같은 작성/전이 명령 ID는 24시간 동안 같은 결과를 반환하며 다른 입력으로 재사용하면 409. 알림 연결은 별도 작업이다.
 
 - `PATCH /{id}`는 `{version,title?,body?,targetMemberIds?,dueAt?}`로 진행 중인 요청의 작성자 또는 집 대표가 수정한다. 생략 필드는 유지하며 본문 null은 비움, 대상 []는 모든 가족, 기한 null은 작성 시각 기준 기본값으로 되돌린다. 이미 맡은 가족을 새 대상 목록에서 빼거나 다른 담당자로 덮어쓸 수 없다.
 - `POST /{id}/ack`는 게시 중인 공지에 요청자 자신의 확인만 기록한다. 동일 계정이 다시 호출하면 기존 `acknowledgedAt`을 받는다. 목록과 상세의 `acknowledgedByMe`는 요청자에게만 해당한다.
+
+- `PROMISE` 생성에서 `sourceType`과 `sourceId`를 함께 보내면 원본 접근 권한을 검증하고 약속에 연결한다. 응답의 `sourceType`과 `GET /{id}/source`의 `{available}`은 원본 본문·식별자를 노출하지 않는다. 원본이 만료·삭제되어도 이미 확정한 약속과 명령 결과는 유지한다.
 
 ### 배려 반응
 

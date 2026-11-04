@@ -81,3 +81,22 @@ it("shows private notice confirmation and never sends an actor identifier", asyn
   expect(screen.queryByRole("button", { name: "공지 확인" })).toBeNull();
   expect(mocked).toHaveBeenCalledWith(root + "/request/ack", "POST");
 });
+
+it("prepares a linked promise without writing until the user confirms its title and deadline", async () => {
+  mocked.mockResolvedValue({ items: [], nextCursor: null } as never);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}>
+    <HouseholdRequestsPanel snapshot={world} promise={{
+      sourceType: "EXPRESSION", sourceId: "member.food.1", title: "음식 준비하기",
+    }} />
+  </QueryClientProvider>);
+  expect(screen.getByDisplayValue("음식 준비하기")).toBeTruthy();
+  const deadline = screen.getByLabelText("기한 · 서울 시간") as HTMLInputElement;
+  expect(deadline.value).toBeTruthy();
+  expect(mocked.mock.calls.some((call) => call[1] === "POST")).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "이 약속을 맡을게요" }));
+  await waitFor(() => expect(mocked).toHaveBeenCalledWith(root, "POST", expect.objectContaining({
+    kind: "PROMISE", title: "음식 준비하기", sourceType: "EXPRESSION", sourceId: "member.food.1",
+    dueAt: expect.any(String), requestId: expect.any(String),
+  })));
+});
