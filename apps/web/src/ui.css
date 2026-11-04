@@ -1747,3 +1747,36 @@ textarea {
 .care-album-grid figcaption { padding-top: 6px; font-weight: 700; overflow-wrap: anywhere; }
 .care-album-confirm { display: grid; gap: 6px; font-size: .85rem; }
 .care-album-pages { display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+.member-description, .member-description strong { min-width: 0; }
+.member-name-text, .account-name-text {
+  display: block;
+  min-width: 0;
+  max-width: 9rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.member-description em { flex: none; }
+.scene-name-preview {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 4;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  border: 1px solid #d5c9a9;
+  border-radius: 9px;
+  background: #fff8e9;
+  color: #36291e;
+  text-align: center;
+  overflow-wrap: anywhere;
+  box-shadow: 0 2px 7px #30241630;
+  pointer-events: none;
+}
+@media (max-width: 760px) {
+  .member-name-text { max-width: 5rem; }
+  .account-name-text { max-width: 5rem; }
+}

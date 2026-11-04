@@ -12,8 +12,11 @@ export class ActorNameplate extends Phaser.GameObjects.Container {
   private readonly background: Phaser.GameObjects.Graphics;
   private readonly nameText: Phaser.GameObjects.Text;
   private readonly badge?: Phaser.GameObjects.Text;
+  private readonly hitArea = new Phaser.Geom.Rectangle();
+  private fullName?: string;
 
-  constructor(scene: Phaser.Scene, name: string, private readonly kind: NameplateKind, depth: number) {
+  constructor(scene: Phaser.Scene, name: string, private readonly kind: NameplateKind, depth: number,
+    private readonly reveal?: (name: string) => void) {
     super(scene);
     scene.add.existing(this);
     const palette = colors[kind];
@@ -23,8 +26,7 @@ export class ActorNameplate extends Phaser.GameObjects.Container {
       fontSize: kind === "pet" ? "10px" : "11px",
       fontStyle: kind === "pet" ? "normal" : "bold",
       color: palette.text,
-      wordWrap: { width: 108, useAdvancedWrap: true },
-      maxLines: 2,
+      ...(kind === "pet" ? { wordWrap: { width: 108, useAdvancedWrap: true }, maxLines: 2 } : {}),
     });
     this.add([this.background, this.nameText]);
 
@@ -39,17 +41,33 @@ export class ActorNameplate extends Phaser.GameObjects.Container {
       this.add(this.badge);
     }
     this.setDepth(depth + (kind === "own" ? 1 : 0));
+    if (reveal) {
+      this.setInteractive({ hitArea: this.hitArea, hitAreaCallback: Phaser.Geom.Rectangle.Contains, useHandCursor: true });
+      this.on("pointerdown", (_pointer: unknown, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+        event.stopPropagation();
+        if (this.fullName !== undefined) reveal(this.fullName);
+      });
+    }
     this.setLabel(name);
   }
 
   setLabel(name: string) {
-    if (this.nameText.text === name) return;
+    if (this.fullName === name) return;
+    this.fullName = name;
     this.nameText.setText(name);
+    if (this.reveal && this.nameText.width > 76) {
+      const glyphs = Array.from(new Intl.Segmenter().segment(name), ({ segment }) => segment);
+      const ctx = this.nameText.context;
+      while (glyphs.length && ctx.measureText(glyphs.join("") + "…").width > 76) glyphs.pop();
+      this.nameText.setText(glyphs.join("") + "…");
+    }
+    if (this.input) this.input.enabled = this.nameText.text !== name;
     const padding = this.kind === "pet" ? 4 : 5;
     const badgeWidth = this.badge ? this.badge.width + 5 : 0;
     const width = this.nameText.width + 2 * padding + badgeWidth;
     const height = Math.max(this.nameText.height, this.badge?.height ?? 0) + 4;
     const left = -Math.floor(width / 2);
+    this.hitArea.setTo(left, 0, width, height);
     const palette = colors[this.kind];
 
     this.background.clear()

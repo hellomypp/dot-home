@@ -608,6 +608,12 @@ function GamePage({ studio = false }: { studio?: boolean }) {
       localStorage.setItem("dot-home:reduced-motion", String(reduced));
     } catch {}
   }, [reduced]);
+  const [namePreview, setNamePreview] = useState<{ name: string } | null>(null);
+  useEffect(() => {
+    if (!namePreview) return;
+    const timer = window.setTimeout(() => setNamePreview(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [namePreview]);
   const [tick, setTick] = useState(0);
   const live = useRef<ReturnType<typeof connectWorld> | null>(null);
   const snapshot = studio ? sample : query.data,
@@ -683,6 +689,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
   }
   function event(e: WorldEvent) {
     if (e.type === "activity") setActivity(e.text);
+    if (e.type === "reveal-name") setNamePreview({ name: e.name });
     if (e.type === "interact") {
       if (e.target === "fridge") {
         setFridgeTab(e.label === "냉장고 쪽지" ? "notes" : "food");
@@ -785,7 +792,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
           >
             <Portrait appearance={own.appearance} small />
             <span>
-              {own.name}
+              <span className="account-name-text">{own.name}</span>
               <small>내 계정</small>
             </span>
           </button>
@@ -827,12 +834,16 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               <button
                 key={m.id}
                 className={`member-card ${observed === m.id ? "active" : ""}`}
-                onClick={() => setObserved(m.id)}
+                onClick={(event) => {
+                  setObserved(m.id);
+                  const name = event.currentTarget.querySelector(".member-name-text");
+                  setNamePreview(name && name.scrollWidth > name.clientWidth ? { name: m.name } : null);
+                }}
               >
                 <Portrait appearance={m.appearance} />
                 <span className="member-description">
                   <strong>
-                    {m.name}
+                    <span className="member-name-text">{m.name}</span>
                     {m.id === own.id && <em>나</em>}
                   </strong>
                   <small>{sharedPlaceLabel(m.sharedPlace, places[m.place])}</small>
@@ -929,6 +940,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             <section className="world-section">
               <div className={`scene-card${place === "home" && !neutral ? " home-scene-card" : ""}`}>
                 <div className={`scene-wrap ${palette}`}>
+                  {namePreview && <div className="scene-name-preview" role="status">{namePreview.name}</div>}
                   {neutral ? (
                     <div className="neutral-scene">
                       <Leaf size={36} strokeWidth={1.4} aria-hidden="true" />

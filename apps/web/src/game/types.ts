@@ -32,6 +32,7 @@ export interface WorldView {
 export type WorldEvent =
   | { type: 'interact'; target: 'fridge' | 'sofa' | 'table' | 'pet' | 'window' | 'calendar' | 'entrance' | 'pet_rest' | 'bookshelf'; label: string }
   | { type: 'activity'; text: string }
+  | { type: 'reveal-name'; name: string }
   | { type: 'ready' }
   | { type: 'visibility-resume' }
   | { type: 'move-intent'; x: number; y: number };

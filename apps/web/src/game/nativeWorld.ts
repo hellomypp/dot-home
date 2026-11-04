@@ -299,6 +299,7 @@ class NativeHome extends Phaser.Scene {
         name,
         pet ? "pet" : id === this.view.ownMemberId ? "own" : "member",
         11000,
+        pet ? undefined : (name) => this.emit({ type: "reveal-name", name }),
       ).setPosition(p.x, p.y + 4),
       bubble = this.add
         .text(0, 0, "", {
