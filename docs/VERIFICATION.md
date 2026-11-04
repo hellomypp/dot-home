@@ -1,5 +1,11 @@
 # 2026-11-01 구현·검증 기록
 
+## v0.9 다중 홈 선택과 초대 수명 (2026-11-05)
+
+- [작업 단위](V09_WORKPLAN.md)의 첫 단계. `bash scripts/pnpm.sh test` 58건, `bash scripts/pnpm.sh build` 성공. 마지막 집 복원, 권한 없는 집, 만료 세션, 선택 후 이전 소켓·모달·world 정리를 검사했다.
+- `bash scripts/server.sh test bootJar` 74건과 JAR 빌드 성공. Google 콜백 분기와 기존 초대 복귀, 신규 초대 7일, 기존 72시간 만료 보존, `/homes` SPA 직접 진입을 검증했다.
+- 격리된 H2와 개발 계정 두 개로 Chromium 390px에서 초대 명시 수락 → 두 집 가입 유지 → 마지막 집 복원 → 집 전환 → STOMP 재연결을 확인했다. 실제 Google 계정, iPhone Safari, MySQL 8.4는 이 변경에서 미검증이다.
+
 ## v6.2 / v0.7 로컬 검증 (2026-11-02)
 
 web 50건 / server 72건, Vite build와 bootJar 통과. v62-smoke.py 및 v06-smoke.py 실제 HTTP 통과. H2 기존 데이터 보존과 STOMP 변경 이벤트 회귀 포함. mysqlTest는 Docker 런타임 부재로 초기화 실패(통과 아님). 새 push·GitHub Actions·배포 및 실기기 Safari/Google E2E는 실행하지 않았다. [명령·스크린샷·제한](V62_INTEGRATION.md).

@@ -680,7 +680,7 @@ textarea {
   display: grid;
   gap: 4px;
 }
-.settings-links > button {
+.settings-links > :is(button, a) {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -691,7 +691,7 @@ textarea {
   padding: 10px 8px;
   background: #f1f5e9;
 }
-.settings-links > button > span {
+.settings-links > :is(button, a) > span {
   flex: 1;
   min-width: 0;
 }
@@ -1480,4 +1480,38 @@ textarea {
   height: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+
+
+.home-selection > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.home-selection ul {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 20px 0;
+  padding: 0;
+}
+.home-selection li a {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 10px;
+  text-align: start;
+}
+.home-selection li span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.home-selection li small {
+  color: #526649;
+  white-space: nowrap;
+}
+.home-selection > .button {
+  width: 100%;
 }

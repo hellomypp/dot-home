@@ -77,7 +77,7 @@ class GoogleLoginFlow implements OAuth2AuthorizationRequestResolver, Authorizati
     }
     AuthenticationSuccessHandler success(){return (request,response,auth)->{
         String next=safeNext((String)request.getAttribute(NEXT));
-        if(next==null){var me=identity.me(auth.getName());next=me.memberships().isEmpty()?"/onboarding":"/home/"+me.memberships().getFirst().householdId();}
+        if(next==null){var me=identity.me(auth.getName());next=me.memberships().isEmpty()?"/onboarding":"/";}
         var session=request.getSession(false);
         if(session!=null){session.removeAttribute("SPRING_SECURITY_LAST_EXCEPTION");session.removeAttribute("SPRING_SECURITY_SAVED_REQUEST");}
         response.sendRedirect(origin+next);

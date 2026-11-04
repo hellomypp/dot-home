@@ -84,6 +84,20 @@ class HouseholdIntegrationTest {
     }
     @Test void zeroPetsAndOnlyAcceptedMembersAppear(){String owner=user(),guest=user();var house=house(owner);assertEquals(1,house.members().size());assertTrue(house.pets().isEmpty());var invite=homes.invite(house.household().id(),owner);homes.preview(invite.token());assertEquals(1,homes.world(house.household().id(),owner).members().size());var joined=homes.accept(invite.token(),guest,new Api.Accept("나래","blue"));assertEquals(2,joined.members().size());assertEquals(2,homes.accept(invite.token(),guest,new Api.Accept("나래","blue")).members().size());assertThrows(ApiException.class,()->homes.accept(invite.token(),user(),new Api.Accept("누군가","rose")));}
     @Test void householdScopeAndOwnerAreEnforced(){String owner=user(),outsider=user();var house=house(owner);String id=house.household().id();assertEquals(403,assertThrows(ApiException.class,()->homes.world(id,outsider)).status.value());assertThrows(ApiException.class,()->homes.addPantry(id,outsider,new Api.CreatePantry("우유","냉장",1,"개",null)));var invitation=homes.invite(id,owner);homes.accept(invitation.token(),outsider,new Api.Accept("회원","sage"));assertThrows(ApiException.class,()->homes.invite(id,outsider));}
+    @Test void newInvitesLastSevenDaysAndExistingExpiryIsPreserved(){
+        String owner=user(),id=house(owner).household().id();
+        Instant issuedAfter=Instant.now();
+        var existing=homes.invite(id,owner);
+        var row=invitations.findById(existing.id()).orElseThrow();
+        Instant legacyExpiry=issuedAfter.plus(Duration.ofHours(72)).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        row.expiresAt=legacyExpiry;
+        invitations.saveAndFlush(row);
+
+        var fresh=homes.invite(id,owner);
+        assertFalse(fresh.expiresAt().isBefore(issuedAfter.plus(Duration.ofDays(7))));
+        assertFalse(fresh.expiresAt().isAfter(Instant.now().plus(Duration.ofDays(7))));
+        assertEquals(legacyExpiry,homes.preview(existing.token()).expiresAt());
+    }
     @Test void cancelledAndExpiredInvitationsDoNotJoin(){String owner=user(),guest=user();String id=house(owner).household().id();var invite=homes.invite(id,owner);homes.cancel(id,owner,invite.id());assertThrows(ApiException.class,()->homes.accept(invite.token(),guest,new Api.Accept("회원","blue")));var expired=homes.invite(id,owner);var row=invitations.findById(expired.id()).orElseThrow();row.expiresAt=Instant.now().minusSeconds(1);invitations.saveAndFlush(row);assertThrows(ApiException.class,()->homes.preview(expired.token()));assertEquals(1,homes.world(id,owner).members().size());}
     @Test void differentInvitationsCanBothBeAcceptedConcurrently()throws Exception{String owner=user(),a=user(),b=user();String id=house(owner).household().id();var first=homes.invite(id,owner);var second=homes.invite(id,owner);try(var pool=Executors.newFixedThreadPool(2)){var start=new CountDownLatch(1);var one=pool.submit(()->{start.await();try{homes.accept(first.token(),a,new Api.Accept("A","sage"));return true;}catch(ApiException e){return false;}});var two=pool.submit(()->{start.await();try{homes.accept(second.token(),b,new Api.Accept("B","rose"));return true;}catch(ApiException e){return false;}});start.countDown();assertTrue(one.get(10,TimeUnit.SECONDS));assertTrue(two.get(10,TimeUnit.SECONDS));}assertEquals(3,homes.world(id,owner).members().size());}
     @Test void pantryPreventsLostUpdatesAndNegativeInventory(){String owner=user();String id=house(owner).household().id();var item=homes.addPantry(id,owner,new Api.CreatePantry("달걀","냉장",2,"개",null));var saved=homes.updatePantry(id,owner,item.id(),new Api.UpdatePantry(1,item.version()));assertEquals(1,saved.quantity());assertTrue(saved.version()>item.version());assertThrows(ApiException.class,()->homes.updatePantry(id,owner,item.id(),new Api.UpdatePantry(0,item.version())));assertThrows(ApiException.class,()->homes.updatePantry(id,owner,item.id(),new Api.UpdatePantry(-1,saved.version())));}

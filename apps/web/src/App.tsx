@@ -82,6 +82,7 @@ import {
   type AuthConfig,
 } from "./lib/auth";
 import { connectWorld, type ConnectionState } from "./lib/realtime";
+import { homeDestination, rememberHome } from "./lib/lastHome";
 import { useWindowSky } from "./lib/windowWeather";
 import type { Place, WorldEvent, WorldView } from "./game/types";
 
@@ -215,6 +216,7 @@ export function LoginPage() {
     queryKey: ["me"],
     queryFn: () => api<Identity>("/api/me"),
     retry: false,
+    refetchOnMount: "always",
   });
   const [key, setKey] = useState(""),
     [name, setName] = useState(""),
@@ -230,13 +232,8 @@ export function LoginPage() {
   const authError = params.has("error")
     ? "Google 로그인을 완료하지 못했어요. 취소했다면 다시 시작해 주세요."
     : "";
-  const destination = next
-    ? next
-    : identity.data?.memberships[0]
-      ? `/home/${identity.data.memberships[0].householdId}`
-      : "/onboarding";
-  if (identity.isPending) return <Loading />;
-  if (identity.data) return <Navigate to={destination} replace />;
+  if (identity.isPending || identity.isFetching) return <Loading />;
+  if (identity.data && !identity.error) return <Navigate to={next ?? homeDestination(identity.data)} replace />;
   async function enter(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -244,13 +241,7 @@ export function LoginPage() {
     try {
       const me = await login(key, name);
       qc.setQueryData(["me"], me);
-      nav(
-        next
-          ? next
-          : me.memberships[0]
-            ? `/home/${me.memberships[0].householdId}`
-            : "/onboarding",
-      );
+      nav(next ?? homeDestination(me), { replace: true });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -394,9 +385,59 @@ export function LoginPage() {
   );
 }
 
+function HomeSelectionPage() {
+  const identity = useQuery({
+    queryKey: ["me"],
+    queryFn: () => api<Identity>("/api/me"),
+    retry: false,
+    refetchOnMount: "always",
+  });
+  if (identity.isPending || identity.isFetching) return <Loading />;
+  if (identity.error instanceof ApiError && identity.error.status === 401)
+    return <Navigate to="/login" replace />;
+  if (!identity.error && identity.data && !identity.data.memberships.length)
+    return <Navigate to="/onboarding" replace />;
+
+  return (
+    <div className="form-page">
+      <div className="onboard-card home-selection">
+        <header>
+          <Brand />
+          {identity.data && !identity.error && <SessionBar name={identity.data.user.name} />}
+        </header>
+        <h1>어느 집으로 갈까요?</h1>
+        {identity.error ? (
+          <>
+            <ErrorMessage message={identity.error.message} />
+            <button className="button secondary" onClick={() => void identity.refetch()}>
+              다시 확인
+            </button>
+          </>
+        ) : (
+          <>
+            <ul>
+              {identity.data?.memberships.map((home) => (
+                <li key={home.householdId}>
+                  <Link to={"/home/" + encodeURIComponent(home.householdId)} className="button secondary">
+                    <Home size={18} aria-hidden="true" />
+                    <span>{home.householdName}</span>
+                    <small>{home.role === "OWNER" ? "집 대표" : "가족"}</small>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Link to="/onboarding" className="button primary">새 집 만들기 또는 초대받기</Link>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function InvitePage() {
   const { token } = useParams(),
-    nav = useNavigate();
+    nav = useNavigate(),
+    client = useQueryClient();
   const [name, setName] = useState(""),
     [appearance, setAppearance] = useState("v2:adult_male"),
     [busy, setBusy] = useState(false),
@@ -423,6 +464,7 @@ function InvitePage() {
         "POST",
         { memberName: name || me.data?.user.name, appearance },
       );
+      void client.invalidateQueries({ queryKey: ["me"] });
       nav(`/home/${data.household.id}`);
     } catch (e) {
       setError((e as Error).message);
@@ -499,6 +541,12 @@ type Panel =
   | "pets"
   | "design"
   | null;
+function HouseholdRoute() {
+  const { id } = useParams();
+  // A new household owns a new canvas, socket and set of form drafts.
+  return <GamePage key={id} />;
+}
+
 function GamePage({ studio = false }: { studio?: boolean }) {
   const { id } = useParams(),
     nav = useNavigate(),
@@ -509,6 +557,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     enabled: !studio,
     retry: false,
     refetchInterval: 30_000,
+    gcTime: 0,
   });
   const [fridgeTab, setFridgeTab] = useState<"food" | "notes">("food");
   const attachedNotes = useQuery({
@@ -545,7 +594,13 @@ function GamePage({ studio = false }: { studio?: boolean }) {
   const snapshot = studio ? sample : query.data,
     own = snapshot?.members.find((m) => m.id === snapshot.meMemberId);
   const observedMember = snapshot?.members.find((m) => m.id === observed) ?? own;
-  const windowSky = useWindowSky(observedMember?.place === "home");
+  const accessStatus = query.error instanceof ApiError ? query.error.status : 0;
+  const accessLost = accessStatus === 401 || accessStatus === 403 || accessStatus === 404;
+  const windowSky = useWindowSky(!accessLost && observedMember?.place === "home");
+  useEffect(() => {
+    if (!studio && !query.isError && query.data && own)
+      rememberHome(own.userId, query.data.household.id);
+  }, [studio, query.isError, query.data?.household.id, own?.userId]);
   useEffect(() => {
     const interval = setInterval(() => setTick((v) => v + 1), 30_000);
     return () => clearInterval(interval);
@@ -559,12 +614,13 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     return () => clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
-    if (studio || !id || !query.data) return;
+    if (studio || !id || !query.data || accessLost) return;
+    let active = true;
     live.current = connectWorld(
       id,
       async () => {
-        const data = await api<Snapshot>(`/api/households/${id}/world`);
-        qc.setQueryData(["world", id], data);
+        const { data } = await query.refetch({ throwOnError: true });
+        if (!active || !data) return 0;
         await Promise.all([
           qc.invalidateQueries({ queryKey: ["object-notes", id] }),
           qc.invalidateQueries({ queryKey: ["calendar", id] }),
@@ -575,10 +631,11 @@ function GamePage({ studio = false }: { studio?: boolean }) {
       setError,
     );
     return () => {
+      active = false;
       live.current?.destroy();
       live.current = null;
     };
-  }, [id, studio, Boolean(query.data)]);
+  }, [id, studio, Boolean(query.data), accessLost]);
   async function refresh() {
     if (!studio) await query.refetch();
   }
@@ -618,6 +675,8 @@ function GamePage({ studio = false }: { studio?: boolean }) {
         y: e.y,
       });
   }
+  if (!studio && accessLost)
+    return <Navigate to="/homes" replace />;
   if (!snapshot || !own || !observedMember) {
     if (query.error)
       return (
@@ -1244,8 +1303,8 @@ function StoryForm({
   return (
     <form onSubmit={submit}>
       <p className="form-intro">
-        {own.name}의 이야기로 공유해요. 직접 고른 상태는 캐릭터 머리 위에도
-        나타나요.
+        <strong>{snapshot.household.name}</strong>에 {own.name}의 이야기로 공유해요.
+        직접 고른 상태는 캐릭터 머리 위에도 나타나요.
       </p>
       <label>
         내가 공유할 장소
@@ -1719,7 +1778,8 @@ export default function App() {
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/visit/:token" element={<VisitPage />} />
       <Route path="/invite/:token" element={<InvitePage />} />
-      <Route path="/home/:id" element={<GamePage />} />
+      <Route path="/home/:id" element={<HouseholdRoute />} />
+      <Route path="/homes" element={<HomeSelectionPage />} />
       {import.meta.env.DEV && (
         <Route path="/studio/onboarding" element={<OnboardingPreview />} />
       )}

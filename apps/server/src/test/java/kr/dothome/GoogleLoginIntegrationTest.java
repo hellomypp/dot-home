@@ -60,7 +60,7 @@ class GoogleLoginIntegrationTest {
         String sub=UUID.randomUUID().toString();var member=google.map(verified(sub,"가온","a@example.test"));assertTrue(identity.me(member.getName()).memberships().isEmpty());
         var result=mvc.perform(post("/api/households").with(oidcLogin().oidcUser(member)).with(csrf()).contentType("application/json").content("{\"name\":\"Google 집\",\"memberName\":\"가온\",\"appearance\":\"sage\"}")).andExpect(status().isOk()).andExpect(jsonPath("$.members.length()").value(1)).andReturn();
         var me=identity.me(member.getName());var revisit=google.map(verified(sub,"다른 이름","b@example.test"));assertEquals(me,identity.me(revisit.getName()));String hid=me.memberships().getFirst().householdId();
-        var flow=new GoogleLoginFlow(clients,identity,"http://127.0.0.1:5173");var response=new MockHttpServletResponse();flow.success().onAuthenticationSuccess(new MockHttpServletRequest(),response,new OAuth2AuthenticationToken(revisit,revisit.getAuthorities(),"google"));assertEquals("http://127.0.0.1:5173/home/"+hid,response.getRedirectedUrl());
+        var flow=new GoogleLoginFlow(clients,identity,"http://127.0.0.1:5173");var response=new MockHttpServletResponse();flow.success().onAuthenticationSuccess(new MockHttpServletRequest(),response,new OAuth2AuthenticationToken(revisit,revisit.getAuthorities(),"google"));assertEquals("http://127.0.0.1:5173/",response.getRedirectedUrl());
         mvc.perform(get("/api/households/"+hid+"/world").with(oidcLogin().oidcUser(user()))).andExpect(status().isForbidden());
     }
     @Test void inviteAcceptanceRequiresExplicitPostAfterGoogleLogin()throws Exception{

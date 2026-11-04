@@ -12,7 +12,7 @@ GoogleIdentity는 표준 OidcUserService.loadUser를 호출한다. ID Token의 �
 
 로그인 링크는 /oauth2/authorization/google?next=/invite/토큰 형식이다. next는 정확한 43자 URL-safe 초대 토큰 경로만 허용한다. 외부 URL·프로토콜 상대 URL·쿼리·fragment·개행은 거부한다.
 
-목적지는 OAuth2AuthorizationRequest의 attributes에 담아 HttpSessionOAuth2AuthorizationRequestRepository로 서버 세션에 보관한다. Google에 보내는 추가 파라미터가 아니다. 콜백에서 올바른 state로 저장된 요청을 회수한 경우에만 목적지를 요청 속성으로 옮긴다. 성공 시 해당 초대 화면으로 돌아가고 사용자가 이름·외형을 설정해 명시적으로 수락한다. 목적지가 없으면 기존 가구 또는 /onboarding으로 보낸다. 실패·취소는 정해진 /login?error=google 안내로 돌아가며 공급자의 오류 내용·토큰을 URL에 노출하지 않는다. 유효한 원래 초대 목적지는 재시도용으로만 보존한다.
+목적지는 OAuth2AuthorizationRequest의 attributes에 담아 HttpSessionOAuth2AuthorizationRequestRepository로 서버 세션에 보관한다. Google에 보내는 추가 파라미터가 아니다. 콜백에서 올바른 state로 저장된 요청을 회수한 경우에만 목적지를 요청 속성으로 옮긴다. 성공 시 해당 초대 화면으로 돌아가고 사용자가 이름·외형을 설정해 명시적으로 수락한다. 목적지가 없으면 가입 기록이 없는 계정은 /onboarding으로, 가입한 계정은 /로 보낸다. 웹은 이 기기에 기억된 마지막 집이 현재 가입 목록에 있으면 바로 열고, 그렇지 않으면 /homes에서 선택을 받는다. 실패·취소는 정해진 /login?error=google 안내로 돌아가며 공급자의 오류 내용·토큰을 URL에 노출하지 않는다. 유효한 원래 초대 목적지는 재시도용으로만 보존한다.
 
 동시에 여러 로그인 탭을 열면 표준 세션 저장소의 마지막 authorization request가 이전 흐름을 대체할 수 있다. 이 경우 state가 맞지 않는 흐름은 안전하게 실패하며, 잘못된 초대로 자동 입주하지 않는다.
 

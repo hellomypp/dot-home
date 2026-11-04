@@ -78,7 +78,7 @@ class HomeService {
     Api.InvitationView invite(String householdId,String userId) {
         Household household=lock(householdId,userId);owner(household,userId);
         byte[] bytes=new byte[32];new SecureRandom().nextBytes(bytes);String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        Invitation invitation=new Invitation();invitation.householdId=householdId;invitation.tokenHash=hash(token);invitation.expiresAt=Instant.now().plus(Duration.ofHours(72));invitations.save(invitation);
+        Invitation invitation=new Invitation();invitation.householdId=householdId;invitation.tokenHash=hash(token);invitation.expiresAt=Instant.now().plus(Duration.ofDays(7));invitations.save(invitation);
         return new Api.InvitationView(invitation.id,token,invitation.expiresAt,"/invite/"+token);
     }
     void cancel(String householdId,String userId,String invitationId) {

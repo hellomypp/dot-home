@@ -1,5 +1,6 @@
 import {
   LogOut,
+  Home,
   Users,
   Paintbrush,
   DoorOpen,
@@ -65,6 +66,13 @@ export function AccountSettings({
       <section className="settings-section">
         <h3>우리 집</h3>
         <div className="settings-links">
+          {!studio && (
+            <Link to="/homes">
+              <Home size={20} />
+              <span>다른 집으로 전환</span>
+              <ChevronRight size={18} />
+            </Link>
+          )}
           <button onClick={() => onOpen("design")}>
             <Paintbrush size={20} />
             <span>우리 집 설정 · 집 분위기</span>

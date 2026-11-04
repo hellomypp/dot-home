@@ -15,11 +15,13 @@
 - Google `(provider,sub)`로 내부 Account를 재사용하고 Principal.getName()은 내부 Account.id다. 이메일 기반 병합 없음. 세션/CSRF/STOMP 계약은 유지한다.
 - 프로필·외부 설정·Google 실제 인증 미검증 상태는 [Google 로그인](GOOGLE_LOGIN.md)을 따른다.
 
+브라우저의 `/homes`는 인증된 `GET /api/me`의 현재 가입 목록으로 구성한다. 서버가 허용한 집을 실제로 연 뒤 그 집 ID를 기기에서 계정별 화면 설정으로 기억한다. 집 화면의 권한은 매 진입 시 world API에서 확인한다.
+
 ## 가구·초대
 
 - `POST /api/households` body `{name:"우리의 작은 집",memberName:"다은",appearance:"rose"}` → world. 대표 1명·반려동물 0마리로 시작하며 가족/반려동물 사전 설정을 받지 않는다.
 - `GET /api/households/{id}/world` → 아래 스냅샷.
-- `POST /api/households/{id}/invitations` → `{id,token,expiresAt,url:"/invite/{token}"}`. 대표만; 토큰은 생성 응답에서만 제공, DB에는 해시만 저장. 72시간 일회성 초대.
+- `POST /api/households/{id}/invitations` → `{id,token,expiresAt,url:"/invite/{token}"}`. 대표만; 토큰은 생성 응답에서만 제공, DB에는 해시만 저장. 신규 발급은 7일 일회성 초대. 이미 발급된 초대는 저장된 만료 시각을 유지한다.
 - `DELETE /api/households/{id}/invitations/{invitationId}` → 204. 대표만 취소.
 - `GET /api/invitations/{token}` → `{householdName,expiresAt,available:true}`. 공개 미리보기이며 가입하지 않는다. 만료/취소/사용됨 410.
 - `POST /api/invitations/{token}/accept` body `{memberName:"민준",appearance:"blue"}` → world. 인증 필수. 같은 계정 반복 수락은 동일 가구 반환, 다른 계정 사용 완료/만료 토큰 410. 가족 인원에 따른 제한은 없다.
