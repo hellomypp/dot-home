@@ -108,6 +108,7 @@ class MovementService {
     static boolean walkable(double x,double y,String scene){if(scene.equals("home"))return Spaces.walkable(x,y,"garden_home");if(!Double.isFinite(x)||!Double.isFinite(y)||x<51||x>589||y<137||y>399)return false;for(double[] r:OTHER)if(x>r[0]-7&&x<r[0]+r[2]+7&&y>r[1]-7&&y<r[1]+r[3]+7)return false;return true;}
     @Transactional void apply(String householdId,String userId,Api.Intent intent){
         Household house=homes.lock(householdId,userId);Member member=homes.requireMember(householdId,userId);if(!member.place.equals(intent.scene()))throw ApiException.invalid("내 캐릭터가 있는 공간에서만 움직일 수 있어요.");
+        if("office".equals(member.place))throw ApiException.invalid("달빛 광산에서는 캐릭터를 직접 움직일 수 없어요.");
         var seen=requests.computeIfAbsent(member.id,k->new LinkedHashSet<>());synchronized(seen){if(seen.contains(intent.requestId()))return;}
         long now=System.currentTimeMillis();Long previous=rate.put(member.id,now);if(previous!=null&&now-previous<120)throw ApiException.invalid("이동 요청이 너무 빨라요.");
         if(intent.kind().equals("MOVE_INTENT")){if(intent.x()==null||intent.y()==null||!(intent.scene().equals("home")?Spaces.walkable(intent.x(),intent.y(),house.presetId):walkable(intent.x(),intent.y(),intent.scene())))throw ApiException.invalid("이곳으로 이동할 수 없어요.");member.x=intent.x();member.y=intent.y();member.avatarSpace="v62";member.action="walk";}

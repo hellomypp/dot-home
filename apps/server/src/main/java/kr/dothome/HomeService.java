@@ -217,20 +217,31 @@ class HomeService {
         if(!me.name.equals(name)||changed){me.name=name;emit(household,"MEMBER_PROFILE_CHANGED",memberView(me,household.presetId));}
         return snapshot(household,me.id);
     }
+    Api.World workShift(String householdId,String userId,boolean working) {
+        var house=lock(householdId,userId);
+        var me=requireMember(householdId,userId);
+        boolean atWork="office".equals(me.place);
+        if(working? !atWork||!"working".equals(me.action) : atWork){
+            moveAvatarToScene(house,me,working?"OFFICE":"HOME",Instant.now());
+            if(working)me.action="working";
+            emit(house,"WORK_SHIFT_CHANGED",Map.of("memberId",me.id));
+        }
+        return snapshot(house,me.id);
+    }
     Api.World status(String householdId,String userId,Api.Status input) {
         Household house=lock(householdId,userId);
         Member me=requireMember(householdId,userId);
         Instant now=Instant.now();
         var saved=expressions.load(me);
         boolean changed=expressions.legacyPlace(me,saved,input.place(),input.expiresInMinutes(),now);
-        if(changed)moveToSharedScene(house,me,input.place(),now);
+        if(changed)moveAvatarToScene(house,me,input.place(),now);
         changed|=expressions.legacy(me,saved,"mood",input.mood(),input.expiresInMinutes(),now);
         changed|=expressions.legacy(me,saved,"food",input.food(),input.expiresInMinutes(),now);
         changed|=expressions.legacy(me,saved,"thought",input.thought(),input.expiresInMinutes(),now);
         if(changed)emit(house,"STATUS_CHANGED",memberView(me,house.presetId,saved,now,false));
         return snapshot(house,me.id);
     }
-    private static void moveToSharedScene(Household house,Member member,String place,Instant now){
+    private static void moveAvatarToScene(Household house,Member member,String place,Instant now){
         String scene=switch(place.toUpperCase(Locale.ROOT)){
             case "HOME"->"home";
             case "OFFICE"->"office";
@@ -255,7 +266,7 @@ class HomeService {
     ExpressionState expressions(String householdId,String userId,ExpressionPatch patch){
         Household house=lock(householdId,userId);
         Member me=requireMember(householdId,userId);
-        return expressions.patch(house,me,patch,place->moveToSharedScene(house,me,place,Instant.now()),
+        return expressions.patch(house,me,patch,place->moveAvatarToScene(house,me,place,Instant.now()),
             ()->emit(house,"STATUS_CHANGED",Map.of("memberId",me.id)));
     }
     List<Api.PantryView> pantry(String householdId,String userId) { requireMember(householdId,userId);return pantry.findByHouseholdIdOrderByName(householdId).stream().map(HomeService::pantryView).toList(); }
@@ -312,7 +323,8 @@ class HomeService {
     private Api.MemberView memberView(Member m,String preset,Map<String,MemberExpression> saved,Instant now,boolean own){
         var shared=expressions.publicPlace(m,saved,now);
         // Unshared external scenes never carry their last coordinates to another member.
-        boolean mask=!own&&!"MANUAL".equals(shared.status())&&!"home".equals(m.place);
+        boolean sharedWork="office".equals(m.place)&&"working".equals(m.action)&&!"UNSHARED".equals(shared.status());
+        boolean mask=!own&&!"MANUAL".equals(shared.status())&&!"home".equals(m.place)&&!sharedWork;
         String place=mask?"outside":m.place;
         double[] point=mask?new double[]{320,288}:"home".equals(place)?Spaces.position(m,preset):new double[]{m.x,m.y};
         var current=expressions.state(m,saved,now,false);

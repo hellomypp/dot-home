@@ -1780,3 +1780,24 @@ textarea {
   .member-name-text { max-width: 5rem; }
   .account-name-text { max-width: 5rem; }
 }
+
+.work-shift {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #57604d;
+  font-size: 13px;
+  font-weight: 600;
+}
+.work-shift .button { padding: 8px 12px; min-height: 44px; }
+.world-canvas.moon-mine {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: 500px;
+  aspect-ratio: 320 / 224;
+  background: #171a35;
+  overflow: hidden;
+}

@@ -1,3 +1,4 @@
+import { mountMoonMine } from './moonMine';
 import { ActorSpeechBubble } from './ActorSpeechBubble';
 import { makePetHabitat } from './petHabitat';
 import {mountNativeWorld} from './nativeWorld';
@@ -88,6 +89,20 @@ function mountLegacyWorld(parent:HTMLElement,initial:WorldView,onEvent:(event:Wo
 }
 
 export function mountWorld(parent:HTMLElement,initial:WorldView,onEvent:(event:WorldEvent)=>void):WorldHandle{
- let home=initial.place==='home',current=home?mountNativeWorld(parent,initial,onEvent):mountLegacyWorld(parent,initial,onEvent);
- return {update:view=>{const next=view.place==='home';if(home!==next){current.destroy();home=next;current=home?mountNativeWorld(parent,view,onEvent):mountLegacyWorld(parent,view,onEvent);}else current.update(view);},destroy:()=>current.destroy()};
+  const renderer = (place: WorldView["place"]) =>
+    place === "home" ? mountNativeWorld : place === "office" ? mountMoonMine : mountLegacyWorld;
+  let mount = renderer(initial.place);
+  let current = mount(parent, initial, onEvent);
+  return {
+    update: (view) => {
+      const next = renderer(view.place);
+      if (next === mount) current.update(view);
+      else {
+        current.destroy();
+        mount = next;
+        current = mount(parent, view, onEvent);
+      }
+    },
+    destroy: () => current.destroy(),
+  };
 }

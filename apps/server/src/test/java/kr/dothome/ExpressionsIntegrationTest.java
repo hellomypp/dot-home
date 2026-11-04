@@ -18,6 +18,7 @@ class ExpressionsIntegrationTest {
     @Autowired ObjectMapper json;
     @Autowired Members members;
     @Autowired MemberExpressions rows;
+    @Autowired MovementService movement;
 
     String user(){return identity.resolve("test",UUID.randomUUID().toString(),"검증 가족").id;}
     Api.World house(String owner){return homes.create(owner,new Api.CreateHouse("검증 집","대표","sage"));}
@@ -66,6 +67,30 @@ class ExpressionsIntegrationTest {
         assertEquals(400,assertThrows(ApiException.class,()->homes.expressions(h,owner,patch("missing","""
             {"food":{"version":0}}
             """))).status.value());
+    }
+    @Test void virtualWorkShiftRespectsHouseholdConsentAndBlocksDirectControl(){
+        String owner=user(),family=user();
+        var created=house(owner);
+        String h=created.household().id(), miner=created.meMemberId();
+        homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("가족","sage"));
+        var working=homes.workShift(h,owner,true);
+        assertEquals("office",working.members().stream().filter(m->m.id().equals(miner)).findFirst().orElseThrow().place());
+        assertEquals(working.revision(),homes.workShift(h,owner,true).revision());
+        assertEquals("outside",homes.world(h,family).members().stream().filter(m->m.id().equals(miner)).findFirst().orElseThrow().place());
+        assertThrows(ApiException.class,()->movement.apply(h,owner,new Api.Intent("mine-move","MOVE_INTENT","office",320d,288d,null)));
+        assertThrows(ApiException.class,()->movement.apply(h,owner,new Api.Intent("mine-interact","INTERACT_INTENT","office",null,null,"table")));
+        homes.expressions(h,owner,patch("consent","""
+            {"sharing":{"enabled":true,"version":0}}
+            """));
+        var visible=homes.world(h,family).members().stream().filter(m->m.id().equals(miner)).findFirst().orElseThrow();
+        assertEquals("office",visible.place());
+        assertEquals("working",visible.action());
+        assertNull(visible.sharedPlace().place());
+        homes.expressions(h,owner,patch("revoke","""
+            {"sharing":{"enabled":false,"version":1}}
+            """));
+        assertEquals("outside",homes.world(h,family).members().stream().filter(m->m.id().equals(miner)).findFirst().orElseThrow().place());
+        assertEquals("home",homes.workShift(h,owner,false).members().stream().filter(m->m.id().equals(miner)).findFirst().orElseThrow().place());
     }
     @Test void manualPlaceExpiresAndRevocationHidesLocationWithoutClearingExpressions(){
         String owner=user(),guest=user();

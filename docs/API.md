@@ -117,6 +117,11 @@
 - `POST` 같은 경로에 `{requestId,sourceType,sourceId,code}`. 원본은 `NOTE|REQUEST|EXPRESSION`. 표현 ID는 `memberId.field.version`이며 만료·교체된 표현은 410이다. 원본이 속한 집과 활성 가입을 확인한다.
 - 코드 `THANKS|CHEER|ACK|SHARE_MEAL` 중 `SHARE_MEAL`은 현재 음식 표현에만 사용한다. 같은 구성원·원본·코드는 한 번만 집계한다. `DELETE /{id}`는 본인 반응만 지운다. 반응은 생활 요청·재고 변경을 만들지 않는다.
 
+## 달빛 광산 가상 근무
+
+- `PATCH /api/households/{id}/me/work-shift`에 `{working:true}`를 보내면 본인의 가상 장면이 달빛 광산으로 바뀐다. false는 근무를 마치고 집으로 돌아간다. 실제 장소나 공유 동의를 변경하지 않는다.
+- 집별 위치 공유를 허용한 경우에만 다른 가족이 가상 근무 장면을 볼 수 있다. 근무 장면에서는 STOMP 이동·가구 조작을 거절한다. 광석·코인은 장면 연출이며 보유량에 기록하지 않는다.
+
 ## v0.9 독립 표현
 
 - GET `/api/households/{h}/me/state` → `{expressions,place,sharing,revision,serverTime}`. 본인의 `thought`, `food`, `mood`, `physical`, `availability`에 값·수정 시각·만료 시각·버전을 반환한다. 만료한 값은 null이다.
