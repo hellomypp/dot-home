@@ -1,6 +1,7 @@
 """Tailnet-only preview; launchd jobs survive Codex sessions. No tokens are stored."""
 import json,os,pathlib,plistlib,shutil,subprocess,sys
 from preview_artifact import snapshot_jar
+from preview_upgrade import upgrade_preview
 root=pathlib.Path(__file__).resolve().parent.parent
 cli=shutil.which('tailscale') or '/Applications/Tailscale.app/Contents/MacOS/Tailscale'
 uid=str(os.getuid()); folder=pathlib.Path.home()/'Library/LaunchAgents'
@@ -31,7 +32,11 @@ if not host.endswith('.ts.net'):sys.exit('MagicDNS의 실제 ts.net 이름을 �
 origin='https://'+host
 if command=='status':
  print(origin);run(cli,'serve','status');sys.exit()
-if command!='start':sys.exit('사용법: python3 scripts/remote-preview.py start|stop|status')
+if command=='upgrade':
+ try: upgrade_preview(root,folder,origin)
+ except (RuntimeError,subprocess.CalledProcessError) as error: sys.exit(str(error))
+ sys.exit()
+if command!='start':sys.exit('사용법: python3 scripts/remote-preview.py start|stop|status|upgrade')
 # Do not silently share an existing service or replace a server owned by another task.
 import socket
 for port in (5173,8080):

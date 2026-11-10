@@ -48,7 +48,7 @@ MySQL 논리 백업은 `mysqldump --single-transaction --no-tablespaces`를 사�
 
 ## 미리보기 실행 파일 보존
 
-`remote-preview.py start`는 bootJar 산출물을 `.tools/remote-preview/releases/server-<SHA256>.jar`로 복사해 읽기 전용으로 실행한다. 실행 중인 JAR를 Gradle 빌드가 교체하지 않도록 하기 위해서다. `scripts/server.sh preview`는 시작 도구가 지정한 `DOT_HOME_PREVIEW_JAR`만 실행한다. 새 소스를 서버에 적용하려면 stop 후 start한다. 이전 release 파일은 JVM 실행 중에 교체/삭제하지 않는다. 파일 DB 백업은 서버 정상 종료 후 수행한다. `python3 -m unittest discover -s scripts -p 'test_*.py'`로 빌드 교체 후 기존 실행 파일 보존·손상 파일 덮어쓰기 거부를 검사한다.
+`remote-preview.py start`는 bootJar 산출물을 `.tools/remote-preview/releases/server-<SHA256>.jar`로 복사해 읽기 전용으로 실행한다. `scripts/server.sh preview`는 시작 도구가 지정한 `DOT_HOME_PREVIEW_JAR`를 실행한다. 이미 실행 중인 기본 H2 미리보기에는 `python3 scripts/remote-preview.py upgrade`를 사용한다. 백엔드를 정상 종료한 뒤 DB와 설정을 백업하고 새 JAR를 연결한다. 기동 실패 시 이전 설정으로 다시 실행하고 DB 백업은 복구 검토용으로 남긴다. `python3 -m unittest discover -s scripts -p 'test_*.py'`로 실행 파일 보존, 백업과 설정 복구를 검사한다.
 
 
 ## 창밖의 지역 날씨
