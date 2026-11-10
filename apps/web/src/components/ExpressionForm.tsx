@@ -7,13 +7,14 @@ import {
 } from "../lib/expressions";
 
 export function ExpressionForm({
-  householdId, householdName, onSaved, onPlaceSaved, legacy,
+  householdId, householdName, onSaved, onPlaceSaved, legacy, automaticLocation,
 }: {
   householdId: string;
   householdName: string;
   onSaved: () => void;
-  onPlaceSaved: () => void;
+  onPlaceSaved: (enabled: boolean) => void;
   legacy: ReactNode;
+  automaticLocation?: ReactNode;
 }) {
   const path = `/api/households/${householdId}/me/state`;
   const query = useQuery({
@@ -37,6 +38,7 @@ export function ExpressionForm({
       <details>
         <summary>가족 위치 공유 설정</summary>
         <PlaceForm path={path} initial={query.data} onSaved={onPlaceSaved} />
+        {automaticLocation}
       </details>
     </div>
   );
@@ -179,7 +181,7 @@ function Editor({
 function PlaceForm({ path, initial, onSaved }: {
   path: string;
   initial: ExpressionState;
-  onSaved: () => void;
+  onSaved: (enabled: boolean) => void;
 }) {
   const [base, setBase] = useState(initial);
   const [enabled, setEnabled] = useState(initial.sharing.enabled);
@@ -205,7 +207,7 @@ function PlaceForm({ path, initial, onSaved }: {
       const result = await api<ExpressionState>(path, "PATCH", { requestId: receipt.current.id, changes });
       setBase(result);
       setSaved(true);
-      onSaved();
+      onSaved(result.sharing.enabled);
     } catch (err) {
       setError((err as Error).message);
       if (err instanceof ApiError && err.status === 409) {

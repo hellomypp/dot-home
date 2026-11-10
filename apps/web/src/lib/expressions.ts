@@ -40,15 +40,15 @@ export const sharedPlaces: Record<string, string> = {
   MEAL: "식사 중", EXERCISE: "운동 중", ERRAND: "볼일 중", TRAVEL: "여행 중", OUTSIDE: "밖",
 };
 export interface SharedPlace {
-  status: "MANUAL" | "UNKNOWN" | "UNSHARED";
+  status: "MANUAL" | "AUTO" | "UNKNOWN" | "UNSHARED";
   place: string | null;
   lastPlace: string | null;
   sharedAt: string | null;
   expiresAt: string | null;
 }
 export function currentSharedPlace(presence: SharedPlace | undefined, now = Date.now()) {
-  if (presence?.status === "MANUAL" && presence.expiresAt && Date.parse(presence.expiresAt) <= now) {
-    return { ...presence, status: "UNKNOWN" as const, place: null, lastPlace: presence.place };
+  if ((presence?.status === "MANUAL" || presence?.status === "AUTO") && presence.expiresAt && Date.parse(presence.expiresAt) <= now) {
+    return { ...presence, status: "UNKNOWN" as const, place: null, lastPlace: presence.status === "MANUAL" ? presence.place : null };
   }
   return presence;
 }

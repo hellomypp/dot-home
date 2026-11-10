@@ -5,7 +5,11 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import java.util.*;
 
-interface Accounts extends JpaRepository<Account,String> { Optional<Account> findByProviderAndSubject(String provider,String subject); }
+interface Accounts extends JpaRepository<Account,String> {
+    Optional<Account> findByProviderAndSubject(String provider,String subject);
+    @Lock(LockModeType.PESSIMISTIC_WRITE) @Query("select a from Account a where a.id=:id")
+    Optional<Account> locked(@Param("id") String id);
+}
 interface Households extends JpaRepository<Household,String> {
     @Query("select h.id from Household h where h.pendingDeleteUntil<=:now order by h.pendingDeleteUntil,h.id")
     List<String> dueForDeletion(java.time.Instant now,org.springframework.data.domain.Pageable page);

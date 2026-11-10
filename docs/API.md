@@ -268,3 +268,11 @@ World에는 design을 추가했다. 기존 방문 전용 DTO도 householdName/th
 `PATCH /api/households/{id}/me/profile`는 기존 memberName 외에 선택적 appearance(v2의 세 스타일만)를 받는다. 생략 시 기존 외형을 유지한다. 서버 principal로 본인의 Membership만 수정하며 MEMBER_PROFILE_CHANGED 커밋 후 이벤트를 유지한다. Google 내부 Account/sub는 변경하지 않는다.
 
 home 좌표는 448×320 map의 발 중앙이며 서버와 웹이 같은 collision 카탈로그를 사용한다. 구형 좌표는 응답에서 안전한 spawn으로 투영하고 첫 새 이동 전까지 DB 원본을 보존한다. 다른 공간의 좌표 규칙은 유지한다. [상세](V62_INTEGRATION.md).
+
+### 접속 중 자동 위치 공유
+
+- 기존 `/me/state`의 `sharing`과 별개로 자동 공유에 직접 동의해야 한다. `GET /api/me/location-device?deviceId=...`는 본인의 기기 세대, 요청 브라우저 일치 여부, 현재 자동 공유 중인 집만 반환한다. `PUT`은 `{requestId,deviceId,replaceExisting,generation}`을 받는다. 교체는 확인한 기기 세대와 명시적 동의가 필요하고 이전 자동 공유를 종료한다.
+- `GET/PUT /api/households/{id}/me/location-sharing`은 활성 가족 본인만 사용한다. `PUT`은 `{enabled,generation,version,deviceId?,homeConfigId?}`를 받는다. 켤 때 현재 기기·집 기준 식별자·기존 위치 공유 동의가 모두 필요하다. 다른 집에서 켜면 기존 집의 자동 공유는 즉시 만료한다. 기존 위치 공유를 껐다 다시 켜도 자동 공유는 다시 동의해야 한다.
+- `POST /api/households/{id}/me/location-observations`에는 `{requestId,deviceId,generation,version,sequence,observedAt,physicalState,fixAgeSeconds,accuracyMeters,homeConfigId}`만 전송한다. `HOME`, `OUTSIDE`, `UNKNOWN`을 받고, 잘못된 세대·집·설정과 역순·오래된 관측을 거절한다. `homeConfigId`는 브라우저의 집 기준 위치를 바꿀 때 바뀌는 임의 식별자다.
+- 실제 집 좌표는 브라우저에만 저장한다. `world`에는 공개가 유효한 경우에만 `sharedPlace.status=AUTO`와 장소·서버 접수 및 만료 시각이 들어간다. 5분 후에는 마지막 자동 장소도 표시하지 않는다. 위치 확인은 화면이 보이는 동안만 수행한다. [W3C Geolocation](https://www.w3.org/TR/geolocation/#request-a-position)
+- 같은 설정에서 12시간 이내의 확정 밖 → 집 전환만 귀가 이력으로 남기며 10분 내 중복을 막는다. 자동 판정은 기존 수동 장소나 직장·학교 활동보다 우선하지 않는다. 생활 기록과 공동 내보내기는 `source=MANUAL|AUTO`를 제공한다.

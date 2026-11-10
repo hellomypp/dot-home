@@ -109,6 +109,7 @@ class LifeEvent extends Row {
     @Column(nullable = false, length = 80) String requestId;
     @Column(nullable = false, length = 30) String type;
     @Column(nullable = false, length = 300) String message;
+    @Column(nullable=false,length=12) String eventSource="MANUAL";
     Instant createdAt = Instant.now();
     protected LifeEvent() {}
 }

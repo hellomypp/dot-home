@@ -162,7 +162,7 @@ class HouseholdExportService {
             .stream().map(event->new ExportCalendar(event.title,event.description,event.category,event.allDay,event.startDate,
                 event.endDate,event.startAt,event.endAt,event.timeZone,author(names,event.createdByMemberId))).toList();
         var lifeEvents=bounded(events.findByHouseholdIdOrderByCreatedAtAscIdAsc(house.id,EXPORT_PAGE)).stream().map(event->
-            new ExportEvent(event.type,event.message,author(names,event.authorMemberId),event.createdAt)).toList();
+            new ExportEvent(event.type,event.message,author(names,event.authorMemberId),event.createdAt,event.eventSource)).toList();
         return new ExportDocument(1,house.name,now,objectNotes,tasks,calendarEvents,lifeEvents);
     }
 
@@ -180,7 +180,7 @@ class HouseholdExportService {
         Instant createdAt,Instant dueAt,Instant completedAt,Instant scheduledAt) {}
     private record ExportCalendar(String title,String description,String category,boolean allDay,LocalDate startDate,
         LocalDate endDate,Instant startAt,Instant endAt,String timeZone,String author) {}
-    private record ExportEvent(String type,String message,String author,Instant createdAt) {}
+    private record ExportEvent(String type,String message,String author,Instant createdAt,String source) {}
 
     private HouseholdExport owned(String house,Member actor,String id){
         return jobs.findById(id).filter(job->job.householdId.equals(house)&&job.memberId.equals(actor.id))

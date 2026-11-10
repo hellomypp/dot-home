@@ -25,6 +25,7 @@ export function AccountSettings({
   onPalette,
   onReduced,
   onOpen,
+  onSwitchHome,
   onSaved,
   onLogout,
 }: {
@@ -37,6 +38,7 @@ export function AccountSettings({
   onPalette: (p: "warm" | "dusk") => void;
   onReduced: (v: boolean) => void;
   onOpen: (p: "design" | "housewarming" | "invite" | "membership" | "exports" | "deletion") => void;
+  onSwitchHome?: () => void;
   onSaved: (s: Snapshot) => void;
   onLogout: () => void;
 }) {
@@ -72,7 +74,11 @@ export function AccountSettings({
         <h3>우리 집</h3>
         <div className="settings-links">
           {!studio && (
-            <Link to="/homes">
+            <Link to="/homes" onClick={(event) => {
+              if (!onSwitchHome || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              onSwitchHome();
+            }}>
               <Home size={20} />
               <span>다른 집으로 전환</span>
               <ChevronRight size={18} />

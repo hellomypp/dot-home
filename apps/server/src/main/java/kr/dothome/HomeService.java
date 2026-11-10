@@ -28,10 +28,11 @@ class HomeService {
     final PantryChanges changes;
     final LifeEvents events;
     final ExpressionStore expressions;
+    final LocationDevices locationDevices;
     final SpaceEdits spaceEdits;
     final ApplicationEventPublisher publisher;
-    HomeService(Households households,Members members,Pets pets,DependentProfiles dependents,Invitations invitations,PantryItems pantry,PantryChanges changes,LifeEvents events,ExpressionStore expressions,SpaceEdits spaceEdits,ApplicationEventPublisher publisher) {
-        this.households=households;this.members=members;this.pets=pets;this.dependents=dependents;this.invitations=invitations;this.pantry=pantry;this.changes=changes;this.events=events;this.expressions=expressions;this.spaceEdits=spaceEdits;this.publisher=publisher;
+    HomeService(Households households,Members members,Pets pets,DependentProfiles dependents,Invitations invitations,PantryItems pantry,PantryChanges changes,LifeEvents events,ExpressionStore expressions,LocationDevices locationDevices,SpaceEdits spaceEdits,ApplicationEventPublisher publisher) {
+        this.households=households;this.members=members;this.pets=pets;this.dependents=dependents;this.invitations=invitations;this.pantry=pantry;this.changes=changes;this.events=events;this.expressions=expressions;this.locationDevices=locationDevices;this.spaceEdits=spaceEdits;this.publisher=publisher;
     }
     Member requireMember(String householdId,String userId) {
         return members.findByHouseholdIdAndUserIdAndActiveTrue(householdId,userId).orElseThrow(ApiException::forbidden);
@@ -266,7 +267,7 @@ class HomeService {
         changed|=expressions.legacy(me,saved,"mood",input.mood(),input.expiresInMinutes(),now);
         changed|=expressions.legacy(me,saved,"food",input.food(),input.expiresInMinutes(),now);
         changed|=expressions.legacy(me,saved,"thought",input.thought(),input.expiresInMinutes(),now);
-        if(changed)emit(house,"STATUS_CHANGED",memberView(me,SpaceLayout.room(Spaces.view(house)),saved,now,false));
+        if(changed)emit(house,"STATUS_CHANGED",memberView(me,SpaceLayout.room(Spaces.view(house)),saved,now,false,null));
         return snapshot(house,me.id);
     }
     private static void moveAvatarToScene(Household house,Member member,String place,Instant now){
@@ -321,7 +322,7 @@ class HomeService {
         for(var member:active)activeIds.add(member.id);
         return events.findTop100ByHouseholdIdOrderByCreatedAtDesc(householdId).stream().map(event->
             activeIds.contains(event.authorMemberId)?eventView(event):new Api.EventView(
-                event.id,event.type,event.message,event.authorMemberId,"퇴실한 구성원",event.createdAt)).toList();
+                event.id,event.type,event.message,event.authorMemberId,"퇴실한 구성원",event.createdAt,event.eventSource)).toList();
     }
     Api.EventView event(String householdId,String userId,Api.CreateEvent input) {
         Household household=lock(householdId,userId);Member me=requireMember(householdId,userId);
@@ -330,7 +331,22 @@ class HomeService {
             if(!old.get().message.equals(input.message().strip())||!old.get().type.equals(input.type())) throw ApiException.conflict("동일 요청 번호의 내용이 달라요.");
             return eventView(old.get());
         }
-        LifeEvent event=new LifeEvent();event.householdId=householdId;event.authorMemberId=me.id;event.authorName=me.name;event.requestId=input.requestId();event.type=input.type();event.message=input.message().strip();events.save(event);emit(household,"LIFE_EVENT_CREATED",eventView(event));return eventView(event);
+        return recordEvent(household,me,input.requestId(),input.type(),input.message().strip(),"MANUAL",Instant.now());
+    }
+    Api.EventView recordEvent(Household house,Member actor,String requestId,String type,String message,String source,Instant now){
+        var event=new LifeEvent();
+        event.householdId=house.id;
+        event.authorMemberId=actor.id;
+        event.authorName=actor.name;
+        event.requestId=requestId;
+        event.type=type;
+        event.message=message;
+        event.eventSource=source;
+        event.createdAt=now;
+        events.save(event);
+        var view=eventView(event);
+        emit(house,"LIFE_EVENT_CREATED",view);
+        return view;
     }
     void profileArchived(Household household,Member actor,CareProfileType type,String id,String guardian,String name,String portrait){
         publisher.publishEvent(new CareProfileArchived(household,actor,type,id,guardian,name,portrait));
@@ -342,23 +358,34 @@ class HomeService {
         var saved=expressions.load(householdMembers);
         var design=Spaces.view(household);
         var room=SpaceLayout.room(design);
+        var locations=new HashMap<String,LocationDevice>();
+        if(household.pendingDeleteUntil==null&&!householdMembers.isEmpty())
+            locationDevices.findByActiveMemberIdIn(householdMembers.stream().map(m->m.id).toList())
+                .forEach(device->locations.put(device.activeMemberId,device));
         var memberViews=householdMembers.stream()
-            .map(member->memberView(member,room,saved.getOrDefault(member.id,Map.of()),now,member.id.equals(meId))).toList();
+            .map(member->memberView(member,room,saved.getOrDefault(member.id,Map.of()),now,member.id.equals(meId),locations.get(member.id))).toList();
         return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId,household.pendingDeleteUntil,household.deletionVersion,deletionAvailable),meId,household.revision,now,memberViews,pets.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(HomeService::petView).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),householdEvents(household.id,householdMembers),design,
             dependents.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(DependentView::from).toList());
     }
     Api.MemberView memberView(Member m,Household house){
-        return memberView(m,SpaceLayout.room(Spaces.view(house)),expressions.load(m),Instant.now(),false);
+        return memberView(m,SpaceLayout.room(Spaces.view(house)),expressions.load(m),Instant.now(),false,null);
     }
-    private Api.MemberView memberView(Member m,SpaceLayout.Room room,Map<String,MemberExpression> saved,Instant now,boolean own){
+    private Api.MemberView memberView(Member m,SpaceLayout.Room room,Map<String,MemberExpression> saved,Instant now,boolean own,LocationDevice device){
         var shared=expressions.publicPlace(m,saved,now);
         // Unshared external scenes never carry their last coordinates to another member.
         boolean activity=("office".equals(m.place)&&"working".equals(m.action))
             ||("school".equals(m.place)&&"studying".equals(m.action));
         boolean sharedActivity=activity&&!"UNSHARED".equals(shared.status());
+        if(!sharedActivity&&"UNKNOWN".equals(shared.status())&&device!=null&&device.matches(m,expressions.sharing(m,saved))){
+            var automatic=device.shared(now);
+            if(automatic!=null)shared=automatic;
+        }
+        boolean automaticView=!own&&"AUTO".equals(shared.status());
         boolean mask=!own&&!"MANUAL".equals(shared.status())&&!"home".equals(m.place)&&!sharedActivity;
-        String place=mask?"outside":m.place;
-        double[] point=mask?new double[]{320,288}:"home".equals(place)?Spaces.position(m,room):new double[]{m.x,m.y};
+        String place=automaticView?shared.place().toLowerCase(Locale.ROOT):mask?"outside":m.place;
+        boolean useAvatar=(!mask||automaticView)&&place.equals(m.place);
+        double[] point=useAvatar&&"home".equals(place)?Spaces.position(m,room)
+            :useAvatar?new double[]{m.x,m.y}:"home".equals(place)?new double[]{room.spawns().getFirst().x(),room.spawns().getFirst().y()}:new double[]{320,288};
         var current=expressions.state(m,saved,now,false);
         Instant expires=current.values().stream().map(ExpressionValue::expiresAt).max(Comparator.naturalOrder()).orElse(null);
         Instant updated=current.values().stream().map(ExpressionValue::updatedAt).max(Comparator.naturalOrder()).orElse(m.statusUpdatedAt);
@@ -366,8 +393,8 @@ class HomeService {
             current.containsKey("mood")?current.get("mood").value():"",
             current.containsKey("food")?current.get("food").value():"",
             current.containsKey("thought")?current.get("thought").value():"",
-            expires,updated,point[0],point[1],mask?"idle":m.action,current,shared,m.membershipVersion);
+            expires,updated,point[0],point[1],useAvatar?m.action:"idle",current,shared,m.membershipVersion);
     }
     static Api.PantryView pantryView(PantryItem p) { return new Api.PantryView(p.id,p.name,p.location,p.quantity,p.unit,p.expiresOn,p.version,p.updatedAt); }
-    static Api.EventView eventView(LifeEvent e) { return new Api.EventView(e.id,e.type,e.message,e.authorMemberId,e.authorName,e.createdAt); }
+    static Api.EventView eventView(LifeEvent e) { return new Api.EventView(e.id,e.type,e.message,e.authorMemberId,e.authorName,e.createdAt,e.eventSource); }
 }

@@ -100,6 +100,8 @@ import { connectWorld, type ConnectionState } from "./lib/realtime";
 import { homeDestination, rememberHome } from "./lib/lastHome";
 import { currentSharedPlace, sharedPlaceLabel, sharedPlaces } from "./lib/expressions";
 import { useWindowSky } from "./lib/windowWeather";
+import { useForegroundLocation } from "./lib/foregroundLocation";
+import { ForegroundLocationSettings } from "./components/ForegroundLocationSettings";
 import type { Place, WorldEvent, WorldView } from "./game/types";
 
 const now = new Date().toISOString();
@@ -652,12 +654,15 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     if (!studio && accessLost)
       qc.removeQueries({ predicate: (entry) => entry.queryKey[1] === id && entry.queryKey[0] !== "world" });
   }, [studio, accessLost, id, qc]);
+  const generalSharing = Boolean(own?.sharedPlace && own.sharedPlace.status !== "UNSHARED");
+  const foregroundLocation = useForegroundLocation(id, own?.userId,
+    Boolean(!studio && !accessLost && !snapshot?.household.pendingDeleteUntil), panel === "story", generalSharing);
   const observedPresence = currentSharedPlace(observedMember?.sharedPlace);
   const activityScene = observedMember?.place === "office" && observedMember.action === "working" ||
     observedMember?.place === "school" && observedMember.action === "studying";
   const sharedActivity = activityScene && observedPresence?.status !== "UNSHARED";
   const neutral = observedMember?.id !== own?.id &&
-    Boolean(observedPresence && observedPresence.status !== "MANUAL" && !sharedActivity);
+    Boolean(observedPresence && observedPresence.status !== "MANUAL" && observedPresence.status !== "AUTO" && !sharedActivity);
   const windowSky = useWindowSky(!accessLost && !neutral && observedMember?.place === "home");
   useEffect(() => {
     if (!studio && !query.isError && query.data && own)
@@ -729,6 +734,14 @@ function GamePage({ studio = false }: { studio?: boolean }) {
       setError((failure as Error).message);
     } finally {
       setActivityPending(false);
+    }
+  }
+  async function switchHome() {
+    try {
+      await foregroundLocation.disable();
+      nav("/homes");
+    } catch (error) {
+      setError((error as Error).message);
     }
   }
   async function leave() {
@@ -1384,7 +1397,13 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               <ExpressionForm
                 householdId={snapshot.household.id}
                 householdName={snapshot.household.name}
-                onPlaceSaved={() => void refresh()}
+                onPlaceSaved={(enabled) => {
+                  if (!enabled) foregroundLocation.forgetAnchor();
+                  void refresh();
+                  void foregroundLocation.refresh();
+                }}
+                automaticLocation={<ForegroundLocationSettings location={foregroundLocation}
+                  house={snapshot.household.id} name={snapshot.household.name} />}
                 legacy={<StoryForm snapshot={snapshot} studio={false} onSaved={async () => {
                   await refresh();
                   setPanel(null);
@@ -1476,6 +1495,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               onPalette={setPalette}
               onReduced={setReduced}
               onOpen={setPanel}
+              onSwitchHome={foregroundLocation.anchor?.house === id ? () => void switchHome() : undefined}
               onSaved={(data) => qc.setQueryData(["world", id], data)}
               onLogout={() => void leave()}
             />
@@ -1887,7 +1907,7 @@ function EventForm({
           <h3>최근 소식</h3>
           {snapshot.events.map((event) => (
             <div key={event.id}>
-              <p>{event.message}</p>
+              <p>{event.message}{event.source === "AUTO" && <small> · 자동 확인</small>}</p>
               <small>
                 {event.authorName} ·{" "}
                 {new Date(event.createdAt).toLocaleString("ko-KR")}

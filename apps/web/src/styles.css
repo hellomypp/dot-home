@@ -35,3 +35,16 @@
 .modal .icon-button{min-width:44px;min-height:44px}.modal:has(.family-calendar){padding-inline:16px}.calendar-grid{gap:0}.modal input,.modal textarea,.modal select{font-size:16px;min-height:46px}.housewarming-panel p{overflow-wrap:anywhere;line-height:1.8}.housewarming-panel h3{margin-top:25px}.family-calendar .muted{font-size:12px}
 .visit-page .onboard-card>p{font-size:14px;line-height:1.8}.visit-page input,.visit-page textarea{font-size:16px}.visit-page .onboard-card{overflow-wrap:anywhere}
 .visit-header{display:flex;align-items:center;justify-content:space-between;max-width:540px;margin:auto;gap:16px}.visit-header .brand{font-size:22px;font-weight:700}
+
+.foreground-location {
+  display: grid;
+  gap: 0.65rem;
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+.foreground-location :is(h3, p) { margin: 0; }
+.foreground-location :is(.location-actions, .button + .button) { margin-top: 0.4rem; }
+.foreground-location .location-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.foreground-location .location-actions .button { margin-top: 0; }
+.foreground-location .button { min-height: 44px; }
