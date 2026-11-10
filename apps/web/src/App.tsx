@@ -71,6 +71,7 @@ import {
   X,
 } from "lucide-react";
 import { SessionBar } from "./components/SessionBar";
+import { FormerNotesPanel } from "./components/FormerNotesPanel";
 import { Portrait } from "./components/Portrait";
 import { Modal } from "./components/Modal";
 const WorldCanvas = lazy(() =>
@@ -451,6 +452,38 @@ function HomeSelectionPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function AccountPage() {
+  const identity = useQuery({
+    queryKey: ["me"],
+    queryFn: () => api<Identity>("/api/me"),
+    retry: false,
+    refetchOnMount: "always",
+  });
+  if (identity.isPending || identity.isFetching) return <Loading />;
+  if (identity.error instanceof ApiError && identity.error.status === 401)
+    return <Navigate to="/login" replace />;
+  return (
+    <main className="form-page">
+      <div className="onboard-card home-selection former-records-page">
+        <header>
+          <Brand />
+          {identity.data && !identity.error && <SessionBar name={identity.data.user.name} />}
+        </header>
+        <h1>이전 집에 남긴 내 기록</h1>
+        {identity.error ? (
+          <>
+            <ErrorMessage message={identity.error.message} />
+            <button className="button secondary" onClick={() => void identity.refetch()}>다시 확인</button>
+          </>
+        ) : identity.data && <FormerNotesPanel user={identity.data.user.id} />}
+        <Link className="button secondary" to={identity.data?.memberships.length ? "/homes" : "/onboarding"}>
+          {identity.data?.memberships.length ? "집 선택으로" : "시작 화면으로"}
+        </Link>
+      </div>
+    </main>
   );
 }
 
@@ -2065,7 +2098,7 @@ export default function App() {
       {import.meta.env.DEV && (
         <Route path="/studio" element={<GamePage studio />} />
       )}
-      <Route path="/settings" element={<Navigate to="/" replace />} />
+      <Route path="/settings" element={<AccountPage />} />
       <Route
         path="*"
         element={

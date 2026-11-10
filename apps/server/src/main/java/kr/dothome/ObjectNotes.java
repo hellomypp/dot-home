@@ -39,6 +39,21 @@ interface ObjectNotes extends JpaRepository<ObjectNote,String> {
         order by n.createdAt desc,n.id desc
         """)
     List<ObjectNote> archiveBefore(String householdId,Instant before,String beforeId,Pageable page);
+    @Query("""
+        select new kr.dothome.FormerNote(n.id,h.name,n.body,n.createdAt,n.version)
+        from ObjectNote n, Member m, Household h
+        where n.authorMemberId=m.id and n.householdId=h.id and m.householdId=h.id and m.active=false and m.userId=:user
+          and (:first=true or n.createdAt<:before or (n.createdAt=:before and n.id<:beforeId))
+        order by n.createdAt desc,n.id desc
+        """)
+    List<FormerNote> formerNotes(String user,boolean first,Instant before,String beforeId,Pageable page);
+
+    @Query("""
+        select n.householdId from ObjectNote n, Member m
+        where n.id=:id and n.authorMemberId=m.id and n.householdId=m.householdId and m.active=false and m.userId=:user
+        """)
+    java.util.Optional<String> formerHouse(String id,String user);
+
     long countByHouseholdIdAndObjectIdAndState(String householdId,String objectId,String state);
     List<ObjectNote> findByHouseholdIdAndStateOrderByCreatedAtDesc(String householdId,String state);
 }
@@ -59,9 +74,10 @@ record ObjectNoteCursor(Instant createdAt,String id) {
             throw ApiException.invalid("쪽지 목록의 다음 페이지를 확인할 수 없어요.");
         }
     }
-    static String encode(ObjectNote note){
+    static String encode(ObjectNote note){return encode(note.createdAt,note.id);}
+    static String encode(Instant createdAt,String id){
         return Base64.getUrlEncoder().withoutPadding().encodeToString(
-            (note.createdAt+";"+note.id).getBytes(StandardCharsets.UTF_8));
+            (createdAt+";"+id).getBytes(StandardCharsets.UTF_8));
     }
 }
 @Service @Transactional(isolation=Isolation.READ_COMMITTED)

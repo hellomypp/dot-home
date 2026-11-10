@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, UserRound } from "lucide-react";
+import { LogOut, StickyNote, UserRound } from "lucide-react";
 import { logout } from "../lib/api";
 import { clearDrafts } from "../onboarding/draft";
 export function SessionBar({ name }: { name: string }) {
@@ -56,6 +56,9 @@ export function SessionBar({ name }: { name: string }) {
         <div id="profile-popover" className="profile-popover">
           <strong>{name}</strong>
           <span>Google 계정</span>
+          <Link className="profile-records-link" to="/settings" onClick={() => setOpen(false)}>
+            <StickyNote size={17} aria-hidden="true" /> 이전 집에 남긴 내 기록
+          </Link>
           <button type="button" disabled={busy} onClick={() => void leave()}>
             <LogOut size={17} />
             {busy ? "로그아웃 중…" : "로그아웃"}

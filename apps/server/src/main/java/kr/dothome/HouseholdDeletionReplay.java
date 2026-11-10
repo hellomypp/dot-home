@@ -23,12 +23,26 @@ public final class HouseholdDeletionReplay {
         }
         boolean apply=args[0].equals("--apply");
         try{
-            int count=replay(new DriverManagerDataSource(url,user,System.getenv("RESTORE_DB_PASSWORD")),apply);
+            var source=new DriverManagerDataSource(url,user,System.getenv("RESTORE_DB_PASSWORD"));
+            int count=replay(source,apply);
             System.out.println((apply?"Removed restored homes marked as deleted: ":"Restored homes marked as deleted: ")+count);
+            System.out.println((apply?"Removed restored former-home notes marked as deleted: ":
+                "Restored former-home notes marked as deleted: ")+replayFormerNotes(source,apply));
         }catch(RuntimeException error){
             System.err.println("Deletion log replay failed. Check the restored database connection and schema.");
             System.exit(1);
         }
+    }
+
+    static int replayFormerNotes(DataSource source,boolean apply){
+        var sql=new JdbcTemplate(source);
+        var rows=FormerNoteService.restored(sql);
+        if(!apply)return rows.size();
+        var transaction=new TransactionTemplate(new DataSourceTransactionManager(source));
+        int count=0;
+        for(var row:rows)
+            if(Boolean.TRUE.equals(transaction.execute(status->FormerNoteService.removeRestored(sql,row))))count++;
+        return count;
     }
 
     static int replay(DataSource source,boolean apply){

@@ -154,7 +154,7 @@ DB를 백업한 뒤 V7을 적용한다. planned_people은 새 JPA/DTO/UI/정책�
 ### 복원에서 삭제 기록 재적용
 
 1. 전체 백업과 별개로 최신 `household_deletion_log`의 데이터를 보관한다. MySQL에서는 `mysqldump --single-transaction --no-create-info --skip-triggers --skip-add-locks --no-tablespaces --set-gtid-purged=OFF --insert-ignore … household_deletion_log`로 데이터만 내보낼 수 있다. 계정 암호는 명령줄에 넣지 않는다. [MySQL 8.4 mysqldump](https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html).
-2. 별도 빈 DB에 전체 백업을 복원하고 현재 애플리케이션에 포함된 Flyway 마이그레이션을 모두 적용한다. 복원 DB에 최신 삭제 로그를 병합하고, 애플리케이션에 연결하기 전에 복원 DB 전용 `RESTORE_DB_URL`, `RESTORE_DB_USER`, `RESTORE_DB_PASSWORD`를 설정한다.
+2. 별도 빈 DB에 전체 백업을 복원하고 현재 애플리케이션에 포함된 Flyway 마이그레이션을 모두 적용한다. 복원 DB에 최신 집 삭제 로그와 `former_record_deletion`을 병합하고, 애플리케이션에 연결하기 전에 복원 DB 전용 `RESTORE_DB_URL`, `RESTORE_DB_USER`, `RESTORE_DB_PASSWORD`를 설정한다.
 3. 조회 모드로 정리 대상 수를 확인한 후 적용한다. 두 번째 조회가 0건인지 확인하고, 보존할 집에서 로그인을 비롯한 핵심 동작을 검증한다.
 
 ```bash
@@ -163,4 +163,4 @@ bash scripts/server.sh replayHouseholdDeletions --args=--apply
 bash scripts/server.sh replayHouseholdDeletions --args=--plan
 ```
 
-`--apply`는 복원된 집 중 삭제 로그가 있는 집만 트랜잭션으로 정리한다. 삭제 로그 자체와 계정, 나머지 집은 보존하며 재실행이 가능하다. H2 복사본에서 검증했다. 실제 MySQL 백업 파일로 재현하는 단계는 운영 검증에 남아 있다.
+`--apply`는 삭제 로그가 있는 집과 쪽지만 정리한다. 쪽지는 원래 집과 작성자 식별자가 모두 일치해야 제거하고, 해당 집의 준비된 내보내기 파일을 만료시킨다. 삭제 로그 자체와 계정, 나머지 기록은 보존한다. H2와 MySQL 8.4의 격리 DB에서 재실행을 확인했다.

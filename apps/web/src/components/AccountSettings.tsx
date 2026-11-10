@@ -7,6 +7,7 @@ import {
   Download,
   Trash2,
   ChevronRight,
+  StickyNote,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Snapshot } from "../lib/api";
@@ -100,6 +101,13 @@ export function AccountSettings({
               <span>가족 구성원 · 집 참여</span>
               <ChevronRight size={18} />
             </button>
+          )}
+          {!studio && (
+            <Link to="/settings">
+              <StickyNote size={20} />
+              <span>이전 집에 남긴 내 기록</span>
+              <ChevronRight size={18} />
+            </Link>
           )}
           {!studio && (
             <button onClick={() => onOpen("exports")}>

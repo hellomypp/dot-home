@@ -285,3 +285,8 @@ home 좌표는 448×320 map의 발 중앙이며 서버와 웹이 같은 collisio
 - `GET /api/me/browser-push`는 사용 가능 여부와 VAPID 공개키를 반환한다. `PUT /api/me/browser-push`와 `POST /api/me/browser-push/status`, `POST /api/me/browser-push/disable`는 세션 본인의 `{endpoint}`를 처리한다. 등록은 선택적인 `keys: {p256dh,auth}`를 받으며 상태 응답은 암호화 준비 여부도 반환한다. 등록과 해제에 CSRF가 적용된다. 서버는 알려진 HTTPS 푸시 공급자 주소만 받는다.
 - 집별 알림 설정에 `quietHours: {startMinute,endMinute,timeZone}`가 추가됐다. 분 값은 0–1439 범위, 둘 다 null이면 조용한 시간 OFF, 시간대는 IANA 이름이다. 기본 시간은 Asia/Seoul 22:00–08:00이고 기기 시간대를 선택할 수 있다.
 - 수신 시간·종류·권한과 출처 만료를 전송 직전에 다시 확인한다. 조용한 시간의 알림은 앱 안에서만 조회한다. 브라우저 알림의 기본 본문은 ‘가족의 새 소식이 있어요.’다. `lockscreenPreview` 기본값은 OFF다. 켜면 가족 이름과 알림 종류만 담으며 알림에서 해당 집의 알림함을 연다. 페이로드는 브라우저 구독 키로 암호화한다. [RFC 8291](https://www.rfc-editor.org/rfc/rfc8291.html)
+
+### 이전 집에 남긴 내 쪽지
+
+- `GET /api/me/former-records/notes?cursor&limit`는 로그인한 계정의 종료된 멤버십으로 작성한 쪽지만 반환한다. 기본 20건, 최대 100건이며 다른 구성원의 쪽지와 현재 멤버십의 쪽지는 포함하지 않는다.
+- `DELETE /api/me/former-records/notes/{id}?version=...`는 같은 계정의 쪽지만 삭제한다. 가족 화면에는 변경 이벤트를 전달하고 해당 집의 준비된 내보내기 파일을 만료시킨다. 삭제된 쪽지는 본문 없는 삭제 로그에 남아 백업 복원 시 다시 제거할 수 있다.
