@@ -15,7 +15,9 @@ import java.util.concurrent.*;
 class SpaceIntegrationTest {
     @Autowired HomeService homes; @Autowired IdentityService identities; @Autowired HousewarmingService visits; @Autowired JdbcTemplate jdbc;
     @Autowired SpaceEditing editing;
+    @Autowired SpaceEditAccess editAccess;
     @Autowired OwnershipService ownership;
+    @Autowired MembershipLifecycle membership;
     String user(){return identities.resolve("google",UUID.randomUUID().toString(),"검증").id;}
     @Test void sharedDesignPersistsAndVisitorsGetOnlyPublicDesign(){
         String owner=user(),family=user(),visitor=user();
@@ -53,7 +55,7 @@ class SpaceIntegrationTest {
         var start=new SpaceEditStart("start",null);
         var session=editing.start(h,owner,start);
         assertEquals(session,editing.start(h,owner,start));
-        assertEquals(403,assertThrows(ApiException.class,()->editing.current(h,family)).status.value());
+        assertNull(editing.current(h,family).session());
         assertEquals(403,assertThrows(ApiException.class,()->editing.start(h,user(),start)).status.value());
         var input=new SpaceInput("brick_loft",0,Map.of("fridge","star"));
         assertEquals("EDIT_BUSY",assertThrows(ApiException.class,()->homes.design(h,owner,input)).code);
@@ -109,9 +111,81 @@ class SpaceIntegrationTest {
         var old=editing.current(h,owner).session();
         var transfer=ownership.propose(h,owner,new ProposeOwnership("transfer",joined.meMemberId()));
         ownership.decide(h,family,transfer.id(),new DecideOwnership(transfer.version(),true),true);
-        assertEquals(403,assertThrows(ApiException.class,()->editing.heartbeat(h,owner,old.id())).status.value());
+        assertEquals(410,assertThrows(ApiException.class,()->editing.heartbeat(h,owner,old.id())).status.value());
         assertEquals("ACTIVE",editing.start(h,family,new SpaceEditStart("new-owner",null)).status());
         assertEquals(404,assertThrows(ApiException.class,()->editing.cancel(h,family,old.id())).status.value());
+    }
+    @Test void oneTimeApprovalBindsMemberHouseAndScopeAndSurvivesABusyEditor(){
+        String owner=user(),family=user(),other=user();
+        String h=homes.create(owner,new Api.CreateHouse("승인 집","대표","sage")).household().id();
+        var joined=homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("가족","sage"));
+        homes.accept(homes.invite(h,owner).token(),other,new Api.Accept("다른 가족","sage"));
+        assertEquals(403,assertThrows(ApiException.class,()->editing.start(h,family,new SpaceEditStart("direct",null))).status.value());
+        var request=editAccess.ask(h,family,new AskSpaceEdit("request",Set.of(SpaceEditScope.VARIANTS)));
+        assertEquals(request,editAccess.ask(h,family,new AskSpaceEdit("duplicate",Set.of(SpaceEditScope.PRESET))));
+        assertEquals(joined.meMemberId(),editAccess.inbox(h,owner).requests().getFirst().memberId());
+        assertTrue(editAccess.inbox(h,other).requests().isEmpty());
+        var decision=new DecideSpaceEdit("approve",request.version());
+        assertEquals(403,assertThrows(ApiException.class,()->editAccess.decide(h,other,request.id(),decision,true)).status.value());
+        var approved=editAccess.decide(h,owner,request.id(),decision,true);
+        assertEquals(approved,editAccess.decide(h,owner,request.id(),decision,true));
+        assertEquals(403,assertThrows(ApiException.class,()->editing.start(h,other,new SpaceEditStart("stolen",null,approved.id()))).status.value());
+        var ownerSession=editing.start(h,owner,new SpaceEditStart("owner",null));
+        var start=new SpaceEditStart("member",null,approved.id());
+        assertEquals("EDIT_BUSY",assertThrows(ApiException.class,()->editing.start(h,family,start)).code);
+        editing.cancel(h,owner,ownerSession.id());
+        var session=editing.start(h,family,start);
+        assertEquals(session,editing.start(h,family,start));
+        assertEquals(session.id(),editAccess.inbox(h,owner).activeEditor().sessionId());
+        assertEquals(404,assertThrows(ApiException.class,()->editing.heartbeat(h,owner,session.id())).status.value());
+        assertEquals("EDIT_SCOPE",assertThrows(ApiException.class,()->editing.draft(h,family,session.id(),
+            new SpaceEditDraft(0L,new SpaceInput("brick_loft",0,Map.of())))).code);
+        var draft=editing.draft(h,family,session.id(),new SpaceEditDraft(0L,new SpaceInput("garden_home",0,Map.of("fridge","leaf"))));
+        var commit=new SpaceEditCommit("save",0L,draft.draftVersion());
+        assertEquals(1,editing.commit(h,family,session.id(),commit).committedVersion());
+        assertEquals(1,editing.commit(h,family,session.id(),commit).committedVersion());
+        assertEquals(SpaceEditRequestState.USED,editAccess.inbox(h,family).requests().getFirst().state());
+        assertEquals(403,assertThrows(ApiException.class,()->editing.start(h,family,new SpaceEditStart("second",null,approved.id()))).status.value());
+        assertEquals("leaf",homes.design(h,other).variants().get("fridge"));
+    }
+    @Test void editApprovalExpiryRevocationAndDepartureNeverPublishDraft(){
+        String owner=user(),family=user(),h=homes.create(owner,new Api.CreateHouse("회수 집","대표","sage")).household().id();
+        homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("가족","sage"));
+        var pending=editAccess.ask(h,family,new AskSpaceEdit("pending",Set.of(SpaceEditScope.PRESET)));
+        expireRequest(pending.id(),"expires_at");
+        assertEquals(410,assertThrows(ApiException.class,()->editAccess.decide(h,owner,pending.id(),
+            new DecideSpaceEdit("expired",pending.version()),true)).status.value());
+        var first=grant(h,owner,family,"first");
+        expireRequest(first.id(),"start_before");
+        assertEquals(410,assertThrows(ApiException.class,()->editing.start(h,family,new SpaceEditStart("late",null,first.id()))).status.value());
+        var next=grant(h,owner,family,"next");
+        var session=editing.start(h,family,new SpaceEditStart("edit",null,next.id()));
+        editing.draft(h,family,session.id(),new SpaceEditDraft(0L,new SpaceInput("brick_loft",0,Map.of())));
+        expireRequest(next.id(),"start_before");
+        assertEquals("ACTIVE",editing.heartbeat(h,family,session.id()).status());
+        assertEquals(403,assertThrows(ApiException.class,()->editing.revoke(h,family,session.id())).status.value());
+        editing.revoke(h,owner,session.id());
+        assertEquals(410,assertThrows(ApiException.class,()->editing.commit(h,family,session.id(),
+            new SpaceEditCommit("revoked",0L,1L))).status.value());
+        assertEquals(0,homes.design(h,owner).version());
+        var again=grant(h,owner,family,"again");
+        var recovered=editing.start(h,family,new SpaceEditStart("recover",session.id(),again.id()));
+        assertEquals("brick_loft",recovered.draft().presetId());
+        membership.leave(h,family,new LeaveHouse("leave"));
+        assertEquals(403,assertThrows(ApiException.class,()->editing.heartbeat(h,family,recovered.id())).status.value());
+        assertNull(editAccess.inbox(h,owner).activeEditor());
+        assertTrue(editAccess.inbox(h,owner).requests().isEmpty());
+    }
+    private SpaceRequestView grant(String h,String owner,String member,String key){
+        var request=editAccess.ask(h,member,new AskSpaceEdit(key,Set.of(SpaceEditScope.PRESET)));
+        return editAccess.decide(h,owner,request.id(),new DecideSpaceEdit(key+"-decision",request.version()),true);
+    }
+    private void expireRequest(String id,String column){
+        var time=Instant.now().minusSeconds(2);
+        jdbc.update("UPDATE space_edit_request SET "+column+"=? WHERE id=?",statement->{
+            statement.setTimestamp(1,Timestamp.from(time),Calendar.getInstance(TimeZone.getTimeZone("UTC")));
+            statement.setString(2,id);
+        });
     }
     private String tryStart(String h,String owner,String key,CountDownLatch gate)throws InterruptedException{
         gate.await();

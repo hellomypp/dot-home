@@ -48,10 +48,10 @@ class OwnershipService {
     private final HomeService homes;
     private final Members members;
     private final OwnershipTransfers transfers;
-    private final SpaceEditing spaceEditing;
+    private final SpaceEditAccess spaceAccess;
 
-    OwnershipService(HomeService homes,Members members,OwnershipTransfers transfers,SpaceEditing spaceEditing){
-        this.homes=homes;this.members=members;this.transfers=transfers;this.spaceEditing=spaceEditing;
+    OwnershipService(HomeService homes,Members members,OwnershipTransfers transfers,SpaceEditAccess spaceAccess){
+        this.homes=homes;this.members=members;this.transfers=transfers;this.spaceAccess=spaceAccess;
     }
 
     List<OwnershipView> current(String h,String user){
@@ -117,7 +117,7 @@ class OwnershipService {
             actor.role="OWNER";
             actor.membershipVersion++;
             house.ownerId=actor.userId;
-            spaceEditing.endForHouse(h,now);
+            spaceAccess.endForHouse(h,now);
         }
         return finish(house,transfer,result,now);
     }

@@ -124,3 +124,40 @@
 }
 
 .portrait.small { height: 44px; }
+
+.space-access, .space-access-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.space-access-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+}
+.space-access h3, .space-access .form-actions {
+  margin: 0;
+}
+.space-access-options {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.space-access-options label {
+  min-height: 44px;
+  margin: 0;
+}
+.account-button[data-edit-alert] {
+  position: relative;
+}
+.account-button[data-edit-alert]::after {
+  content: "";
+  position: absolute;
+  inset: 4px -4px auto auto;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fcfcf8;
+  border-radius: 50%;
+  background: #ae6844;
+}

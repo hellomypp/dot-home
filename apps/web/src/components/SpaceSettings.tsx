@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, type Snapshot } from "../lib/api";
 import { catalogue, defaultDesign, mapFor, type SpaceDesign } from "../game/spaces";
 import { SpacePreview } from "./SpacePreview";
+import { SpaceEditRequests, type SpaceEditInbox, type SpaceEditRequest } from "./SpaceEditRequests";
 import "./spaces.css";
 export function PresetPicker({
   value,
@@ -42,20 +43,24 @@ interface EditSession {
   draft: SpaceDesign;
   draftVersion: number;
   committedVersion: number | null;
+  approvalId?: string | null;
 }
 
 export function SpaceSettings({
   snapshot,
   onSaved,
+  inbox,
+  reloadAccess = async () => undefined,
 }: {
   snapshot: Snapshot;
   onSaved: (world: Snapshot) => void;
+  inbox?: SpaceEditInbox;
+  reloadAccess?: () => Promise<unknown>;
 }) {
   const source = snapshot.design || defaultDesign;
-  const canEdit = !snapshot.household.pendingDeleteUntil &&
-    snapshot.members.some((member) => member.id === snapshot.meMemberId && member.role === "OWNER");
+  const owner = snapshot.members.some((member) => member.id === snapshot.meMemberId && member.role === "OWNER");
 
-  if (!canEdit) {
+  if (snapshot.household.pendingDeleteUntil) {
     return (
       <section className="space-settings">
         <SpacePreview design={source} />
@@ -63,14 +68,21 @@ export function SpaceSettings({
       </section>
     );
   }
-  return <SpaceEditor key={snapshot.household.id} house={snapshot.household.id} source={source} onSaved={onSaved} />;
+  const approval = owner ? undefined : inbox?.requests.find(request => request.state === "APPROVED");
+  return <SpaceEditor key={snapshot.household.id} snapshot={snapshot} source={source} onSaved={onSaved}
+    owner={owner} approval={approval} inbox={inbox} reloadAccess={reloadAccess} />;
 }
 
-function SpaceEditor({ house, source, onSaved }: {
-  house: string;
+function SpaceEditor({ snapshot, source, onSaved, owner, approval, inbox, reloadAccess }: {
+  snapshot: Snapshot;
   source: SpaceDesign;
   onSaved: (world: Snapshot) => void;
+  owner: boolean;
+  approval?: SpaceEditRequest;
+  inbox?: SpaceEditInbox;
+  reloadAccess: () => Promise<unknown>;
 }) {
+  const house = snapshot.household.id;
   const path = `/api/households/${house}/edit-sessions`;
   const [session, setSession] = useState<EditSession | null>(null);
   const [unsaved, setUnsaved] = useState<SpaceDesign | null>(null);
@@ -78,11 +90,19 @@ function SpaceEditor({ house, source, onSaved }: {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
-  const startAttempt = useRef<{ requestId: string; recoverId?: string }>(null);
-  const activeId = session?.status === "ACTIVE" ? session.id : null;
-  const draft = unsaved ?? (activeId ? session!.draft : source);
+  const startAttempt = useRef<{ requestId: string; recoverId?: string; approvalId?: string }>(null);
+  const allowed = owner || !!approval;
+  const activeId = session?.status === "ACTIVE" &&
+    (owner ? !session.approvalId : !!approval && session.approvalId === approval.id) ? session.id : null;
+  const draft = activeId ? unsaved ?? session!.draft : source;
+  const recoverable = session?.status === "RECOVERABLE";
 
   useEffect(() => {
+    if (!allowed) {
+      setReady(false);
+      setUnsaved(null);
+      return;
+    }
     let mounted = true;
     void api<{ session: EditSession | null }>(path).then((data) => {
       if (mounted) {
@@ -93,7 +113,7 @@ function SpaceEditor({ house, source, onSaved }: {
       if (mounted) setError(failure.message);
     });
     return () => { mounted = false; };
-  }, [path]);
+  }, [allowed, approval?.id, path]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -142,10 +162,11 @@ function SpaceEditor({ house, source, onSaved }: {
 
   function start(recoverId?: string) {
     return run(async () => {
-      if (startAttempt.current?.recoverId !== recoverId || !startAttempt.current)
-        startAttempt.current = { requestId: crypto.randomUUID(), recoverId };
+      if (!startAttempt.current || startAttempt.current.recoverId !== recoverId || startAttempt.current.approvalId !== approval?.id)
+        startAttempt.current = { requestId: crypto.randomUUID(), recoverId, ...(approval && { approvalId: approval.id }) };
       setSession(await api<EditSession>(path, "POST", startAttempt.current));
       startAttempt.current = null;
+      if (!owner) void reloadAccess();
     });
   }
 
@@ -171,6 +192,7 @@ function SpaceEditor({ house, source, onSaved }: {
       });
       onSaved(data.world);
       setSession({ ...session, status: "COMMITTED", committedVersion: data.committedVersion });
+      if (!owner) void reloadAccess();
     });
   }
 
@@ -179,24 +201,26 @@ function SpaceEditor({ house, source, onSaved }: {
     return run(async () => {
       setSession(await api<EditSession>(`${path}/${activeId}/cancel`, "POST"));
       setUnsaved(null);
+      if (!owner) void reloadAccess();
     });
   }
 
   return (
-    <section className="space-settings" aria-busy={!ready && !error || busy}>
+    <section className="space-settings" aria-busy={busy || (allowed && !ready && !error)}>
       <p>가족과 함께 보는 집 분위기예요. 저장 전까지 변경 내용은 나에게만 보여요.</p>
       <SpacePreview design={draft} />
-      {!ready && !error && <p role="status">집 분위기를 불러오는 중이에요.</p>}
-      {ready && !activeId && (
+      <SpaceEditRequests snapshot={snapshot} owner={owner} inbox={inbox} reload={reloadAccess} editingNow={!!activeId} />
+      {session?.status === "COMMITTED" && <p role="status">집 분위기를 저장했어요.</p>}
+      {allowed && !ready && !error && <p role="status">집 분위기를 불러오는 중이에요.</p>}
+      {allowed && ready && !activeId && (
         <>
-          {session?.status === "COMMITTED" && <p role="status">집 분위기를 저장했어요.</p>}
-          {session?.status === "RECOVERABLE" && <p>이전 초안을 이어서 편집할 수 있어요.</p>}
+          {recoverable && <p>이전 초안을 이어서 편집할 수 있어요.</p>}
           <div className="form-actions">
-            {session?.status === "RECOVERABLE" && (
+            {recoverable && (
               <button className="button primary" disabled={busy} onClick={() => void start(session.id)}>이전 초안 이어서</button>
             )}
             <button className="button secondary" disabled={busy} onClick={() => void start()}>
-              {session?.status === "RECOVERABLE" ? "새로 편집" : "집 분위기 편집"}
+              {recoverable ? "새로 편집" : "집 분위기 편집"}
             </button>
           </div>
         </>
@@ -204,9 +228,11 @@ function SpaceEditor({ house, source, onSaved }: {
       {activeId && session && (
         <>
           <p className="muted">선택한 내용은 초안으로 보관돼요. 편집은 한 번에 최대 20분 동안 할 수 있어요.</p>
-          <PresetPicker disabled={busy || !!unsaved} value={draft.presetId}
-            onChange={(presetId) => void changeDraft({ ...draft, presetId })} />
-          <label>
+          {(owner || approval?.scope.includes("PRESET")) && (
+            <PresetPicker disabled={busy || !!unsaved} value={draft.presetId}
+              onChange={(presetId) => void changeDraft({ ...draft, presetId })} />
+          )}
+          {(owner || approval?.scope.includes("VARIANTS")) && <label>
             냉장고 외형
             <select
               disabled={busy || !!unsaved}
@@ -223,7 +249,7 @@ function SpaceEditor({ house, source, onSaved }: {
                 <option value={v} key={v}>{labels[v]}</option>
               ))}
             </select>
-          </label>
+          </label>}
           <div className="form-actions">
             <button className="button secondary" disabled={busy} onClick={() => void cancel()}>편집 종료</button>
             <button className="button primary" disabled={busy || !!unsaved || session.draftVersion === 0}

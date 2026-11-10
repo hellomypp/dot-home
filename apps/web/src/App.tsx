@@ -7,6 +7,7 @@ import { HouseholdExportPanel } from "./components/HouseholdExportPanel";
 import { HouseholdDeletionPanel } from "./components/HouseholdDeletionPanel";
 import { ShareLink } from "./components/ShareLink";
 import { SpaceSettings } from "./components/SpaceSettings";
+import type { SpaceEditInbox } from "./components/SpaceEditRequests";
 import { CharacterChoices } from "./components/CharacterStyleForm";
 import { CareProfiles } from "./components/CareProfiles";
 import { VisitPage, HousewarmingPanel } from "./components/Housewarming";
@@ -624,6 +625,14 @@ function GamePage({ studio = false }: { studio?: boolean }) {
   const observedMember = snapshot?.members.find((m) => m.id === observed) ?? own;
   const accessStatus = query.error instanceof ApiError ? query.error.status : 0;
   const accessLost = accessStatus === 401 || accessStatus === 403 || accessStatus === 404;
+  const editAccess = useQuery({
+    queryKey: ["space-edit-access", id],
+    queryFn: () => api<SpaceEditInbox>(`/api/households/${id}/edit-requests`),
+    enabled: Boolean(!studio && id && own && !accessLost && !snapshot?.household.pendingDeleteUntil),
+    refetchInterval: 30_000,
+  });
+  const editAlert = editAccess.data?.requests.some(request =>
+    request.state === (own?.role === "OWNER" ? "PENDING" : "APPROVED"));
   useEffect(() => {
     if (!studio && accessLost)
       qc.removeQueries({ predicate: (entry) => entry.queryKey[1] === id && entry.queryKey[0] !== "world" });
@@ -668,6 +677,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
           qc.invalidateQueries({ queryKey: ["care-rules", id] }),
           qc.invalidateQueries({ queryKey: ["care-album", id] }),
           qc.invalidateQueries({ queryKey: ["ownership-transfers", id] }),
+          qc.invalidateQueries({ queryKey: ["space-edit-access", id] }),
         ]);
         return data.revision;
       },
@@ -818,7 +828,8 @@ function GamePage({ studio = false }: { studio?: boolean }) {
           <button
             className="account-button"
             onClick={() => setPanel("settings")}
-            aria-label="내 계정과 보기 설정"
+            aria-label={editAlert ? "내 계정과 보기 설정 · 집 편집 소식" : "내 계정과 보기 설정"}
+            data-edit-alert={editAlert ? "" : undefined}
           >
             <Portrait appearance={own.appearance} small />
             <span>
@@ -1273,6 +1284,8 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             ) : (
               <SpaceSettings
                 snapshot={snapshot}
+                inbox={editAccess.data}
+                reloadAccess={() => editAccess.refetch()}
                 onSaved={(data) => qc.setQueryData(["world", id], data)}
               />
             )

@@ -238,7 +238,14 @@ World에는 design을 추가했다. 기존 방문 전용 DTO도 householdName/th
 - `POST /edit-sessions` 본문 `{requestId,recoverId?}`. 집당 활성 세션 1개이며 같은 시작 명령은 기존 세션을 반환한다. 다른 시작 명령이나 기존 `PATCH /design`은 활성 세션이 있으면 409 `EDIT_BUSY`다. 같은 디자인 버전을 기반으로 한 이전 초안만 새 세션으로 복구할 수 있다.
 - 세션의 `PATCH /{sessionId}/draft`는 `{draftVersion,design}`을 검증해 비공개 초안만 갱신한다. `POST /{sessionId}/heartbeat`는 90초 임대를 연장한다. 세션의 전체 기한은 시작 후 20분이다. `POST /{sessionId}/cancel` 또는 임대 만료 후에는 같은 세션에서 저장할 수 없다.
 - `POST /{sessionId}/commit` 본문 `{requestId,baseDesignVersion,draftVersion}`. 한 트랜잭션에서 디자인을 저장하고 `{committedVersion,world}`를 반환한다. 같은 커밋 명령이나 `GET /{sessionId}/result?requestId=...`로 저장 결과를 확인할 수 있다. 초안·결과의 조회 기간은 종료 후 24시간이다.
-- 대표 이전과 집 삭제 대기 시작 시 기존 세션을 종료한다. 가족은 커밋 후의 기존 `SPACE_DESIGN_CHANGED` 이벤트와 공유 디자인만 받는다. 편집 요청·일회성 승인, 가구 이동, 벽·바닥 편집은 후속 계약이다.
+- 대표 이전, 가족 탈퇴·퇴실과 집 삭제 대기 시작 시 관련 세션과 승인을 종료한다. 초안은 편집자에게만 반환되며 공유 디자인은 커밋 이후 `SPACE_DESIGN_CHANGED` 이벤트로 갱신된다.
+
+### 가족의 일회성 집 편집 승인
+
+- `GET /api/households/{id}/edit-requests` → `{requests,activeEditor}`. 집 대표는 처리할 요청과 현재 편집자만 보고, 그 외 가족은 자신의 최신 요청만 본다.
+- 가족의 `POST /edit-requests` 본문은 `{requestId,scope}`다. 현 지원 범위는 `PRESET`, `VARIANTS`이며 둘을 함께 요청할 수 있다. 활성 요청이 있으면 기존 요청을 반환한다. 대표의 `POST /edit-requests/{requestId}/approve|reject` 본문은 `{requestId,version}`이고, 요청자 또는 대표는 `POST /edit-requests/{requestId}/cancel`에 `{version}`을 보낸다.
+- 대기 요청과 승인 후 세션 시작 기한은 각각 30분이다. 가족은 세션 시작 시 `approvalId`를 보낸다. 동시 편집으로 시작이 실패하면 승인은 남는다. 초안 및 커밋에서 승인 범위를 확인하고, 한 번 저장하거나 취소하면 권한을 소진한다.
+- 대표는 `POST /edit-sessions/{sessionId}/revoke`로 활성 가족 세션을 회수한다. 가족은 새 승인을 받아 호환되는 초안을 이어갈 수 있다. 승인 변경은 내용 없는 `SPACE_EDIT_ACCESS_CHANGED` 이벤트로 알리고, 권한이 있는 계정만 요청함을 재조회한다.
 
 `PATCH /api/households/{id}/me/profile`는 기존 memberName 외에 선택적 appearance(v2의 세 스타일만)를 받는다. 생략 시 기존 외형을 유지한다. 서버 principal로 본인의 Membership만 수정하며 MEMBER_PROFILE_CHANGED 커밋 후 이벤트를 유지한다. Google 내부 Account/sub는 변경하지 않는다.
 
