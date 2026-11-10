@@ -76,9 +76,10 @@ class SpaceEditAccess {
     private final HomeService homes;
     private final SpaceEdits sessions;
     private final SpaceEditRequests requests;
+    private final HouseholdNotificationService notifications;
 
-    SpaceEditAccess(HomeService homes,SpaceEdits sessions,SpaceEditRequests requests){
-        this.homes=homes;this.sessions=sessions;this.requests=requests;
+    SpaceEditAccess(HomeService homes,SpaceEdits sessions,SpaceEditRequests requests,HouseholdNotificationService notifications){
+        this.homes=homes;this.sessions=sessions;this.requests=requests;this.notifications=notifications;
     }
 
     SpaceEditInbox inbox(String h,String user){
@@ -117,6 +118,8 @@ class SpaceEditAccess {
         row.scope=String.join(",",input.scope().stream().map(Enum::name).sorted().toList());
         row.createdAt=now;
         row.expiresAt=now.plusSeconds(1800);
+        var owner=homes.requireMember(h,house.ownerId);
+        notifications.add(house,owner.id,actor.id,NotificationKind.EDIT_REQUESTED,row.id,now);
         changed(house);
         return view(requests.save(row),now,grant);
     }
@@ -135,6 +138,8 @@ class SpaceEditAccess {
         row.decisionRequestId=input.requestId();
         if(approve)row.startBefore=now.plusSeconds(1800);
         row.setState(next);
+        var actor=homes.requireMember(h,user);
+        notifications.add(house,row.memberId,actor.id,approve?NotificationKind.EDIT_APPROVED:NotificationKind.EDIT_REJECTED,row.id,now);
         changed(house);
         return view(row,now,null);
     }
@@ -152,6 +157,8 @@ class SpaceEditAccess {
             throw ApiException.conflict("편집 요청이 바뀌었어요. 최신 상태를 확인해 주세요.");
         row.setState(SpaceEditRequestState.CANCELLED);
         if(row.id.equals(grant))active.endedAt=now;
+        if(house.ownerId.equals(user))
+            notifications.add(house,row.memberId,actor.id,NotificationKind.EDIT_REVOKED,row.id,now);
         changed(house);
         return view(row,now,null);
     }
@@ -185,6 +192,11 @@ class SpaceEditAccess {
         if(session.approvalId==null)return;
         var row=find(session.householdId,session.approvalId);
         if(row.state==SpaceEditRequestState.APPROVED)row.setState(result);
+    }
+
+    void notifyRevocation(Household house,SpaceEditSession session,String owner,Instant now){
+        var actor=homes.requireMember(house.id,owner);
+        notifications.add(house,session.memberId,actor.id,NotificationKind.EDIT_REVOKED,session.approvalId,now);
     }
 
     void endForHouse(String h,Instant now){

@@ -1803,3 +1803,70 @@ textarea {
 .world-canvas.moon-mine { background: #171a35; }
 .world-canvas.sunlit-classroom { background: #eee1bf; }
 .activity-actions { display: flex; gap: 6px; margin-inline-start: auto; }
+
+.notification-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  color: #476149;
+}
+.notification-button > span {
+  position: absolute;
+  inset: 2px 1px auto auto;
+  min-width: 17px;
+  padding: 1px 4px;
+  border-radius: 12px;
+  background: #925833;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+.notification-inbox, .notification-list {
+  display: grid;
+  gap: 10px;
+}
+.notification-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.notification-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  text-align: left;
+}
+.notification-row[data-unread] {
+  background: #edf2e7;
+  border-color: #cfdbc7;
+}
+.notification-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #e8ede0;
+  color: #476149;
+}
+.notification-row strong {
+  overflow-wrap: anywhere;
+}
+.notification-row :is(time, small) {
+  display: inline-block;
+  color: #586853;
+  font-size: 12px;
+  margin-inline-end: 8px;
+}
+@media (max-width: 460px) {
+  .account-menu { gap: 4px; }
+}

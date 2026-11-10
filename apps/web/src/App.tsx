@@ -8,6 +8,7 @@ import { HouseholdDeletionPanel } from "./components/HouseholdDeletionPanel";
 import { ShareLink } from "./components/ShareLink";
 import { SpaceSettings } from "./components/SpaceSettings";
 import type { SpaceEditInbox } from "./components/SpaceEditRequests";
+import { NotificationInbox, type NotificationPage } from "./components/NotificationInbox";
 import { CharacterChoices } from "./components/CharacterStyleForm";
 import { CareProfiles } from "./components/CareProfiles";
 import { VisitPage, HousewarmingPanel } from "./components/Housewarming";
@@ -38,7 +39,7 @@ import {
   useParams,
   useLocation,
 } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
   ArrowLeft,
@@ -560,6 +561,7 @@ type Panel =
   | "exports"
   | "deletion"
   | "design"
+  | "notifications"
   | null;
 function HouseholdRoute() {
   const { id } = useParams();
@@ -631,8 +633,19 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     enabled: Boolean(!studio && id && own && !accessLost && !snapshot?.household.pendingDeleteUntil),
     refetchInterval: 30_000,
   });
-  const editAlert = editAccess.data?.requests.some(request =>
-    request.state === (own?.role === "OWNER" ? "PENDING" : "APPROVED"));
+  const notificationQuery = useInfiniteQuery({
+    queryKey: ["notifications", id],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ householdId: id ?? "" });
+      if (pageParam) params.set("cursor", pageParam);
+      return api<NotificationPage>(`/api/notifications?${params}`);
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    enabled: Boolean(!studio && id && own && !accessLost),
+    refetchInterval: 30_000,
+  });
+  const unread = notificationQuery.data?.pages[0]?.unreadCount ?? 0;
   useEffect(() => {
     if (!studio && accessLost)
       qc.removeQueries({ predicate: (entry) => entry.queryKey[1] === id && entry.queryKey[0] !== "world" });
@@ -678,6 +691,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
           qc.invalidateQueries({ queryKey: ["care-album", id] }),
           qc.invalidateQueries({ queryKey: ["ownership-transfers", id] }),
           qc.invalidateQueries({ queryKey: ["space-edit-access", id] }),
+          qc.invalidateQueries({ queryKey: ["notifications", id] }),
         ]);
         return data.revision;
       },
@@ -825,11 +839,18 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                   ? "연결 중"
                   : "다시 연결 중"}
           </span>
+          {!studio && (
+            <button className="notification-button" type="button"
+              aria-label={unread ? `알림함 · 읽지 않은 알림 ${unread}개` : "알림함"}
+              onClick={() => setPanel("notifications")}>
+              <Bell size={20} aria-hidden="true" />
+              {unread > 0 && <span aria-hidden="true">{unread > 99 ? "99+" : unread}</span>}
+            </button>
+          )}
           <button
             className="account-button"
             onClick={() => setPanel("settings")}
-            aria-label={editAlert ? "내 계정과 보기 설정 · 집 편집 소식" : "내 계정과 보기 설정"}
-            data-edit-alert={editAlert ? "" : undefined}
+            aria-label="내 계정과 보기 설정"
           >
             <Portrait appearance={own.appearance} small />
             <span>
@@ -1266,6 +1287,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               housewarming: "집들이 · 친구 방문",
               calendar: "가족 공유 캘린더",
               design: "우리 집 설정 · 집 분위기",
+              notifications: "우리 집 알림함",
               pets: "우리 집 돌봄 프로필",
               album: "추억 앨범",
               membership: "가족 구성원 · 집 참여",
@@ -1279,7 +1301,21 @@ function GamePage({ studio = false }: { studio?: boolean }) {
             setPromise(undefined);
           }}
         >
-          {panel === "design" ? (
+          {panel === "notifications" ? (
+            <NotificationInbox
+              items={notificationQuery.data?.pages.flatMap(page => page.items) ?? []}
+              members={snapshot.members}
+              loading={notificationQuery.isPending || notificationQuery.isFetchingNextPage}
+              failed={notificationQuery.isError}
+              more={notificationQuery.hasNextPage}
+              loadMore={() => notificationQuery.fetchNextPage()}
+              reload={() => notificationQuery.refetch()}
+              open={target => {
+                if (target === "requests") setActivityTab("requests");
+                setPanel(target === "requests" ? "event" : "design");
+              }}
+            />
+          ) : panel === "design" ? (
             studio ? (
               <p>집 분위기 설정은 실제 집에서 사용할 수 있어요.</p>
             ) : (

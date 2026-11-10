@@ -202,7 +202,10 @@ class SpaceEditing {
         var row=edits.findById(id).filter(s->s.householdId.equals(h)&&s.approvalId!=null)
             .orElseThrow(ApiException::missing);
         var now=now();
-        if(row.active(now))finish(house,row,now);
+        if(row.active(now)){
+            finish(house,row,now);
+            access.notifyRevocation(house,row,user,now);
+        }
     }
 
     private void finish(Household house,SpaceEditSession row,Instant now){

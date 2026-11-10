@@ -257,6 +257,12 @@ World에는 design을 추가했다. 기존 방문 전용 DTO도 householdName/th
 - 공유 `design.surfaces`의 `{floorId,wallId}`는 편집 세션에서 저장한다. 카탈로그의 마감 ID만 허용한다. 가족은 `SURFACES` 승인이 있어야 변경할 수 있다.
 - 기존 집은 각 프리셋의 원본 마감을 사용한다. 명시적으로 고른 마감은 프리셋을 바꿔도 유지한다. 가족 게임과 공개 방문 화면에는 저장한 마감이 표시된다.
 
+### 우리 집 알림함
+
+- `GET /api/notifications?householdId={id}&cursor={cursor}&limit=15` → `{items,nextCursor,unreadCount}`. 커서는 본인 알림의 이전 페이지 키이며 제한은 1~50개다. 최근 30일 동안 받은 알림만 반환한다.
+- `POST /api/notifications/{id}/read`는 활성 구성원인 수신자만 할 수 있다. 재시도하면 이미 기록한 읽음 시각을 반환한다. 탈퇴 후 재가입해도 이전 구성원 ID로 받은 알림은 볼 수 없다.
+- 편집 요청·승인·거절·회수는 당사자에게, 부탁·공지는 대상 가족에게 기록한다. 대상이 비어 있는 공동 부탁과 공지는 작성자를 제외한 활성 가족에게 기록한다. 알림 자체에는 원문을 저장하지 않는다. 웹 푸시는 별도 단위다.
+
 `PATCH /api/households/{id}/me/profile`는 기존 memberName 외에 선택적 appearance(v2의 세 스타일만)를 받는다. 생략 시 기존 외형을 유지한다. 서버 principal로 본인의 Membership만 수정하며 MEMBER_PROFILE_CHANGED 커밋 후 이벤트를 유지한다. Google 내부 Account/sub는 변경하지 않는다.
 
 home 좌표는 448×320 map의 발 중앙이며 서버와 웹이 같은 collision 카탈로그를 사용한다. 구형 좌표는 응답에서 안전한 spawn으로 투영하고 첫 새 이동 전까지 DB 원본을 보존한다. 다른 공간의 좌표 규칙은 유지한다. [상세](V62_INTEGRATION.md).

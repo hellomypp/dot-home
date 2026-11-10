@@ -147,9 +147,10 @@ class HouseholdRequestService {
     final HouseholdCommandReceipts receipts;
     final NoticeAcknowledgements acknowledgements;
     final HouseholdContentSources sources;
+    final HouseholdNotificationService notifications;
     final ObjectMapper json;
-    HouseholdRequestService(HomeService homes,Members members,HouseholdRequests requests,RepeatCareRules careRules,RequestTransitions history,HouseholdCommandReceipts receipts,NoticeAcknowledgements acknowledgements,HouseholdContentSources sources,ObjectMapper json){
-        this.homes=homes;this.members=members;this.requests=requests;this.careRules=careRules;this.history=history;this.receipts=receipts;this.acknowledgements=acknowledgements;this.sources=sources;this.json=json;
+    HouseholdRequestService(HomeService homes,Members members,HouseholdRequests requests,RepeatCareRules careRules,RequestTransitions history,HouseholdCommandReceipts receipts,NoticeAcknowledgements acknowledgements,HouseholdContentSources sources,HouseholdNotificationService notifications,ObjectMapper json){
+        this.homes=homes;this.members=members;this.requests=requests;this.careRules=careRules;this.history=history;this.receipts=receipts;this.acknowledgements=acknowledgements;this.sources=sources;this.notifications=notifications;this.json=json;
     }
     HouseholdRequestPage list(String house,String user,List<RequestState> filter,String cursor,int limit){
         Member member=homes.requireMember(house,user);
@@ -222,6 +223,12 @@ class HouseholdRequestService {
             if(input.kind()==RequestKind.PROMISE)request.assigneeMemberId=member.id;
             requests.saveAndFlush(request);
             record(request,member,null,null,now);
+            if(request.kind==RequestKind.NOTICE || request.kind==RequestKind.TASK){
+                var notificationKind=request.kind==RequestKind.NOTICE?NotificationKind.FAMILY_NOTICE:NotificationKind.FAMILY_TASK;
+                members.findByHouseholdIdAndActiveTrueOrderById(h).stream()
+                    .filter(recipient->targets.isEmpty() || targets.contains(recipient.id))
+                    .forEach(recipient->notifications.add(house,recipient.id,member.id,notificationKind,request.id,now));
+            }
             homes.emit(house,"HOUSEHOLD_REQUEST_CHANGED",request.id);
             return viewFor(request,now,member);
         });
