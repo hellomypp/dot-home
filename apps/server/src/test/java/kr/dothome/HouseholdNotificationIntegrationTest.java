@@ -16,6 +16,7 @@ class HouseholdNotificationIntegrationTest {
     @Autowired HouseholdNotificationService notifications;
     @Autowired SpaceEditAccess editAccess;
     @Autowired MembershipLifecycle membership;
+    @Autowired NotificationPreferenceService preferences;
 
     private String user(){return identities.resolve("test",UUID.randomUUID().toString(),"알림 검증").id;}
     private String create(String owner){return homes.create(owner,new Api.CreateHouse("알림 집","대표","sage")).household().id();}
@@ -77,5 +78,30 @@ class HouseholdNotificationIntegrationTest {
         assertEquals(Set.of(NotificationKind.EDIT_APPROVED,NotificationKind.EDIT_REVOKED),
             new HashSet<>(received.items().stream().map(NotificationView::kind).toList()));
         assertTrue(notifications.list(h,other,null,10).items().isEmpty());
+    }
+
+    @Test void preferencesAreVersionedPerMembershipAndOnlySuppressNewSelectedKinds(){
+        String owner=user(),family=user(),other=user(),h=create(owner),second=create(owner);
+        join(h,owner,family);
+        join(h,owner,other);
+        join(second,owner,family);
+        requests.create(h,owner,new CreateRequest("old",RequestKind.TASK,"기존 부탁","",List.of(),null));
+        var saved=preferences.patch(h,family,new ChangeNotificationSettings(Map.of(NotificationGroup.TASK,false),0L));
+        assertEquals(1,saved.version());
+        assertFalse(saved.enabled().get(NotificationGroup.TASK));
+        assertTrue(saved.enabled().get(NotificationGroup.NOTICE));
+        assertTrue(preferences.get(second,family).enabled().get(NotificationGroup.TASK));
+        assertEquals(409,assertThrows(ApiException.class,()->preferences.patch(h,family,
+            new ChangeNotificationSettings(Map.of(NotificationGroup.NOTICE,false),0L))).status.value());
+        assertEquals(403,assertThrows(ApiException.class,()->preferences.get(second,other)).status.value());
+        assertEquals(saved,preferences.patch(h,family,new ChangeNotificationSettings(Map.of(NotificationGroup.TASK,false),1L)));
+        requests.create(h,owner,new CreateRequest("new-task",RequestKind.TASK,"새 부탁","",List.of(),null));
+        requests.create(h,owner,new CreateRequest("new-notice",RequestKind.NOTICE,"새 공지","",List.of(),null));
+        assertEquals(List.of(NotificationKind.FAMILY_NOTICE,NotificationKind.FAMILY_TASK),
+            notifications.list(h,family,null,10).items().stream().map(NotificationView::kind).toList());
+        assertEquals(3,notifications.list(h,other,null,10).unreadCount());
+        preferences.patch(h,family,new ChangeNotificationSettings(Map.of(NotificationGroup.TASK,true),1L));
+        requests.create(h,owner,new CreateRequest("enabled",RequestKind.TASK,"다시 받는 부탁","",List.of(),null));
+        assertEquals(3,notifications.list(h,family,null,10).unreadCount());
     }
 }

@@ -9,6 +9,7 @@ import { ShareLink } from "./components/ShareLink";
 import { SpaceSettings } from "./components/SpaceSettings";
 import type { SpaceEditInbox } from "./components/SpaceEditRequests";
 import { NotificationInbox, type NotificationPage } from "./components/NotificationInbox";
+import { NotificationSettings } from "./components/NotificationSettings";
 import { CharacterChoices } from "./components/CharacterStyleForm";
 import { CareProfiles } from "./components/CareProfiles";
 import { VisitPage, HousewarmingPanel } from "./components/Housewarming";
@@ -562,6 +563,7 @@ type Panel =
   | "deletion"
   | "design"
   | "notifications"
+  | "notification-settings"
   | null;
 function HouseholdRoute() {
   const { id } = useParams();
@@ -1288,6 +1290,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               calendar: "가족 공유 캘린더",
               design: "우리 집 설정 · 집 분위기",
               notifications: "우리 집 알림함",
+              "notification-settings": "우리 집 알림 설정",
               pets: "우리 집 돌봄 프로필",
               album: "추억 앨범",
               membership: "가족 구성원 · 집 참여",
@@ -1310,11 +1313,15 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               more={notificationQuery.hasNextPage}
               loadMore={() => notificationQuery.fetchNextPage()}
               reload={() => notificationQuery.refetch()}
+              settings={() => setPanel("notification-settings")}
               open={target => {
                 if (target === "requests") setActivityTab("requests");
                 setPanel(target === "requests" ? "event" : "design");
               }}
             />
+          ) : panel === "notification-settings" ? (
+            <NotificationSettings house={snapshot.household.id} readOnly={!!snapshot.household.pendingDeleteUntil}
+              back={() => setPanel("notifications")} />
           ) : panel === "design" ? (
             studio ? (
               <p>집 분위기 설정은 실제 집에서 사용할 수 있어요.</p>

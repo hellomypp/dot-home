@@ -28,7 +28,7 @@ const time = new Intl.DateTimeFormat("ko-KR", {
   month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
 });
 
-export function NotificationInbox({ items, members, loading, failed, more, loadMore, reload, open }: {
+export function NotificationInbox({ items, members, loading, failed, more, loadMore, reload, open, settings }: {
   items: NotificationItem[];
   members: Member[];
   loading: boolean;
@@ -37,6 +37,7 @@ export function NotificationInbox({ items, members, loading, failed, more, loadM
   loadMore: () => Promise<unknown>;
   reload: () => Promise<unknown>;
   open: (target: "design" | "requests") => void;
+  settings: () => void;
 }) {
   const opening = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -63,6 +64,9 @@ export function NotificationInbox({ items, members, loading, failed, more, loadM
 
   return (
     <section className="notification-inbox" aria-busy={busy || loading}>
+      <div className="notification-tools">
+        <button type="button" className="button secondary" onClick={settings}>알림 설정</button>
+      </div>
       {loading && <p role="status">알림을 불러오는 중이에요.</p>}
       {failed && (
         <div>

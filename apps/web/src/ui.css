@@ -1870,3 +1870,32 @@ textarea {
 @media (max-width: 460px) {
   .account-menu { gap: 4px; }
 }
+
+.notification-tools {
+  display: flex;
+  justify-content: flex-end;
+}
+.notification-settings {
+  display: grid;
+  gap: 12px;
+}
+.notification-settings fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.notification-settings legend {
+  margin-bottom: 5px;
+  font-weight: 650;
+}
+.notification-settings label {
+  min-height: 52px;
+  margin: 0;
+  padding-block: 6px;
+}
+.notification-settings label small {
+  display: block;
+  color: #586853;
+  font-size: 12px;
+}

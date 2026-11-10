@@ -17,7 +17,14 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-enum NotificationKind { EDIT_REQUESTED, EDIT_APPROVED, EDIT_REJECTED, EDIT_REVOKED, FAMILY_TASK, FAMILY_NOTICE }
+enum NotificationKind {
+    EDIT_REQUESTED(NotificationGroup.EDIT), EDIT_APPROVED(NotificationGroup.EDIT),
+    EDIT_REJECTED(NotificationGroup.EDIT), EDIT_REVOKED(NotificationGroup.EDIT),
+    FAMILY_TASK(NotificationGroup.TASK), FAMILY_NOTICE(NotificationGroup.NOTICE);
+
+    final NotificationGroup group;
+    NotificationKind(NotificationGroup group){this.group=group;}
+}
 
 @Entity @Table(name="household_notification")
 class HouseholdNotification extends Row {
@@ -58,13 +65,14 @@ class HouseholdNotificationService {
     private static final Duration RETENTION=Duration.ofDays(30);
     private final HomeService homes;
     private final HouseholdNotifications notifications;
+    private final NotificationPreferenceService preferences;
 
-    HouseholdNotificationService(HomeService homes,HouseholdNotifications notifications){
-        this.homes=homes;this.notifications=notifications;
+    HouseholdNotificationService(HomeService homes,HouseholdNotifications notifications,NotificationPreferenceService preferences){
+        this.homes=homes;this.notifications=notifications;this.preferences=preferences;
     }
 
     void add(Household house,String recipient,String actor,NotificationKind kind,String source,Instant now){
-        if(recipient.equals(actor))return;
+        if(recipient.equals(actor)||!preferences.allowed(recipient,kind.group))return;
         var row=new HouseholdNotification();
         row.householdId=house.id;
         row.recipientMemberId=recipient;
