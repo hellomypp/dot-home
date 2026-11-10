@@ -1,3 +1,5 @@
+import {PresetPicker} from '../components/SpaceSettings';
+import {CharacterChoices} from '../components/CharacterStyleForm';
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,18 +10,9 @@ import {
   ChevronRight,
   Home,
   Mail,
-  Shirt,
-  Scissors,
-  Glasses,
 } from "lucide-react";
 import { api, ApiError, type Identity, type Snapshot } from "../lib/api";
 import { safeInvitePath } from "../lib/auth";
-import {
-  decodeOutfit,
-  encodeOutfit,
-  wardrobe,
-  type Outfit,
-} from "../lib/appearance";
 import { SessionBar } from "../components/SessionBar";
 import { Portrait } from "../components/Portrait";
 import { PixelScene } from "./PixelScene";
@@ -86,8 +79,7 @@ export function OnboardingExperience({
     [invite, setInvite] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [complete, setComplete] = useState<Snapshot | null>(null),
-    [tab, setTab] = useState<keyof Outfit>("top");
+    [complete, setComplete] = useState<Snapshot | null>(null);
   useEffect(() => {
     if (!complete || preview) return;
     heading.current?.focus();
@@ -146,6 +138,7 @@ export function OnboardingExperience({
         name: draft.name.trim(),
         memberName: draft.memberName.trim(),
         appearance: draft.appearance,
+        presetId:draft.presetId,
 
       };
       const data = preview
@@ -167,7 +160,6 @@ export function OnboardingExperience({
       setBusy(false);
     }
   }
-  const outfit = decodeOutfit(draft.appearance);
   const isStory = draft.step === 0 && !complete;
   return (
     <div className={`onboarding-shell ${isStory ? "story-shell" : ""}`}>
@@ -297,14 +289,12 @@ export function OnboardingExperience({
             <div className="step-copy">
               <span className="chapter">01 / A PLACE TO CALL OURS</span>
               <h1 ref={heading} tabIndex={-1}>
-                우리 집의 기본 정보를
-                <br />
-                알려주세요
+                어떤 집에서 시작할까요?
               </h1>
               <p>함께할 일상을 담을 공간이에요.</p>
             </div>
             <figure className="cottage-preview">
-              <PixelScene kind="cottage" />
+              <PixelScene kind="cottage" presetId={draft.presetId}/>
               <figcaption>{draft.name || "우리 집 이름"}</figcaption>
             </figure>
             <form
@@ -324,6 +314,7 @@ export function OnboardingExperience({
                   autoComplete="off"
                 />
               </label>
+              <PresetPicker value={draft.presetId} onChange={presetId=>change({presetId})}/>
               <div className="onboarding-actions">
                 <button
                   type="button"
@@ -349,99 +340,10 @@ export function OnboardingExperience({
                   만들어볼까요?
                 </h1>
               </div>
-              <PixelScene kind="room" appearance={draft.appearance} />
+              <PixelScene kind="room" appearance={draft.appearance} presetId={draft.presetId}/>
             </section>
             <form onSubmit={submit}>
-              <fieldset className="wardrobe">
-                <legend className="sr-only">캐릭터 꾸미기</legend>
-                <div
-                  className="wardrobe-tabs"
-                  role="tablist"
-                  aria-label="꾸미기 분류"
-                >
-                  {(
-                    [
-                      ["hair", "헤어", <Scissors size={19} />],
-                      ["top", "상의", <Shirt size={19} />],
-                      [
-                        "bottom",
-                        "하의",
-                        <svg
-                          width="19"
-                          height="19"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                          aria-hidden="true"
-                        >
-                          <path d="M6 3h12l2 18h-7l-1-10-1 10H4L6 3Zm0 4h12" />
-                        </svg>,
-                      ],
-                      ["accessory", "액세서리", <Glasses size={19} />],
-                    ] as const
-                  ).map(([key, label, icon]) => (
-                    <button
-                      type="button"
-                      key={key}
-                      role="tab"
-                      id={`tab-${key}`}
-                      aria-selected={tab === key}
-                      aria-controls="outfit-options"
-                      tabIndex={tab === key ? 0 : -1}
-                      onKeyDown={(e) => {
-                        const keys = Object.keys(wardrobe) as (keyof Outfit)[];
-                        const index = keys.indexOf(key);
-                        const next =
-                          e.key === "ArrowRight"
-                            ? keys[(index + 1) % 4]
-                            : e.key === "ArrowLeft"
-                              ? keys[(index + 3) % 4]
-                              : e.key === "Home"
-                                ? keys[0]
-                                : e.key === "End"
-                                  ? keys[3]
-                                  : null;
-                        if (next) {
-                          e.preventDefault();
-                          setTab(next);
-                          document.getElementById(`tab-${next}`)?.focus();
-                        }
-                      }}
-                      onClick={() => setTab(key)}
-                    >
-                      {icon}
-                      <span>{label}</span>
-                    </button>
-                  ))}
-                </div>
-                <div
-                  className="outfit-options"
-                  id="outfit-options"
-                  role="tabpanel"
-                  aria-labelledby={`tab-${tab}`}
-                >
-                  {wardrobe[tab].map((label, i) => {
-                    const value = encodeOutfit({ ...outfit, [tab]: i });
-                    return (
-                      <button
-                        type="button"
-                        key={label}
-                        aria-label={label}
-                        aria-pressed={outfit[tab] === i}
-                        className={outfit[tab] === i ? "selected" : ""}
-                        onClick={() => change({ appearance: value })}
-                      >
-                        <Portrait appearance={value} />
-                        <span>{label}</span>
-                        {outfit[tab] === i && (
-                          <Check className="outfit-check" size={15} />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </fieldset>
+              <CharacterChoices value={draft.appearance} onChange={appearance=>change({appearance})}/>
               <label>
                 내 캐릭터 이름
                 <input

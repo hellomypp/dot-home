@@ -48,4 +48,25 @@ MySQL 논리 백업은 `mysqldump --single-transaction --no-tablespaces`를 사�
 
 ## 미리보기 실행 파일 보존
 
-`remote-preview.py start`는 bootJar 산출물을 `.tools/remote-preview/releases/server-<SHA256>.jar`로 복사해 읽기 전용으로 실행한다. 실행 중인 JAR를 Gradle 빌드가 교체하지 않도록 하기 위해서다. `scripts/server.sh preview`는 시작 도구가 지정한 `DOT_HOME_PREVIEW_JAR`만 실행한다. 새 소스를 서버에 적용하려면 stop 후 start한다. 이전 release 파일은 JVM 실행 중에 교체/삭제하지 않는다. 파일 DB 백업은 서버 정상 종료 후 수행한다. `python3 -m unittest discover -s scripts -p 'test_*.py'`로 빌드 교체 후 기존 실행 파일 보존·손상 파일 덮어쓰기 거부를 검사한다.
+`remote-preview.py start`는 bootJar 산출물을 `.tools/remote-preview/releases/server-<SHA256>.jar`로 복사해 읽기 전용으로 실행한다. `scripts/server.sh preview`는 시작 도구가 지정한 `DOT_HOME_PREVIEW_JAR`를 실행한다. 이미 실행 중인 기본 H2 미리보기에는 `python3 scripts/remote-preview.py upgrade`를 사용한다. 백엔드를 정상 종료한 뒤 DB와 설정을 백업하고 새 JAR를 연결한다. 기동 실패 시 이전 설정으로 다시 실행하고 DB 백업은 복구 검토용으로 남긴다. `python3 -m unittest discover -s scripts -p 'test_*.py'`로 실행 파일 보존, 백업과 설정 복구를 검사한다.
+
+
+## 창밖의 지역 날씨
+
+집 화면에 들어오면 브라우저가 필요에 따라 위치 권한을 요청한다. 허용하면 기기에서 위도·경도를 소수점 한 자리로 반올림하여 Open-Meteo에 직접 보낸다. 도트홈 서버, DB, 가족 동기화에는 위치를 보내지 않는다. 위치는 열린 화면의 메모리에서만 사용한다. 위치 공유는 브라우저의 사이트 권한에서 변경할 수 있다.
+
+제공자의 지역 시간대, 일조 여부, 날씨 코드와 관측 시각을 사용한다. 열린 화면에서는 30분마다 갱신하고, 제공자가 실패하면 2시간 이내의 마지막 관측값을 표시한다. 해당 관측 시각은 보기 설정에서 확인할 수 있다. 권한이 없거나 관측이 더 오래되면 기기 시간에 맞춘 기본 하늘을 그린다. 외부에 공개하는 상업 서비스에서는 Open-Meteo의 요금제와 이용 조건을 확인한다. [Open-Meteo API 문서](https://open-meteo.com/en/docs)
+
+## 브라우저 웹 푸시
+
+브라우저 알림은 키가 설정된 HTTPS 환경에서 각 기기가 직접 켠다. 공개키와 PKCS#8 개인키는 Base64URL을 사용한다. 연락처에는 운영자가 관리하는 HTTPS 주소나 `mailto:` 주소를 사용한다. 아래 명령은 Git에서 제외되는 새 파일을 권한 0600으로 만들며 키를 출력하지 않는다.
+
+```sh
+mkdir -p .tools
+python3 scripts/generate-push-keys.py mailto:운영자메일주소 .tools/push.env
+```
+
+- Mac의 `server.sh google`과 비공개 미리보기는 `.tools/push.env`를 읽는다. 환경을 바꾼 경우 미리보기를 다시 시작한다. 배포 서버에서는 `PUSH_PUBLIC_KEY`, `PUSH_PRIVATE_KEY`, `PUSH_SUBJECT`를 서버 변수에 저장한다. 개인키 파일은 비밀값 보관 절차에 포함한다. 키가 바뀌면 각 브라우저에서 알림을 다시 연결한다.
+- iPhone과 iPad에서는 Safari 공유 메뉴의 ‘홈 화면에 추가’를 사용한다. 홈 화면의 도트홈을 연 뒤 ‘알림함 → 알림 설정 → 이 기기 알림 켜기’를 누른다. [WebKit Web Push](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)
+- 대상 환경에서 두 계정으로 가족 공지를 만들어 실제 OS 알림을 확인한다. 조용한 시간, 알림 종류 OFF, 로그아웃, 기기에서 끈 경우, 종료된 가족 참여도 각각 확인한다. 앱 안 알림함은 계속 사용할 수 있다.
+- 발송 대기열은 DB에 저장한다. 운영은 단일 앱 인스턴스를 유지한다. 재시도는 같은 이벤트로 최대 세 번, 전달 수명은 5분이다. 만료된 구독은 공급자의 404·410 응답 후 정리한다. 공급자의 수락과 단말의 표시 성공은 별도로 판단한다. 잠금 화면에는 기본 문구가 표시된다. 집별로 상세 표시를 켜면 가족 이름과 알림 종류만 브라우저가 복호화한다. [HTTP Web Push](https://www.rfc-editor.org/rfc/rfc8030.html)

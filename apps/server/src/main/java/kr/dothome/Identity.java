@@ -49,9 +49,9 @@ class SecurityConfiguration {
         if(environment.matchesProfiles("dev")&&environment.matchesProfiles("prod","google"))throw new IllegalStateException("Development login cannot be combined with production/OAuth profiles");
     }
     @Bean CsrfTokenRepository csrfRepository() { return new HttpSessionCsrfTokenRepository(); }
-    @Bean SecurityFilterChain security(HttpSecurity http,CsrfTokenRepository csrfRepository,ObjectProvider<ClientRegistrationRepository> clients,IdentityService identity,Environment environment,SocketRegistry sockets,GoogleIdentity google,@org.springframework.beans.factory.annotation.Value("${app.origin}") String appOrigin) throws Exception {
+    @Bean SecurityFilterChain security(HttpSecurity http,CsrfTokenRepository csrfRepository,ObjectProvider<ClientRegistrationRepository> clients,IdentityService identity,Environment environment,SocketRegistry sockets,GoogleIdentity google,PushRegistration push,@org.springframework.beans.factory.annotation.Value("${app.origin}") String appOrigin) throws Exception {
         validateProfiles(environment);
-        http.authorizeHttpRequests(a -> a.requestMatchers(org.springframework.http.HttpMethod.GET,"/","/index.html","/login","/onboarding","/settings","/home/*","/invite/*","/visit/*","/assets/**","/favicon.ico","/healthz").permitAll()
+        http.authorizeHttpRequests(a -> a.requestMatchers(org.springframework.http.HttpMethod.GET,"/","/index.html","/login","/onboarding","/homes","/settings","/home/*","/invite/*","/visit/*","/assets/**","/art/**","/favicon.ico","/push-worker.js","/manifest.webmanifest","/healthz").permitAll()
             .requestMatchers("/api/auth/csrf","/api/auth/config","/api/invitations/*","/oauth2/**","/login/**","/error").permitAll()
             .requestMatchers("/api/auth/dev").access((auth, context) -> new org.springframework.security.authorization.AuthorizationDecision(environment.matchesProfiles("dev") && localRequest(context.getRequest())))
             .anyRequest().authenticated());
@@ -62,7 +62,11 @@ class SecurityConfiguration {
             response.setStatus(403); response.setContentType("application/json;charset=UTF-8"); response.getWriter().write("{\"code\":\"FORBIDDEN\",\"message\":\"접근 권한 또는 CSRF 토큰을 확인해주세요.\"}");
         }));
         http.logout(l -> l.logoutUrl("/api/logout").addLogoutHandler((request,response,authentication) -> {
-            HttpSession session=request.getSession(false); if(session!=null) sockets.closeHttpSession(session.getId());
+            HttpSession session=request.getSession(false);
+            if(session!=null){
+                if(authentication!=null)push.logout(authentication.getName(),session.getId());
+                sockets.closeHttpSession(session.getId());
+            }
         }).logoutSuccessHandler((request,response,authentication) -> response.setStatus(204)));
         if(environment.matchesProfiles("prod"))http.headers(h -> h.httpStrictTransportSecurity(t -> t.requestMatcher(request -> true)));
         http.headers(h -> h.referrerPolicy(r -> r.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)));

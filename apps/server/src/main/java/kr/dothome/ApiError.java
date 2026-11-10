@@ -17,10 +17,22 @@ class ApiException extends RuntimeException {
     static ApiException conflict(String message) { return new ApiException(HttpStatus.CONFLICT,"CONFLICT",message); }
     static ApiException invalid(String message) { return new ApiException(HttpStatus.BAD_REQUEST,"INVALID_INPUT",message); }
 }
+class InviteRateLimited extends ApiException {
+    final long retryAfter;
+    InviteRateLimited(long retryAfter){
+        super(HttpStatus.TOO_MANY_REQUESTS,"INVITE_RATE_LIMITED",
+            "짧은 시간에 초대 링크를 여러 번 만들었어요. 약 "+((retryAfter+59)/60)+"분 후 다시 만들어 주세요.");
+        this.retryAfter=retryAfter;
+    }
+}
 @RestControllerAdvice
 class ApiError {
     @ExceptionHandler(ApiException.class)
-    ResponseEntity<?> domain(ApiException ex) { return ResponseEntity.status(ex.status).body(Map.of("code",ex.code,"message",ex.getMessage())); }
+    ResponseEntity<?> domain(ApiException ex) {
+        var response=ResponseEntity.status(ex.status);
+        if(ex instanceof InviteRateLimited limit)response.header(HttpHeaders.RETRY_AFTER,Long.toString(limit.retryAfter));
+        return response.body(Map.of("code",ex.code,"message",ex.getMessage()));
+    }
     @ExceptionHandler({MethodArgumentNotValidException.class,ConstraintViolationException.class,HttpMessageNotReadableException.class})
     ResponseEntity<?> validation(Exception ex) { return ResponseEntity.badRequest().body(Map.of("code","INVALID_INPUT","message","입력 값을 확인해주세요.")); }
     @ExceptionHandler(OptimisticLockingFailureException.class)

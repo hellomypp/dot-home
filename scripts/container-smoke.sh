@@ -37,6 +37,7 @@ print(re.search(r'src="(/assets/[^\"]+\.js)"',open(sys.argv[1]).read()).group(1)
 PY
 )
 curl -fsS -D "$artifact_dir/asset-headers" "$base$asset" >/dev/null
+curl -fsS -D "$artifact_dir/art-headers" "$base/art/v62/assets/characters/adult_female.png" >"$artifact_dir/character.png"
 [[ $(curl -sS -o /dev/null -w '%{http_code}' "$base/assets/missing.js") == 404 ]]
 [[ $(curl -sS -o /dev/null -w '%{http_code}' "$base/api/me") == 401 ]]
 [[ $(curl -sS -o /dev/null -w '%{http_code}' -X POST "$base/api/auth/dev") == 403 ]]
@@ -47,20 +48,24 @@ curl -sS -D "$artifact_dir/oauth-headers" -o /dev/null -H 'Host: untrusted.examp
 docker cp "$app:/app/app.jar" "$artifact_dir/app.jar" >/dev/null
 python3 - "$artifact_dir" <<'PY'
 from pathlib import Path
-import sys,json,zipfile,urllib.parse
+import sys,json,zipfile,urllib.parse,struct
 p=Path(sys.argv[1]);assert 'immutable' in (p/'asset-headers').read_text().lower()
+assert 'immutable' in (p/'art-headers').read_text().lower()
+assert struct.unpack('>II',(p/'character.png').read_bytes()[16:24])==(96,160)
 headers=(p/'csrf-headers').read_text().lower();assert all(v in headers for v in ['secure','httponly','samesite=lax','referrer-policy: no-referrer','strict-transport-security:'])
 a=json.loads((p/'auth').read_text());assert a=={'googleEnabled':True,'devEnabled':False}
 lines=(p/'oauth-headers').read_text().splitlines();location=next(l.split(':',1)[1].strip() for l in lines if l.lower().startswith('location:'))
 query=urllib.parse.parse_qs(urllib.parse.urlsplit(location).query);assert query['redirect_uri']==['https://beta.example.org/login/oauth2/code/google']
 with zipfile.ZipFile(p/'app.jar') as z:
  names=z.namelist();assert 'BOOT-INF/classes/static/index.html' in names
+ assert 'BOOT-INF/classes/spaces/space-catalog.json' in names
+ assert 'BOOT-INF/classes/static/art/v62/assets/characters/adult_female.png' in names
  assert not any('BOOT-INF/lib/h2-' in n for n in names)
  assert not any('.tools/' in n or '.env' in n for n in names)
  assert b'SPA delivery test fixture' not in z.read('BOOT-INF/classes/static/index.html')
 PY
 [[ $(docker inspect "$app" --format '{{.Config.User}}') == 10001:10001 ]]
-[[ $(sql 'SELECT COUNT(*) FROM dothome.flyway_schema_history WHERE success=1') -ge 7 ]]
+[[ $(sql 'SELECT COUNT(*) FROM dothome.flyway_schema_history WHERE success=1') -ge 8 ]]
 sql 'CREATE TABLE dothome.beta_persistence_probe(id INT PRIMARY KEY); INSERT INTO dothome.beta_persistence_probe VALUES (1)' >/dev/null
 echo "Verify application restart and persistent database"
 docker restart "$app" >/dev/null; wait_app

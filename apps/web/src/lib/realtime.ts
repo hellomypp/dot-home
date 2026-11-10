@@ -31,7 +31,7 @@ export function connectWorld(id:string,refresh:()=>Promise<number>,state:(value:
       client.subscribe('/user/queue/sync',()=>{state('online');void synchronize();});
       client.publish({destination:`/app/households/${id}/sync`,body:'{}'});
     },
-    onWebSocketClose:()=>{if(!stopped)state('offline');},onStompError:frame=>{state('offline');onError(frame.headers.message||'실시간 연결 권한을 확인해 주세요.');}
+    onWebSocketClose:event=>{if(!stopped){state('offline');if(event.code===1008)void synchronize();}},onStompError:frame=>{state('offline');onError(frame.headers.message||'실시간 연결 권한을 확인해 주세요.');}
   });
   client.activate();
   return {send:(body:unknown)=>{if(!client.connected){onError('실시간 연결 후 다시 움직여 주세요.');return;}client.publish({destination:`/app/households/${id}/actions`,body:JSON.stringify(body)});},destroy:()=>{stopped=true;void client.deactivate();},refresh:synchronize};

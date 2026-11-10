@@ -20,10 +20,19 @@ class Account extends Row {
 class Household extends Row {
     @Column(nullable = false, length = 80) String name;
     @Column(nullable = false, length = 36) String ownerId;
+    @Column(nullable=false,length=32) String presetId="classic_home";
+    long designVersion;
+    @Column(nullable=false,length=512) String objectVariants="{}";
+    @Column(nullable=false,length=2048) String objectPositions="{}";
+    @Column(nullable=false,length=32) String floorStyle="original";
+    @Column(nullable=false,length=32) String wallStyle="original";
     long revision;
+    Instant pendingDeleteUntil;
+    @Column(length=80) String deletionRequestId;
+    long deletionVersion;
     protected Household() {}
 }
-@Entity @Table(name = "membership", uniqueConstraints = @UniqueConstraint(columnNames = {"household_id", "user_id"}))
+@Entity @Table(name = "membership")
 class Member extends Row {
     @Column(nullable = false, length = 36) String householdId;
     @Column(nullable = false, length = 36) String userId;
@@ -36,10 +45,14 @@ class Member extends Row {
     @Column(nullable = false, length = 200) String thought = "";
     Instant statusExpiresAt;
     Instant statusUpdatedAt = Instant.now();
-    double x = 320, y = 288;
+    @Column(nullable=false,length=16) String avatarSpace="v62";
+    double x = 224, y = 272;
     @Column(nullable = false, length = 24) String action = "idle";
     Instant avatarUpdatedAt = Instant.now();
     boolean active = true;
+    Instant endedAt;
+    @Column(length=80) String exitRequestId;
+    long membershipVersion;
     protected Member() {}
 }
 @Entity @Table(name = "pet")
@@ -48,6 +61,12 @@ class Pet extends Row {
     @Column(nullable = false, length = 40) String name;
     @Column(nullable = false, length = 24) String kind;
     @Column(nullable = false, length = 24) String appearance;
+    @Enumerated(EnumType.STRING) @Column(length = 24) PetSpecies speciesGroup;
+    @Column(length = 80) String speciesName;
+    Integer tankSlot;
+    @Column(length = 36) String guardianMemberId;
+    Instant archivedAt;
+    @Version long version;
     protected Pet() {}
 }
 @Entity @Table(name = "invitation")
@@ -55,6 +74,7 @@ class Invitation extends Row {
     @Column(nullable = false, length = 36) String householdId;
     @Column(nullable = false, unique = true, length = 64) String tokenHash;
     Instant expiresAt;
+    Instant createdAt;
     boolean cancelled;
     @Column(length = 36) String acceptedBy;
     Instant acceptedAt;
@@ -89,6 +109,7 @@ class LifeEvent extends Row {
     @Column(nullable = false, length = 80) String requestId;
     @Column(nullable = false, length = 30) String type;
     @Column(nullable = false, length = 300) String message;
+    @Column(nullable=false,length=12) String eventSource="MANUAL";
     Instant createdAt = Instant.now();
     protected LifeEvent() {}
 }

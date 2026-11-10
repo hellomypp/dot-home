@@ -35,3 +35,62 @@
 .modal .icon-button{min-width:44px;min-height:44px}.modal:has(.family-calendar){padding-inline:16px}.calendar-grid{gap:0}.modal input,.modal textarea,.modal select{font-size:16px;min-height:46px}.housewarming-panel p{overflow-wrap:anywhere;line-height:1.8}.housewarming-panel h3{margin-top:25px}.family-calendar .muted{font-size:12px}
 .visit-page .onboard-card>p{font-size:14px;line-height:1.8}.visit-page input,.visit-page textarea{font-size:16px}.visit-page .onboard-card{overflow-wrap:anywhere}
 .visit-header{display:flex;align-items:center;justify-content:space-between;max-width:540px;margin:auto;gap:16px}.visit-header .brand{font-size:22px;font-weight:700}
+
+.foreground-location {
+  display: grid;
+  gap: 0.65rem;
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+.foreground-location :is(h3, p) { margin: 0; }
+.foreground-location :is(.location-actions, .button + .button) { margin-top: 0.4rem; }
+.foreground-location .location-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.foreground-location .location-actions .button { margin-top: 0; }
+.foreground-location .button { min-height: 44px; }
+
+.notification-device {
+  display: grid;
+  justify-items: start;
+  gap: 0.55rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--line);
+}
+.notification-device :is(h3, p) { margin: 0; }
+.quiet-hours-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; }
+.quiet-hours-fields :is(p, button) { grid-column: 1 / -1; }
+.quiet-hours-fields input { min-height: 44px; min-width: 0; width: 100%; }
+
+.profile-records-link {
+  min-height: 44px;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  line-height: 1.35;
+  border-radius: 0.5rem;
+}
+.profile-records-link:hover { background: #edf1e7; }
+.former-notes { display: grid; gap: 0.8rem; margin: 0.6rem 0 1.1rem; }
+.former-notes h2 { display: flex; align-items: center; gap: 0.5rem; font-size: 1.05rem; }
+.former-records-page .former-notes ul { display: grid; gap: 0.65rem; margin: 0; }
+.former-note {
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  background: var(--cream);
+}
+.former-note > header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.4rem; }
+.former-note time { font-size: 0.82rem; color: #5e6c5b; }
+.former-note > p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0.5rem 0; }
+.former-note-confirmation { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.former-note-confirmation p { flex-basis: 100%; }
+.fridge-tabs.former-records-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0.8rem 0;
+}
+.fridge-tabs.former-records-tabs .button { width: 100%; min-width: 0; padding-inline: 0.35rem; white-space: nowrap; }
+.former-notes > p { word-break: keep-all; overflow-wrap: anywhere; }
+.former-note h3 { margin: 0.45rem 0; font-size: 1rem; overflow-wrap: anywhere; }

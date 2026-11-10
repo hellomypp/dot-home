@@ -8,6 +8,8 @@ import java.security.Principal;
 import java.time.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.server.*;
 import org.springframework.messaging.*;
 import org.springframework.messaging.handler.annotation.*;
@@ -40,6 +42,24 @@ class SocketRegistry {
     void forget(String id){connections.remove(id);scopes.remove(id);controllers.entrySet().removeIf(e->e.getValue().equals(id));}
     void close(WebSocketSession session){try{session.close(CloseStatus.POLICY_VIOLATION);}catch(Exception ignored){}finally{forget(session.getId());}}
     void closeHttpSession(String id){connections.values().stream().filter(s->id.equals(s.getAttributes().get("httpSession"))).toList().forEach(this::close);}
+    synchronized void subscribe(String sessionId,String house,String user){
+        if(!connections.containsKey(sessionId)||members.findByHouseholdIdAndUserIdAndActiveTrue(house,user).isEmpty())
+            throw new org.springframework.security.access.AccessDeniedException("Membership ended");
+        scopes.computeIfAbsent(sessionId,k->ConcurrentHashMap.newKeySet()).add(house);
+        controllers.put(house+":"+user,sessionId);
+    }
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    @TransactionalEventListener(phase=TransactionPhase.AFTER_COMMIT)
+    void revoke(CommittedMembershipExit event){
+        List<WebSocketSession> affected;
+        synchronized(this){
+            affected=connections.values().stream().filter(session->session.getPrincipal()!=null
+                &&event.userId().equals(session.getPrincipal().getName())
+                &&scopes.getOrDefault(session.getId(),Set.of()).contains(event.householdId())).toList();
+            affected.forEach(session->forget(session.getId()));
+        }
+        affected.forEach(this::close);
+    }
     @Scheduled(fixedDelay=10_000) void expire(){for(WebSocketSession s:connections.values()){boolean revoked=scopes.getOrDefault(s.getId(),Set.of()).stream().anyMatch(h->s.getPrincipal()==null||members.findByHouseholdIdAndUserIdAndActiveTrue(h,s.getPrincipal().getName()).isEmpty());if(!alive(s.getAttributes())||revoked)close(s);}}
 }
 
@@ -65,8 +85,14 @@ class SocketConfiguration implements WebSocketMessageBrokerConfigurer {
             if(h.getUser()==null||!registry.alive(h.getSessionAttributes()))throw new org.springframework.security.access.AccessDeniedException("Session expired");
             if(h.getCommand()==StompCommand.CONNECT){String actual=h.getFirstNativeHeader("X-CSRF-TOKEN"),expected=Objects.toString(h.getSessionAttributes().get("csrf"),"");if(actual==null||!MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),actual.getBytes(StandardCharsets.UTF_8)))throw new org.springframework.security.access.AccessDeniedException("Invalid CSRF token");return message;}
             if(h.getCommand()==StompCommand.SEND||h.getCommand()==StompCommand.SUBSCRIBE){String destination=Objects.toString(h.getDestination(),"");if(h.getCommand()==StompCommand.SUBSCRIBE&&Set.of("/user/queue/errors","/user/queue/sync").contains(destination))return message;
-                String pattern=h.getCommand()==StompCommand.SEND?"/app/households/([a-f0-9-]{36})/(?:actions|sync)":"/topic/households/([a-f0-9-]{36})/events";var matcher=java.util.regex.Pattern.compile(pattern).matcher(destination);if(!matcher.matches())throw new org.springframework.security.access.AccessDeniedException("Destination denied");String householdId=matcher.group(1);homes.requireMember(householdId,h.getUser().getName());
-                String control=householdId+":"+h.getUser().getName();if(h.getCommand()==StompCommand.SUBSCRIBE){registry.scopes.computeIfAbsent(h.getSessionId(),k->ConcurrentHashMap.newKeySet()).add(householdId);registry.controllers.put(control,h.getSessionId());}else if(destination.endsWith("/actions")&&!h.getSessionId().equals(registry.controllers.get(control)))throw new org.springframework.security.access.AccessDeniedException("Another tab controls this character");
+                String pattern=h.getCommand()==StompCommand.SEND?"/app/households/([a-f0-9-]{36})/(?:actions|sync)":"/topic/households/([a-f0-9-]{36})/events";var matcher=java.util.regex.Pattern.compile(pattern).matcher(destination);if(!matcher.matches())throw new org.springframework.security.access.AccessDeniedException("Destination denied");String householdId=matcher.group(1);
+                if(h.getCommand()==StompCommand.SUBSCRIBE)registry.subscribe(h.getSessionId(),householdId,h.getUser().getName());
+                else {
+                    homes.requireMember(householdId,h.getUser().getName());
+                    String control=householdId+":"+h.getUser().getName();
+                    if(destination.endsWith("/actions")&&!h.getSessionId().equals(registry.controllers.get(control)))
+                        throw new org.springframework.security.access.AccessDeniedException("Another tab controls this character");
+                }
             }else if(h.getCommand()!=StompCommand.UNSUBSCRIBE)throw new org.springframework.security.access.AccessDeniedException("Unsupported command");
             return message;
             } catch(RuntimeException denied){var connection=registry.connections.get(h.getSessionId());if(connection!=null)registry.close(connection);return null;}
@@ -78,16 +104,17 @@ class SocketConfiguration implements WebSocketMessageBrokerConfigurer {
 class MovementService {
     final HomeService homes;final Map<String,Long> rate=new ConcurrentHashMap<>();final Map<String,LinkedHashSet<String>> requests=new ConcurrentHashMap<>();
     MovementService(HomeService homes){this.homes=homes;}
-    static final double[][] HOME={{336,120,184,46},{542,100,44,65},{70,218,130,45},{92,304,96,32},{55,335,30,30},{361,226,78,51},{510,245,75,110},{242,130,32,60},{236,326,63,36}};
     static final double[][] OTHER={{112,200,120,48},{410,200,110,48}};
-    static boolean walkable(double x,double y,String scene){if(!Double.isFinite(x)||!Double.isFinite(y)||x<51||x>589||y<137||y>399)return false;for(double[] r:scene.equals("home")?HOME:OTHER)if(x>r[0]-7&&x<r[0]+r[2]+7&&y>r[1]-7&&y<r[1]+r[3]+7)return false;return true;}
+    static boolean walkable(double x,double y,String scene){if(scene.equals("home"))return Spaces.walkable(x,y,"garden_home");if(!Double.isFinite(x)||!Double.isFinite(y)||x<51||x>589||y<137||y>399)return false;for(double[] r:OTHER)if(x>r[0]-7&&x<r[0]+r[2]+7&&y>r[1]-7&&y<r[1]+r[3]+7)return false;return true;}
     @Transactional void apply(String householdId,String userId,Api.Intent intent){
         Household house=homes.lock(householdId,userId);Member member=homes.requireMember(householdId,userId);if(!member.place.equals(intent.scene()))throw ApiException.invalid("내 캐릭터가 있는 공간에서만 움직일 수 있어요.");
+        if("office".equals(member.place)||"school".equals(member.place))
+            throw ApiException.invalid("이 장면에서는 캐릭터를 직접 움직일 수 없어요.");
         var seen=requests.computeIfAbsent(member.id,k->new LinkedHashSet<>());synchronized(seen){if(seen.contains(intent.requestId()))return;}
         long now=System.currentTimeMillis();Long previous=rate.put(member.id,now);if(previous!=null&&now-previous<120)throw ApiException.invalid("이동 요청이 너무 빨라요.");
-        if(intent.kind().equals("MOVE_INTENT")){if(intent.x()==null||intent.y()==null||!walkable(intent.x(),intent.y(),intent.scene()))throw ApiException.invalid("이곳으로 이동할 수 없어요.");member.x=intent.x();member.y=intent.y();member.action="walk";}
-        else{if(!Set.of("sofa","fridge","table","window").contains(Objects.toString(intent.target(),"")))throw ApiException.invalid("알 수 없는 가구예요.");member.action="idle";}
-        member.avatarUpdatedAt=Instant.now();synchronized(seen){seen.add(intent.requestId());while(seen.size()>256)seen.remove(seen.iterator().next());}homes.emit(house,"AVATAR_ACTION_CHANGED",HomeService.memberView(member));
+        if(intent.kind().equals("MOVE_INTENT")){if(intent.x()==null||intent.y()==null||!(intent.scene().equals("home")?SpaceLayout.room(Spaces.view(house)).walkable(intent.x(),intent.y()):walkable(intent.x(),intent.y(),intent.scene())))throw ApiException.invalid("이곳으로 이동할 수 없어요.");member.x=intent.x();member.y=intent.y();member.avatarSpace="v62";member.action="walk";}
+        else{if(!Set.of("sofa","fridge","table","window","calendar","entrance","pet_rest").contains(Objects.toString(intent.target(),"")))throw ApiException.invalid("알 수 없는 가구예요.");member.action="idle";}
+        member.avatarUpdatedAt=Instant.now();synchronized(seen){seen.add(intent.requestId());while(seen.size()>256)seen.remove(seen.iterator().next());}homes.emit(house,"AVATAR_ACTION_CHANGED",homes.memberView(member,house));
     }
 }
 

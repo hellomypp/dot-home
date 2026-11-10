@@ -16,8 +16,11 @@ import java.time.*;
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"dev","test"})
 class HouseholdIntegrationTest {
-    @Autowired HomeService homes; @Autowired IdentityService identity; @Autowired Invitations invitations; @Autowired Members members; @Autowired MovementService movement; @Autowired Environment env; @Autowired ObjectMapper json;
+    @Autowired HomeService homes; @Autowired IdentityService identity; @Autowired Invitations invitations; @Autowired Members members; @Autowired MemberExpressions expressions; @Autowired MovementService movement; @Autowired Environment env; @Autowired ObjectMapper json;
     @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired MembershipLifecycle membership;
+    @Autowired CareAlbumService album;
+    @Autowired DependentService dependentProfiles;
     String user(){return identity.resolve("test",UUID.randomUUID().toString(),"검증 구성원").id;}
     @Test void nicknameIsOwnHouseholdProfileAndSurvivesRelogin(){
         String key=UUID.randomUUID().toString(),owner=user();
@@ -52,7 +55,7 @@ class HouseholdIntegrationTest {
         assertEquals(Set.of("cat","dog"),restored.pets().stream().map(Api.PetView::kind).collect(java.util.stream.Collectors.toSet()));
         String legacy=user();assertEquals("sage",homes.world(house(legacy).household().id(),legacy).members().getFirst().appearance());
     }
-    @Test void legacyLimitDoesNotRestrictAdmissionAndPetsAreOwnerManaged(){
+    @Test void legacyLimitDoesNotRestrictAdmissionAndPetsStayHouseScoped(){
         String owner=user(),family=user(),outsider=user(),h=house(owner).household().id();
         jdbc.update("UPDATE household SET planned_people=1 WHERE id=?",h);
         homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("가족","blue"));
@@ -63,7 +66,7 @@ class HouseholdIntegrationTest {
         assertEquals("보리",changed.pets().getFirst().name());assertEquals("dog",changed.pets().getFirst().kind());
         assertEquals("cream",changed.pets().getFirst().appearance());
         assertEquals("보리",homes.world(h,family).pets().getFirst().name());
-        assertThrows(ApiException.class,()->homes.addPet(h,family,new Api.PetInput("금지","cat","cream")));
+        assertThrows(ApiException.class,()->homes.editPet(h,family,pet.id(),new Api.PetEdit("금지","cat")));
         assertThrows(ApiException.class,()->homes.editPet(h,outsider,pet.id(),new Api.PetEdit("금지","cat")));
         String other=house(owner).household().id();
         assertThrows(ApiException.class,()->homes.editPet(other,owner,pet.id(),new Api.PetEdit("위조","cat")));
@@ -71,6 +74,77 @@ class HouseholdIntegrationTest {
         assertThrows(ApiException.class,()->homes.addPet(h,owner,new Api.PetInput("이름","other","cream")));
         assertThrows(ApiException.class,()->homes.addPet(h,owner,new Api.PetInput("이름","cat","invalid")));
         assertEquals(1,homes.world(h,owner).pets().size());
+    }
+    @Test void deletedCareProfilesLeaveIndependentPortraitsThatTheOwnerCanErase(){
+        String owner=user(),guardian=user(),other=user(),h=house(owner).household().id();
+        homes.accept(homes.invite(h,owner).token(),guardian,new Api.Accept("보호자","sage"));
+        homes.accept(homes.invite(h,owner).token(),other,new Api.Accept("가족","sage"));
+        var fish=homes.addPet(h,guardian,new Api.PetInput("별이",null,null,PetSpecies.FISH,"베타",null,17)).pets().getFirst();
+        var baby=dependentProfiles.save(h,guardian,null,new DependentInput("BABY","달이",null,null,null));
+        assertTrue(album.page(h,owner,0).items().isEmpty());
+        assertThrows(ApiException.class,()->homes.archivePet(h,other,fish.id(),fish.version()));
+        homes.archivePet(h,guardian,fish.id(),fish.version());
+        dependentProfiles.archive(h,guardian,baby.id(),baby.version());
+        assertTrue(homes.world(h,owner).pets().isEmpty());
+        assertTrue(homes.world(h,owner).dependents().isEmpty());
+        var photos=album.page(h,owner,0).items();
+        assertEquals(Set.of("별이","달이"),photos.stream().map(CarePhotoView::name).collect(java.util.stream.Collectors.toSet()));
+        assertNotEquals(photos.getFirst().image(),photos.getLast().image());
+        assertTrue(photos.getFirst().image().startsWith("data:image/png;base64,iVBOR"));
+        assertTrue(album.page(h,other,0).items().stream().noneMatch(CarePhotoView::canDelete));
+        assertThrows(ApiException.class,()->album.page(h,user(),0));
+        assertThrows(ApiException.class,()->album.delete(h,other,photos.getFirst().id()));
+        for(var photo:photos)album.delete(h,owner,photo.id());
+        assertTrue(album.page(h,guardian,0).items().isEmpty());
+        assertThrows(ApiException.class,()->homes.archivePet(h,owner,fish.id(),fish.version()));
+        assertTrue(album.page(h,guardian,0).items().isEmpty());
+    }
+    @Test void tankPlacementRejectsBlockedAndOccupiedTilesAndPersistsAcrossReload(){
+        String owner=user(),h=house(owner).household().id();
+        assertEquals(400,assertThrows(ApiException.class,()->homes.addPet(h,owner,
+            new Api.PetInput("수조",null,null,PetSpecies.FISH,"",null,0))).status.value());
+        var placed=homes.addPet(h,owner,new Api.PetInput("수조",null,null,PetSpecies.FISH,"",null,17)).pets().getFirst();
+        assertEquals(17,homes.world(h,owner).pets().getFirst().tankSlot());
+        assertEquals(409,assertThrows(ApiException.class,()->homes.addPet(h,owner,
+            new Api.PetInput("두번째",null,null,PetSpecies.FISH,"",null,17))).status.value());
+        assertEquals(400,assertThrows(ApiException.class,()->homes.addPet(h,owner,
+            new Api.PetInput("강아지","dog","cream",null,null,null,18))).status.value());
+        homes.archivePet(h,owner,placed.id(),placed.version());
+        assertEquals(17,homes.addPet(h,owner,
+            new Api.PetInput("두번째",null,null,PetSpecies.FISH,"",null,17)).pets().getFirst().tankSlot());
+    }
+    @Test void petSpeciesAndGuardianAreScopedAndVersioned(){
+        String owner=user(),family=user(),outsider=user(),h=house(owner).household().id();
+        var membership=homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("가족","sage"));
+        String guardian=membership.meMemberId(), outsiderMember=house(outsider).meMemberId();
+        assertThrows(ApiException.class,()->homes.addPet(h,family,new Api.PetInput("별이",null,null,PetSpecies.FISH,"베타",outsiderMember)));
+        var fish=homes.addPet(h,family,new Api.PetInput("별이",null,null,PetSpecies.FISH," 베타 ",null)).pets().getFirst();
+        assertEquals("TANK",fish.habitat());assertEquals("tank",fish.appearanceId());assertEquals("other",fish.kind());
+        assertEquals("베타",fish.speciesName());assertEquals(guardian,fish.guardianMemberId());
+        assertEquals(2,homes.world(h,owner).members().size());
+        assertThrows(ApiException.class,()->homes.editPet(h,outsider,fish.id(),new Api.PetEdit("위조",null,PetSpecies.FISH,null,null,0L)));
+        var updated=homes.editPet(h,family,fish.id(),new Api.PetEdit("별밤",null,PetSpecies.FISH,null,null,0L)).pets().getFirst();
+        assertEquals(1L,updated.version());assertEquals("베타",updated.speciesName());
+        assertThrows(ApiException.class,()->homes.editPet(h,owner,fish.id(),new Api.PetEdit("충돌",null,PetSpecies.FISH,null,null,0L)));
+        assertEquals(updated,homes.world(h,owner).pets().getFirst());
+    }
+    @Test void parallelFreshInvitesAfterDepartureKeepOneActiveMembership()throws Exception{
+        String owner=user(),family=user(),h=house(owner).household().id();
+        var old=homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("첫 가입","sage"));
+        membership.leave(h,family,new LeaveHouse("leave"));
+        var first=homes.invite(h,owner);
+        var second=homes.invite(h,owner);
+        try(var pool=Executors.newFixedThreadPool(2)){
+            var start=new CountDownLatch(1);
+            var a=pool.submit(()->{start.await();return homes.accept(first.token(),family,new Api.Accept("재가입","sage"));});
+            var b=pool.submit(()->{start.await();return homes.accept(second.token(),family,new Api.Accept("재가입","sage"));});
+            start.countDown();
+            String active=a.get(10,TimeUnit.SECONDS).meMemberId();
+            assertEquals(active,b.get(10,TimeUnit.SECONDS).meMemberId());
+            assertNotEquals(old.meMemberId(),active);
+        }
+        assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM membership WHERE household_id=? AND user_id=?",Integer.class,h,family));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM membership WHERE household_id=? AND user_id=? AND active=TRUE",Integer.class,h,family));
     }
     @Test void sameUserConcurrentDifferentInvitesNeverCreateDuplicateMembership()throws Exception{
         String owner=user(),guest=user(),h=house(owner).household().id();var a=homes.invite(h,owner);var b=homes.invite(h,owner);
@@ -84,12 +158,52 @@ class HouseholdIntegrationTest {
     }
     @Test void zeroPetsAndOnlyAcceptedMembersAppear(){String owner=user(),guest=user();var house=house(owner);assertEquals(1,house.members().size());assertTrue(house.pets().isEmpty());var invite=homes.invite(house.household().id(),owner);homes.preview(invite.token());assertEquals(1,homes.world(house.household().id(),owner).members().size());var joined=homes.accept(invite.token(),guest,new Api.Accept("나래","blue"));assertEquals(2,joined.members().size());assertEquals(2,homes.accept(invite.token(),guest,new Api.Accept("나래","blue")).members().size());assertThrows(ApiException.class,()->homes.accept(invite.token(),user(),new Api.Accept("누군가","rose")));}
     @Test void householdScopeAndOwnerAreEnforced(){String owner=user(),outsider=user();var house=house(owner);String id=house.household().id();assertEquals(403,assertThrows(ApiException.class,()->homes.world(id,outsider)).status.value());assertThrows(ApiException.class,()->homes.addPantry(id,outsider,new Api.CreatePantry("우유","냉장",1,"개",null)));var invitation=homes.invite(id,owner);homes.accept(invitation.token(),outsider,new Api.Accept("회원","sage"));assertThrows(ApiException.class,()->homes.invite(id,outsider));}
+    @Test void newInvitesLastSevenDaysAndExistingExpiryIsPreserved(){
+        String owner=user(),id=house(owner).household().id();
+        Instant issuedAfter=Instant.now();
+        var existing=homes.invite(id,owner);
+        var row=invitations.findById(existing.id()).orElseThrow();
+        Instant legacyExpiry=issuedAfter.plus(Duration.ofHours(72)).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        row.expiresAt=legacyExpiry;
+        invitations.saveAndFlush(row);
+
+        var fresh=homes.invite(id,owner);
+        assertFalse(fresh.expiresAt().isBefore(issuedAfter.plus(Duration.ofDays(7))));
+        assertFalse(fresh.expiresAt().isAfter(Instant.now().plus(Duration.ofDays(7))));
+        assertEquals(legacyExpiry,homes.preview(existing.token()).expiresAt());
+    }
     @Test void cancelledAndExpiredInvitationsDoNotJoin(){String owner=user(),guest=user();String id=house(owner).household().id();var invite=homes.invite(id,owner);homes.cancel(id,owner,invite.id());assertThrows(ApiException.class,()->homes.accept(invite.token(),guest,new Api.Accept("회원","blue")));var expired=homes.invite(id,owner);var row=invitations.findById(expired.id()).orElseThrow();row.expiresAt=Instant.now().minusSeconds(1);invitations.saveAndFlush(row);assertThrows(ApiException.class,()->homes.preview(expired.token()));assertEquals(1,homes.world(id,owner).members().size());}
+    @Test void invitationIssuanceLimitIsAtomicAndDoesNotBlockAcceptingExistingLinks()throws Exception{
+        String owner=user(),family=user(),h=house(owner).household().id();
+        var cancelled=homes.invite(h,owner);
+        homes.cancel(h,owner,cancelled.id());
+        var valid=homes.invite(h,owner);
+        for(int i=2;i<HomeService.INVITE_ISSUANCE_LIMIT-1;i++)homes.invite(h,owner);
+        var gate=new CountDownLatch(1);
+        try(var pool=Executors.newFixedThreadPool(2)){
+            Callable<Boolean> issue=()->{
+                gate.await();
+                try{homes.invite(h,owner);return true;}
+                catch(InviteRateLimited e){assertTrue(e.retryAfter>0 && e.retryAfter<=600);return false;}
+            };
+            var first=pool.submit(issue);
+            var second=pool.submit(issue);
+            gate.countDown();
+            assertNotEquals(first.get(10,TimeUnit.SECONDS),second.get(10,TimeUnit.SECONDS));
+        }
+        assertThrows(InviteRateLimited.class,()->homes.invite(h,owner));
+        assertEquals(2,homes.accept(valid.token(),family,new Api.Accept("새 가족","sage")).members().size());
+        assertNotNull(homes.invite(house(owner).household().id(),owner));
+        var aged=invitations.findById(cancelled.id()).orElseThrow();
+        aged.createdAt=Instant.now().minus(Duration.ofMinutes(11));
+        invitations.saveAndFlush(aged);
+        assertNotNull(homes.invite(h,owner));
+    }
     @Test void differentInvitationsCanBothBeAcceptedConcurrently()throws Exception{String owner=user(),a=user(),b=user();String id=house(owner).household().id();var first=homes.invite(id,owner);var second=homes.invite(id,owner);try(var pool=Executors.newFixedThreadPool(2)){var start=new CountDownLatch(1);var one=pool.submit(()->{start.await();try{homes.accept(first.token(),a,new Api.Accept("A","sage"));return true;}catch(ApiException e){return false;}});var two=pool.submit(()->{start.await();try{homes.accept(second.token(),b,new Api.Accept("B","rose"));return true;}catch(ApiException e){return false;}});start.countDown();assertTrue(one.get(10,TimeUnit.SECONDS));assertTrue(two.get(10,TimeUnit.SECONDS));}assertEquals(3,homes.world(id,owner).members().size());}
     @Test void pantryPreventsLostUpdatesAndNegativeInventory(){String owner=user();String id=house(owner).household().id();var item=homes.addPantry(id,owner,new Api.CreatePantry("달걀","냉장",2,"개",null));var saved=homes.updatePantry(id,owner,item.id(),new Api.UpdatePantry(1,item.version()));assertEquals(1,saved.quantity());assertTrue(saved.version()>item.version());assertThrows(ApiException.class,()->homes.updatePantry(id,owner,item.id(),new Api.UpdatePantry(0,item.version())));assertThrows(ApiException.class,()->homes.updatePantry(id,owner,item.id(),new Api.UpdatePantry(-1,saved.version())));}
     @Test void simultaneousUseOfSameInvitationIsSingleUse()throws Exception{String owner=user(),a=user(),b=user();String id=house(owner).household().id();var invite=homes.invite(id,owner);try(var pool=Executors.newFixedThreadPool(2)){var start=new CountDownLatch(1);var one=pool.submit(()->{start.await();try{homes.accept(invite.token(),a,new Api.Accept("A","sage"));return true;}catch(ApiException e){return false;}});var two=pool.submit(()->{start.await();try{homes.accept(invite.token(),b,new Api.Accept("B","blue"));return true;}catch(ApiException e){return false;}});start.countDown();assertNotEquals(one.get(10,TimeUnit.SECONDS),two.get(10,TimeUnit.SECONDS));}assertEquals(2,homes.world(id,owner).members().size());}
     @Test void eventsAreIdempotentAndAuthorComesFromAuthenticatedUser(){String owner=user(),guest=user();String id=house(owner).household().id();var invite=homes.invite(id,owner);homes.accept(invite.token(),guest,new Api.Accept("나래","rose"));String request=UUID.randomUUID().toString();var input=new Api.CreateEvent(request,"PARCEL_ARRIVED","택배 도착");var first=homes.event(id,guest,input);var second=homes.event(id,guest,input);assertEquals(first.id(),second.id());assertEquals("나래",first.authorName());assertEquals(1,homes.events(id,owner).size());assertThrows(ApiException.class,()->homes.event(id,guest,new Api.CreateEvent(request,"NOTE","다른 내용")));}
-    @Test void expiredStatusIsNotExposedAsCurrent(){String owner=user();var house=house(owner);homes.status(house.household().id(),owner,new Api.Status("office","좋아요","수프","안녕",1));var member=members.findById(house.meMemberId()).orElseThrow();member.statusExpiresAt=Instant.now().minusSeconds(1);members.saveAndFlush(member);var world=homes.world(house.household().id(),owner);assertEquals("",world.members().getFirst().thought());assertEquals("office",world.members().getFirst().place());}
+    @Test void expiredStatusIsNotExposedAsCurrent(){String owner=user();var house=house(owner);homes.status(house.household().id(),owner,new Api.Status("office","좋아요","수프","안녕",1));var statuses=expressions.findByMemberIdIn(List.of(house.meMemberId()));statuses.forEach(status->status.expiresAt=Instant.now().minusSeconds(1));expressions.saveAllAndFlush(statuses);var world=homes.world(house.household().id(),owner);assertEquals("",world.members().getFirst().thought());assertEquals("office",world.members().getFirst().place());}
     @Test void movementNeverChangesInventoryAndRejectsFurniture(){String owner=user();String id=house(owner).household().id();homes.addPantry(id,owner,new Api.CreatePantry("우유","냉장",2,"개",null));assertThrows(ApiException.class,()->movement.apply(id,owner,new Api.Intent(UUID.randomUUID().toString(),"MOVE_INTENT","home",400d,245d,null)));assertEquals(2,homes.pantry(id,owner).getFirst().quantity());assertFalse(MovementService.walkable(Double.NaN,200,"home"));assertFalse(MovementService.walkable(900,200,"home"));}
     @Test void twoCookieSessionsAndCsrfHaveRealHttpIsolation()throws Exception{
         String base="http://127.0.0.1:"+env.getProperty("local.server.port");var cookieA=new CookieManager(null,CookiePolicy.ACCEPT_ALL);var cookieB=new CookieManager(null,CookiePolicy.ACCEPT_ALL);
@@ -112,6 +226,14 @@ class HouseholdIntegrationTest {
             var restored=a.send(HttpRequest.newBuilder(URI.create(base+"/api/households/"+householdId+"/world")).GET().build(),HttpResponse.BodyHandlers.ofString());
             assertEquals(200,restored.statusCode());assertEquals("v1:3212",json.readTree(restored.body()).get("members").get(0).get("appearance").asText());
             assertEquals(401,b.send(HttpRequest.newBuilder(URI.create(base+"/api/households/"+householdId+"/world")).GET().build(),HttpResponse.BodyHandlers.ofString()).statusCode());
+            var invite=HttpRequest.newBuilder(URI.create(base+"/api/households/"+householdId+"/invitations"))
+                .header("X-CSRF-TOKEN",authenticatedToken).POST(HttpRequest.BodyPublishers.noBody()).build();
+            for(int i=0;i<HomeService.INVITE_ISSUANCE_LIMIT;i++)
+                assertEquals(200,a.send(invite,HttpResponse.BodyHandlers.ofString()).statusCode());
+            var limited=a.send(invite,HttpResponse.BodyHandlers.ofString());
+            assertEquals(429,limited.statusCode());
+            assertEquals("INVITE_RATE_LIMITED",json.readTree(limited.body()).get("code").asText());
+            assertTrue(Long.parseLong(limited.headers().firstValue("Retry-After").orElseThrow())>0);
 
         }
     }

@@ -1,16 +1,22 @@
+import { mountClassroom } from './classroom';
+import { mountMoonMine } from './moonMine';
+import { ActorSpeechBubble } from './ActorSpeechBubble';
+import { makePetHabitat } from './petHabitat';
+import {mountNativeWorld} from './nativeWorld';
 import Phaser from 'phaser';
+import { ActorNameplate } from './ActorNameplate';
 import { makeHouse, makeOtherPlace, makeFurniture, makeAvatar, makeCat, makeDog, type Direction } from './art';
 import { findPath, walkable, nearestWalkable, HOME_SOLIDS, OTHER_SOLIDS, type Point } from './navigation';
 import type { WorldView, WorldEvent, WorldHandle, WorldMember } from './types';
 
-interface Actor { sprite:Phaser.GameObjects.Image;label:Phaser.GameObjects.Text;bubble:Phaser.GameObjects.Text;path:Point[];member:WorldMember;direction:Direction;frame:number;lastManual:number;lastAi:number;remote:string;after?:()=>void }
+interface Actor { sprite:Phaser.GameObjects.Image;label:ActorNameplate;bubble:ActorSpeechBubble;path:Point[];member:WorldMember;direction:Direction;frame:number;lastManual:number;lastAi:number;remote:string;after?:()=>void }
 const furniture=[{kind:'kitchen',x:332,y:100,depth:166},{kind:'fridge',x:538,y:80,depth:165,target:'fridge',label:'냉장고 열기',point:{x:560,y:185}},{kind:'sofa',x:65,y:184,depth:263,target:'sofa',label:'소파 곁에서 잠깐 쉬어요.',point:{x:140,y:280}},{kind:'table',x:353,y:195,depth:277,target:'table',label:'같이 먹고 싶은 음식이 있나요?',point:{x:400,y:300}},{kind:'bed',x:505,y:224,depth:355},{kind:'plant',x:48,y:298,depth:365},{kind:'shelf',x:237,y:108,depth:190},{kind:'cabinet',x:232,y:308,depth:362},{kind:'cabinet',x:102,y:286,depth:336},{kind:'lamp',x:204,y:200,depth:267}];
 const directions:Direction[]=['down','up','left','right'];
 const seed=(s:string)=>[...s].reduce((v,c)=>(v*31+c.charCodeAt(0))>>>0,7);
 function typing(){const el=document.activeElement;return !!el?.matches('input,textarea,select,[contenteditable=true]')||!!document.querySelector('dialog[open]');}
 
 class HomeScene extends Phaser.Scene {
-  noteMarkers:Phaser.GameObjects.GameObject[]=[];view:WorldView;emit:(e:WorldEvent)=>void;actors=new Map<string,Actor>();petActors:{sprite:Phaser.GameObjects.Image;path:Point[];index:number;texturePrefix:string;name:Phaser.GameObjects.Text;lastAi:number}[]=[];keys=new Set<string>();lastInput=0;artVersion=0;
+  noteMarkers:Phaser.GameObjects.GameObject[]=[];view:WorldView;emit:(e:WorldEvent)=>void;actors=new Map<string,Actor>();petActors:{sprite:Phaser.GameObjects.Image;path:Point[];index:number;texturePrefix:string;stationary:boolean;name:ActorNameplate;lastAi:number}[]=[];keys=new Set<string>();lastInput=0;artVersion=0;
   constructor(view:WorldView,emit:(e:WorldEvent)=>void){super('home');this.view=view;this.emit=emit;}
   create(){
     this.drawRoom();this.syncActors();this.resize();
@@ -26,7 +32,7 @@ class HomeScene extends Phaser.Scene {
     this.emit({type:'ready'});
   }
   solids(){return this.view.place==='home'?HOME_SOLIDS:OTHER_SOLIDS;}
-  canControl(){return (!this.view.observedMemberId||this.view.observedMemberId===this.view.ownMemberId)&&this.view.members.some(m=>m.id===this.view.ownMemberId&&m.place===this.view.place);}
+  canControl(){return !this.view.readOnly&&(!this.view.observedMemberId||this.view.observedMemberId===this.view.ownMemberId)&&this.view.members.some(m=>m.id===this.view.ownMemberId&&m.place===this.view.place);}
   texture(key:string,canvas:HTMLCanvasElement){if(this.textures.exists(key))return key;this.textures.addCanvas(key,canvas);return key;}
   drawRoom(){
     this.children.removeAll(true);this.actors.clear();this.petActors=[];
@@ -44,13 +50,13 @@ class HomeScene extends Phaser.Scene {
     for(const [id,actor]of this.actors)if(!members.some(m=>m.id===id)){actor.sprite.destroy();actor.label.destroy();actor.bubble.destroy();this.actors.delete(id);}
     for(const member of members){let actor=this.actors.get(member.id);const prefix=`world-${member.id}-${this.artVersion}-${JSON.stringify(member.appearance)}`;
       if(!this.textures.exists(`${prefix}-down-0`))for(const d of directions)for(let f=0;f<4;f++)this.texture(`${prefix}-${d}-${f}`,makeAvatar(member,d,f));
-      if(!actor){const initial=nearestWalkable({x:member.x??(280+seed(member.id)%160),y:member.y??(290+seed(member.id)%60)},this.solids());actor={member,sprite:this.add.image(initial.x,initial.y,`${prefix}-down-0`).setOrigin(.5,1),label:this.add.text(0,0,member.name,{fontFamily:'sans-serif',fontSize:'10px',color:'#576348',backgroundColor:'#eee9d7',padding:{x:5,y:2}}).setOrigin(.5,0).setDepth(9500),bubble:this.add.text(0,0,'',{fontFamily:'sans-serif',fontSize:'11px',color:'#5f604b',backgroundColor:'#fff8e5',padding:{x:9,y:6},wordWrap:{width:125}}).setOrigin(.5,1).setDepth(9600),path:[],direction:'down',frame:0,lastManual:0,lastAi:-1,remote:'',};this.actors.set(member.id,actor);}
-      actor.member=member;actor.label.setText(member.name+(member.id===this.view.ownMemberId?' · 나':''));actor.bubble.setText(member.status||'').setVisible(!!member.status);
+      if(!actor){const initial=nearestWalkable({x:member.x??(280+seed(member.id)%160),y:member.y??(290+seed(member.id)%60)},this.solids());actor={member,sprite:this.add.image(initial.x,initial.y,`${prefix}-down-0`).setOrigin(.5,1),label:new ActorNameplate(this,member.name,member.id===this.view.ownMemberId?'own':'member',9500,name=>this.emit({type:'reveal-name',name})),bubble:new ActorSpeechBubble(this,member.id===this.view.ownMemberId,9600,text=>this.emit({type:'reveal-speech',text})),path:[],direction:'down',frame:0,lastManual:0,lastAi:-1,remote:'',};this.actors.set(member.id,actor);}
+      actor.member=member;actor.label.setLabel(member.name);actor.bubble.setSpeech(member.status||'');
       const remote=`${member.x},${member.y}`;if(actor.remote!==remote&&member.x!==undefined&&member.y!==undefined){actor.remote=remote;this.move(actor,{x:member.x,y:member.y},false);actor.lastManual=Date.now();}
     }
-    const petIds=this.view.place==='home'?JSON.stringify(this.view.pets.map(p=>[p.id,p.kind,p.color])):'';
-    if(this.registry.get('petIds')!==`${this.artVersion}:${petIds}`){this.registry.set('petIds',`${this.artVersion}:${petIds}`);for(const pet of this.petActors){pet.sprite.destroy();pet.name.destroy();}this.petActors=[];if(this.view.place==='home')this.view.pets.forEach((pet,index)=>{const texturePrefix=`world-pet-${pet.id}-${pet.kind}-${pet.color}`;for(let f=0;f<4;f++)this.texture(`${texturePrefix}-${f}`,pet.kind==='dog'?makeDog(f,pet.color):makeCat(f,pet.color));const point=nearestWalkable({x:270+index*20,y:280});const sprite=this.add.image(point.x,point.y,`${texturePrefix}-0`).setOrigin(.5,1).setInteractive({useHandCursor:true});sprite.on('pointerdown',(_p:unknown,_x:unknown,_y:unknown,event:Phaser.Types.Input.EventData)=>{event.stopPropagation();this.emit({type:'interact',target:'pet',label:this.view.pets.find(p=>p.id===pet.id)?.name||'반려동물'});});this.petActors.push({sprite,path:[],index,texturePrefix,lastAi:-1,name:this.add.text(point.x,point.y+3,pet.name,{fontSize:'9px',fontFamily:'sans-serif',color:'#806e50',backgroundColor:'#eee1c5',padding:{x:4,y:2}}).setOrigin(.5,0).setDepth(9500)});});}
-    for(const actor of this.petActors)actor.name.setText(this.view.pets[actor.index].name);
+    const petIds=this.view.place==='home'?JSON.stringify(this.view.pets.map(p=>[p.id,p.kind,p.color,p.habitat])):'';
+    if(this.registry.get('petIds')!==`${this.artVersion}:${petIds}`){this.registry.set('petIds',`${this.artVersion}:${petIds}`);for(const pet of this.petActors){pet.sprite.destroy();pet.name.destroy();}this.petActors=[];if(this.view.place==='home')this.view.pets.forEach((pet,index)=>{const texturePrefix=`world-pet-${pet.id}-${pet.kind}-${pet.color}-${pet.habitat}`;const habitat=pet.habitat==='FLOOR'?undefined:pet.habitat;if(habitat)this.texture(`${texturePrefix}-0`,makePetHabitat(habitat));else for(let f=0;f<4;f++)this.texture(`${texturePrefix}-${f}`,pet.kind==='dog'?makeDog(f,pet.color):makeCat(f,pet.color));const point=nearestWalkable({x:270+index*20,y:280});const sprite=this.add.image(point.x,point.y,`${texturePrefix}-0`).setOrigin(.5,1).setInteractive({useHandCursor:true});sprite.on('pointerdown',(_p:unknown,_x:unknown,_y:unknown,event:Phaser.Types.Input.EventData)=>{event.stopPropagation();this.emit({type:'interact',target:'pet',label:this.view.pets.find(p=>p.id===pet.id)?.name||'반려동물'});});this.petActors.push({sprite,path:[],index,texturePrefix,stationary:!!habitat,lastAi:-1,name:new ActorNameplate(this,pet.name,'pet',9500).setPosition(point.x,point.y+4)});});}
+    for(const actor of this.petActors)actor.name.setLabel(this.view.pets[actor.index].name);
   }
   move(actor:Actor,target:Point,manual:boolean){actor.path=findPath({x:actor.sprite.x,y:actor.sprite.y},target,this.solids());actor.after=undefined;if(manual){actor.lastManual=Date.now();this.emit({type:'move-intent',x:target.x,y:target.y});this.emit({type:'activity',text:'천천히, 가고 싶은 곳으로 걸어가요.'});}}
   resize(){const {width,height}=this.scale;const fit=Math.min(width/640,height/448);const zoom=width<500?Math.max(fit,1):fit;this.cameras.main.setZoom(zoom).setBounds(0,0,640,448);this.cameras.main.centerOn(320,224);}
@@ -68,17 +74,37 @@ class HomeScene extends Phaser.Scene {
       const before={x:actor.sprite.x,y:actor.sprite.y};this.advance(actor.sprite,actor.path,delta,58);const dx=actor.sprite.x-before.x,dy=actor.sprite.y-before.y;
       if(Math.abs(dx)+Math.abs(dy)>.01){actor.direction=Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up';actor.frame=Math.floor(time/150)%4;}else{actor.frame=0;if(actor.after){actor.after();actor.after=undefined;}}
       actor.sprite.setTexture(`world-${actor.member.id}-${this.artVersion}-${JSON.stringify(actor.member.appearance)}-${actor.direction}-${actor.frame}`).setDepth(actor.sprite.y);
-      actor.label.setPosition(Math.round(actor.sprite.x),Math.round(actor.sprite.y+3));actor.bubble.setPosition(Math.round(actor.sprite.x),Math.round(actor.sprite.y-52));
+      actor.label.setPosition(Math.round(actor.sprite.x),Math.round(actor.sprite.y+4));
     }
-    for(const pet of this.petActors){const cycle=Math.floor(stamp/17000);if(!this.view.reducedMotion&&pet.lastAi!==cycle){pet.lastAi=cycle;const points=[{x:270,y:270},{x:332,y:336},{x:460,y:370}];pet.path=findPath({x:pet.sprite.x,y:pet.sprite.y},points[(cycle+pet.index)%3]);}this.advance(pet.sprite,pet.path,delta,32);pet.sprite.setDepth(pet.sprite.y).setTexture(`${pet.texturePrefix}-${pet.path.length?Math.floor(time/180)%4:0}`);pet.name.setPosition(pet.sprite.x,pet.sprite.y+3);}
-    const bounds=this.cameras.main.worldView;for(const actor of this.actors.values()){const half=actor.bubble.width/2;actor.bubble.x=Phaser.Math.Clamp(actor.sprite.x,bounds.x+half+5,bounds.right-half-5);}
+    for(const pet of this.petActors){const cycle=Math.floor(stamp/17000);if(!pet.stationary&&!this.view.reducedMotion&&pet.lastAi!==cycle){pet.lastAi=cycle;const points=[{x:270,y:270},{x:332,y:336},{x:460,y:370}];pet.path=findPath({x:pet.sprite.x,y:pet.sprite.y},points[(cycle+pet.index)%3]);}this.advance(pet.sprite,pet.path,delta,32);pet.sprite.setDepth(pet.sprite.y).setTexture(`${pet.texturePrefix}-${pet.path.length?Math.floor(time/180)%4:0}`);pet.name.setPosition(Math.round(pet.sprite.x),Math.round(pet.sprite.y+4));}
+    const bounds=this.cameras.main.worldView;for(const actor of this.actors.values())actor.bubble.follow(actor.sprite.x,actor.sprite.y,bounds,52);
     const target=this.actors.get(this.view.observedMemberId||this.view.ownMemberId);if(this.scale.width<500&&target)this.cameras.main.centerOn(target.sprite.x,target.sprite.y-80);
   }
 }
 
-export function mountWorld(parent:HTMLElement,initial:WorldView,onEvent:(event:WorldEvent)=>void):WorldHandle {
+function mountLegacyWorld(parent:HTMLElement,initial:WorldView,onEvent:(event:WorldEvent)=>void):WorldHandle {
   const scene=new HomeScene(initial,onEvent);
   const game=new Phaser.Game({type:Phaser.AUTO,parent,width:parent.clientWidth||640,height:parent.clientHeight||448,backgroundColor:'#ede9dc',pixelArt:true,roundPixels:true,antialias:false,scene,scale:{mode:Phaser.Scale.RESIZE},fps:{target:30},audio:{noAudio:true},render:{preserveDrawingBuffer:true}});
   const observer=new ResizeObserver(()=>{if(game.isBooted)game.scale.resize(parent.clientWidth,parent.clientHeight);});observer.observe(parent);
   return {update:view=>scene.setView(view),destroy:()=>{observer.disconnect();game.destroy(true);}};
+}
+
+export function mountWorld(parent:HTMLElement,initial:WorldView,onEvent:(event:WorldEvent)=>void):WorldHandle{
+  const renderer = (place: WorldView["place"]) =>
+    place === "home" ? mountNativeWorld : place === "office" ? mountMoonMine :
+      place === "school" ? mountClassroom : mountLegacyWorld;
+  let mount = renderer(initial.place);
+  let current = mount(parent, initial, onEvent);
+  return {
+    update: (view) => {
+      const next = renderer(view.place);
+      if (next === mount) current.update(view);
+      else {
+        current.destroy();
+        mount = next;
+        current = mount(parent, view, onEvent);
+      }
+    },
+    destroy: () => current.destroy(),
+  };
 }

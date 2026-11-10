@@ -1,5 +1,10 @@
 # Railway 외부 베타 배포
 
+## v6.2 변경의 배포 전 조건
+
+이번 작업은 push/배포하지 않는다. V8 additive 스키마와 native 좌표·v2 외형을 추가했다. 프로덕션 DB 백업/복구 시험, MySQL 8.4 테스트, Docker 이미지 빌드 및 실기기 확인 후 별도 배포한다. Docker 두 빌드 단계에 공유 space-catalog.json을 포함하고 Gradle spaceCatalogue 속성으로 컨테이너 경로를 지정한다. 기존 JAR로의 단순 롤백은 새 좌표 표시를 보장하지 않는다. [호환성 기록](V62_INTEGRATION.md).
+
+
 2026-11-02 기준. **배포용 코드와 실제 Docker/MySQL 검증은 완료했지만 Railway 리소스·공개 URL·배포 도메인의 Google 인증은 아직 없다.** Railway 웹 로그인 및 비용 승인이 필요하다. Mac/Tailscale 미리보기와 독립적인 환경이며 로컬 H2 데이터는 이관하지 않는다.
 
 ## 구조와 저장소 산출물
@@ -140,3 +145,32 @@ SSH 명령이 실패하면 빈/불완전 dump를 정상 백업으로 취급하�
 ## V7 배포·rollback 주의
 
 DB를 백업한 뒤 V7을 적용한다. planned_people은 새 JPA/DTO/UI/정책에서 제거했지만 이전 바이너리의 스키마 호환을 위해 컬럼과 기존 값은 유지했다. 물리 삭제는 이전 버전 지원 종료 후 별도 migration으로 한다. 이전 앱으로 rollback하면 예전 인원 정책이 돌아오므로 새 초대 쓰기를 중지하고 호환성을 확인한다. 구형 브라우저의 POST body/계획 PATCH는 더 이상 지원하지 않으므로 새로고침을 안내한다. 실 배포 DB는 아직 없고 미리보기 파일 DB와 별개다.
+
+
+## 집 삭제 활성화
+
+`HOUSEHOLD_DELETION_ENABLED` 기본값은 false다. 기능을 켜면 집 대표가 7일 유예를 요청할 수 있고, 워커가 기한이 지난 해당 집의 행을 영구 삭제한다. 계정과 다른 집은 유지한다. 운영에서 활성화하기 전에 빈 MySQL 8.4 검증 DB에서 V24·삭제·복원을 실행한다. 계정 삭제 및 결제 보존 운영은 별개다.
+
+### 복원에서 삭제 기록 재적용
+
+1. 전체 백업과 별개로 최신 `household_deletion_log`, `former_record_deletion`을 권한 제한된 파일에 보관한다. MySQL의 `--login-path`는 계정 암호를 명령줄에 남기지 않는다. [MySQL 8.4 mysqldump](https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html)
+2. 별도 빈 DB에 전체 백업을 복원하고 현재 애플리케이션에 포함된 Flyway 마이그레이션을 모두 적용한다. 아래 명령의 두 접속 설정과 DB 이름이 원본과 격리 복원 DB를 가리키는지 확인하고 최신 로그를 병합한다.
+
+```bash
+umask 077
+mysqldump --login-path=source-reader --single-transaction --no-create-info \
+  --skip-triggers --skip-add-locks --skip-disable-keys --no-tablespaces \
+  --set-gtid-purged=OFF --complete-insert --insert-ignore \
+  "$DOT_HOME_SOURCE_DB" household_deletion_log former_record_deletion > deletion-logs.sql
+mysql --login-path=isolated-restore "$DOT_HOME_RESTORE_DB" < deletion-logs.sql
+```
+
+3. 복원 DB 전용 `RESTORE_DB_URL`, `RESTORE_DB_USER`, `RESTORE_DB_PASSWORD`를 설정한다. 앱에서 사용하기 전에 조회 모드로 정리 대상 수를 확인한 뒤 적용한다. 두 번째 조회가 0건인지 확인하고 보존할 집의 핵심 동작을 검증한다.
+
+```bash
+bash scripts/server.sh replayHouseholdDeletions --args=--plan
+bash scripts/server.sh replayHouseholdDeletions --args=--apply
+bash scripts/server.sh replayHouseholdDeletions --args=--plan
+```
+
+`--apply`는 삭제 로그가 있는 집과 기록만 정리한다. 기록은 원래 집과 작성자 식별자가 모두 일치해야 제거하고, 해당 집의 준비된 내보내기 파일을 만료시킨다. 삭제 로그 자체와 계정, 나머지 기록은 보존한다. H2와 MySQL 8.4의 격리 DB에서 재실행을 확인했다.

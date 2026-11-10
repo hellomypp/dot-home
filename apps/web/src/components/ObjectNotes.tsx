@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CareReactions } from "./CareReactions";
 import { api } from "../lib/api";
 export interface ObjectNote {
   id: string;
@@ -17,11 +18,13 @@ export function ObjectNotes({
   memberId,
   isOwner,
   members = [],
+  readOnly = false,
 }: {
   householdId: string;
   memberId: string;
   isOwner: boolean;
   members?: { id: string; name: string }[];
+  readOnly?: boolean;
 }) {
   const [archive, setArchive] = useState(false),
     [body, setBody] = useState(""),
@@ -30,13 +33,26 @@ export function ObjectNotes({
     lock = useRef(false),
     client = useQueryClient();
   const root = `/api/households/${householdId}`;
-  const query = useQuery({
-    queryKey: ["object-notes", householdId, archive],
-    queryFn: () =>
-      api<ObjectNote[]>(
-        root + (archive ? "/notes/archive" : "/objects/fridge/notes"),
-      ),
+  const attachedNotes = useQuery({
+    queryKey: ["object-notes", householdId, false],
+    queryFn: () => api<ObjectNote[]>(root + "/objects/fridge/notes"),
+    enabled: !archive,
   });
+  const archivedNotes = useInfiniteQuery({
+    queryKey: ["object-notes", householdId, "archive"],
+    initialPageParam: "",
+    queryFn: ({ pageParam }) => api<{ items: ObjectNote[]; nextCursor: string | null }>(
+      root + "/notes/archive/page" + (pageParam ? "?cursor=" + encodeURIComponent(pageParam) : ""),
+    ),
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    enabled: archive,
+  });
+  const query = archive ? archivedNotes : attachedNotes;
+  const notes = archive ? archivedNotes.data?.pages.flatMap((page) => page.items) : attachedNotes.data;
+  const noteBody = body.trim();
+  const length = [...noteBody].length;
+  const full = !archive && (attachedNotes.data?.length ?? 0) >= 10;
+  const canCreate = !full && length > 0 && length <= 300;
   async function mutate(path: string, method: string, input?: unknown) {
     if (lock.current) return;
     lock.current = true;
@@ -58,8 +74,8 @@ export function ObjectNotes({
   }
   function create(e: FormEvent) {
     e.preventDefault();
-    if (body.trim())
-      void mutate("/objects/fridge/notes", "POST", { body: body.trim() });
+    if (canCreate)
+      void mutate("/objects/fridge/notes", "POST", { body: noteBody });
   }
   return (
     <section className="object-notes">
@@ -81,7 +97,7 @@ export function ObjectNotes({
       </nav>
       {query.isPending ? (
         <p role="status">쪽지를 가져오고 있어요…</p>
-      ) : query.error ? (
+      ) : query.error && !notes?.length ? (
         <p role="alert">
           {query.error.message}
           <button
@@ -91,19 +107,19 @@ export function ObjectNotes({
             다시 시도
           </button>
         </p>
-      ) : query.data?.length ? (
-        query.data.map((n) => (
+      ) : notes?.length ? (
+        notes.map((n) => (
           <article className="object-note" key={n.id}>
             <p>{n.body}</p>
             <small>
-              {members.find((m) => m.id === n.authorMemberId)?.name || "가족"} ·{" "}
+              {members.find((m) => m.id === n.authorMemberId)?.name || "퇴실한 구성원"} ·{" "}
               {new Date(n.createdAt).toLocaleString("ko-KR")}
               {n.takenAt
-                ? ` · ${members.find((m) => m.id === n.takenByMemberId)?.name || "가족"}님이 ${new Date(n.takenAt).toLocaleString("ko-KR")}에 보관`
+                ? ` · ${members.find((m) => m.id === n.takenByMemberId)?.name || "퇴실한 구성원"}님이 ${new Date(n.takenAt).toLocaleString("ko-KR")}에 보관`
                 : ""}
             </small>
             <div>
-              {!archive && (
+              {!archive && !readOnly && (
                 <button
                   className="button primary"
                   disabled={busy}
@@ -116,7 +132,7 @@ export function ObjectNotes({
                   떼어 읽기
                 </button>
               )}
-              {(isOwner || n.authorMemberId === memberId) && (
+              {!readOnly && (isOwner || n.authorMemberId === memberId) && (
                 <button
                   className="button secondary"
                   disabled={busy}
@@ -132,27 +148,43 @@ export function ObjectNotes({
                 </button>
               )}
             </div>
+            {!readOnly && <CareReactions householdId={householdId} sourceType="NOTE" sourceId={n.id} />}
           </article>
         ))
       ) : (
         <p className="empty-text">
           {archive
             ? "아직 보관한 쪽지가 없어요."
-            : "냉장고에 첫 쪽지를 붙여보세요."}
+            : readOnly ? "냉장고에 붙은 쪽지가 없어요." : "냉장고에 첫 쪽지를 붙여보세요."}
         </p>
       )}
-      {!archive && (
+      {archive && (archivedNotes.hasNextPage || archivedNotes.isFetchNextPageError) && (
+        <button
+          className="button secondary"
+          type="button"
+          disabled={archivedNotes.isFetching}
+          onClick={() => void archivedNotes.fetchNextPage()}
+        >
+          {archivedNotes.isFetchingNextPage ? "불러오는 중…" : archivedNotes.isFetchNextPageError ? "다음 쪽지 다시 불러오기" : "보관한 쪽지 더 보기"}
+        </button>
+      )}
+      {!archive && !readOnly && (
         <form onSubmit={create}>
           <label>
             가족에게 남길 쪽지
             <textarea
               required
-              maxLength={1000}
+              aria-describedby="note-body-limit"
+              aria-invalid={length > 300}
               value={body}
               onChange={(e) => setBody(e.target.value)}
             />
           </label>
-          <button className="button primary" disabled={busy || !body.trim()}>
+          <p id="note-body-limit" className={length > 300 ? "error-message" : "muted"}>
+            {length}/300자{length > 300 && " · 300자 이내로 줄여 주세요."}
+          </p>
+          {full && <p role="status">냉장고에 쪽지가 10장 붙어 있어요. 한 장을 떼거나 삭제해 주세요.</p>}
+          <button className="button primary" disabled={busy || !canCreate}>
             쪽지 붙이기
           </button>
         </form>

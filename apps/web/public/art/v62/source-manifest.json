@@ -1,0 +1,1630 @@
+{
+  "schema": "dot-home-assets-v6.2",
+  "date": "2026-11-02",
+  "fileCountExcludingManifest": 220,
+  "sourceArt": "AI-assisted generation followed by deterministic native-pixel export and registered native eye clusters",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2344,
+      "sha256": "b7de7e1a193857849cd73dc079ff33bc2c50ab7565890b0890504626c404d0d4"
+    },
+    {
+      "path": "adapter/phaser-adapter.js",
+      "bytes": 3259,
+      "sha256": "a77ffbe9c5ce1f7c4cc0e53335d13815dcdf4269d7357e1e263aa61672667e98"
+    },
+    {
+      "path": "assets/animation.json",
+      "bytes": 756,
+      "sha256": "b1e2774ea0eb5ff9c6fff85742ad715093be69324693e544e86475b29909d090"
+    },
+    {
+      "path": "assets/characters/adult_female.identity.json",
+      "bytes": 587,
+      "sha256": "696c86b98edf17bdcbd5e7ba39ff1c8f456884f24b875352ca86309b5b9a4c3d"
+    },
+    {
+      "path": "assets/characters/adult_female.png",
+      "bytes": 8005,
+      "sha256": "149b7806bc0f81fcac2de5b95bc9b7c1218194583089e791eb0173b075105488",
+      "width": 96,
+      "height": 160,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/characters/adult_male.identity.json",
+      "bytes": 585,
+      "sha256": "a298116975eda0442e876443d37db023a09f97bbe2887c8d0228f0780e1b299c"
+    },
+    {
+      "path": "assets/characters/adult_male.png",
+      "bytes": 6627,
+      "sha256": "3dd52c092b9eea6222d9045bbc09fa0d592f14e62197ef228305564e827347b6",
+      "width": 96,
+      "height": 160,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/characters/child.identity.json",
+      "bytes": 580,
+      "sha256": "a6702a39c752b7493a00b76270139ff2b147c381240b00000cd2af8d5c81e552"
+    },
+    {
+      "path": "assets/characters/child.png",
+      "bytes": 6129,
+      "sha256": "96b10bdacfab4b4ec1a530ebf50cc2921ddcd7abe5ea464ce3c62b2358ae40f6",
+      "width": 96,
+      "height": 160,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/bench.png",
+      "bytes": 1575,
+      "sha256": "f03c3a03f60df85a0e0053dbc6b02e581e4a3f62f1247356ae13100695774c74",
+      "width": 64,
+      "height": 40,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/blue_cabinet.png",
+      "bytes": 819,
+      "sha256": "07f44c01a103f26c19d5519728a2b53d5976a20dfd57189bc57f34dfb8436200",
+      "width": 48,
+      "height": 40,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/blue_sofa.png",
+      "bytes": 1686,
+      "sha256": "ae5ae3d03b790b4ec44c3838e930e5cb214668f4c4f412ba8843d70e1a1e62df",
+      "width": 88,
+      "height": 48,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/calendar.png",
+      "bytes": 188,
+      "sha256": "b57285efea60a98daffe0669478b1bd994fd161867a496e3c6b541a9c34baa42",
+      "width": 24,
+      "height": 32,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/coffee.png",
+      "bytes": 297,
+      "sha256": "f9dab9ca5566d73781dc2fc23fe97ab256d8f386c0c0cdf0d6b6f15055d76574",
+      "width": 40,
+      "height": 28,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/cottage_window.png",
+      "bytes": 1978,
+      "sha256": "c3ad1efbb9e126e07962159a3ed631a124df46054f123e8ea575b0bf65e8b6a0",
+      "width": 64,
+      "height": 40,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/counter.png",
+      "bytes": 1082,
+      "sha256": "d5288faae108bd1a743250ba737725531b17015fe2b530295fa33ddfb65390ae",
+      "width": 40,
+      "height": 40,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/desk.png",
+      "bytes": 1431,
+      "sha256": "95c4b2001083226d615032de0091ba0c4a70fa3803123ae5d20a41610f6e5794",
+      "width": 64,
+      "height": 40,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/door.png",
+      "bytes": 244,
+      "sha256": "7eea4ddf18c2dd3d2db2cba7fcaafa2aa2d2af828af995c428b08f0975ccfcea",
+      "width": 48,
+      "height": 40,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/fridge.png",
+      "bytes": 329,
+      "sha256": "49573704072c0894987907a54f3b6cf9fd485ff56bdc32cede3e327f1c4310cc",
+      "width": 32,
+      "height": 56,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/hanging_plant.png",
+      "bytes": 321,
+      "sha256": "62a0ea0370fcdc76652e3be0ef4c5c9978293a517c83ef8163b2d11e27f86fb0",
+      "width": 24,
+      "height": 32,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/industrial_window.png",
+      "bytes": 977,
+      "sha256": "e05ffc581cdb72bfa6108a99cca062c0689a83027b23adf5bf063774da8fa28d",
+      "width": 48,
+      "height": 56,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/leather_sofa.png",
+      "bytes": 1467,
+      "sha256": "fb7d7a0be50518fac55a66e66c63e8112e8435d32196c4a270b182c0f8d56468",
+      "width": 80,
+      "height": 48,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/metal_shelf.png",
+      "bytes": 1683,
+      "sha256": "a79d6d35085c1e65f4e854e2d75fc772d485fc4894473f63d46279dcd4879b1a",
+      "width": 40,
+      "height": 64,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/modern_window.png",
+      "bytes": 742,
+      "sha256": "850bf1a82a55c479fef4c09a2b7ca26775a169b14b8cd8edcf7bad1c1deff25e",
+      "width": 80,
+      "height": 40,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/pet_bed.png",
+      "bytes": 495,
+      "sha256": "a6e0d4df23fff3913ac956414b7ca8c6eb2c379ab039f8360e31a8fe617adf24",
+      "width": 40,
+      "height": 24,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/plant.png",
+      "bytes": 1396,
+      "sha256": "e2f78a2659948af4947f0b769a5de3d8b6d89499890c60e7d454f7cfe19ad916",
+      "width": 32,
+      "height": 40,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/round_dining.png",
+      "bytes": 1757,
+      "sha256": "ef82ec765d71164887978cac62260ff564ee0fe3e201515e56137a37f4493eb3",
+      "width": 64,
+      "height": 40,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/rug_brick_loft.png",
+      "bytes": 414,
+      "sha256": "c500477a0ebd4e89908bba1d2b55a98d4acae2ca78c1db1919d95a5f21600556",
+      "width": 128,
+      "height": 80,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/rug_garden_home.png",
+      "bytes": 414,
+      "sha256": "c500477a0ebd4e89908bba1d2b55a98d4acae2ca78c1db1919d95a5f21600556",
+      "width": 128,
+      "height": 80,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/rug_sunny_apartment.png",
+      "bytes": 416,
+      "sha256": "11b01428671904223491de85382dc22f2a3abd29dce657fb37de63fe658e2a17",
+      "width": 128,
+      "height": 80,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/sage_sofa.png",
+      "bytes": 1923,
+      "sha256": "e8a73424505d2d1a53350bdf210ea58ea9fe6f884664f68eeba1042c51774bcb",
+      "width": 80,
+      "height": 48,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/sink.png",
+      "bytes": 1195,
+      "sha256": "9269ced63277f85924ec4c3d30f6bcccc36186d71d93194bcf42b25b8e23e22f",
+      "width": 40,
+      "height": 40,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/stove.png",
+      "bytes": 1352,
+      "sha256": "706e74acc8b359302fbf1f6ca3cd20c09fc2f5b05926da5806feb010bbaedb68",
+      "width": 32,
+      "height": 40,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/tree.png",
+      "bytes": 697,
+      "sha256": "8b35db31449c90d542eee13e6715a7d76a425e5afe2fd7ba7238454c1f56e436",
+      "width": 48,
+      "height": 64,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/wood_chair.png",
+      "bytes": 769,
+      "sha256": "47dba34ff4b09ad40ce15f5b47dace9f71779aa44764d7f6cbcf2ab5c2e087e2",
+      "width": 24,
+      "height": 32,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/wood_dining.png",
+      "bytes": 1401,
+      "sha256": "658012db9883d7dfc0138f35d7ec925e01341795e8d7a1dc59edd542b09d2232",
+      "width": 64,
+      "height": 40,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/objects/wood_shelf.png",
+      "bytes": 1816,
+      "sha256": "f28f7a8731ef4a59ffd3327330efa13c0cf1fcef4f89bc361127396158ee2713",
+      "width": 40,
+      "height": 64,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/pets/small_dog_states.png",
+      "bytes": 621,
+      "sha256": "21f2992781d3ccf65a6499cac666c1fd7df1e89331379a998b49f7f33c832764",
+      "width": 40,
+      "height": 64,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/pets/small_dog_walk.png",
+      "bytes": 666,
+      "sha256": "ee06cc6263967468c5dd3d53b7f313c87e6868827ceb79c06def042ff8915480",
+      "width": 80,
+      "height": 64,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/terrain.png",
+      "bytes": 1178,
+      "sha256": "28c6bcb7d9d22a600bc436abe3e5caf3e22069cb509ffc6c0db0c7e57007ab43",
+      "width": 128,
+      "height": 48,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_01.png",
+      "bytes": 106,
+      "sha256": "b9beec5d39ba4394c03d30fcf2ec675a948e396178c0d9653e2d7958a170c081",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_02.png",
+      "bytes": 106,
+      "sha256": "b9beec5d39ba4394c03d30fcf2ec675a948e396178c0d9653e2d7958a170c081",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_03.png",
+      "bytes": 106,
+      "sha256": "b9beec5d39ba4394c03d30fcf2ec675a948e396178c0d9653e2d7958a170c081",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_04.png",
+      "bytes": 117,
+      "sha256": "01f11abdfbb32be048898e0378a08fdadb2f3a3f19a8399243c5c27488f2ed75",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_05.png",
+      "bytes": 124,
+      "sha256": "9328787997de28b840dd8d405e9441380a99796719f3e08da80318db367c0eba",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_06.png",
+      "bytes": 123,
+      "sha256": "2f0f84864c22d5091081fc0246ca095ed703360cea1b82cbc93a7af35156ec20",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_07.png",
+      "bytes": 123,
+      "sha256": "2f0f84864c22d5091081fc0246ca095ed703360cea1b82cbc93a7af35156ec20",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_08.png",
+      "bytes": 149,
+      "sha256": "42a20a6f79eb5fa4514fbc7513f409032ce7ba189ce3c35a46d461a7b56529e0",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_09.png",
+      "bytes": 145,
+      "sha256": "6716eefe7496463fc4d27e75c157040e9b3530ba05ae3de7bb201078fabf23fa",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_10.png",
+      "bytes": 156,
+      "sha256": "2a27a1100c2a12c7e5bf41b86d3f9ce060f0c9f14f3a4b085471d3ff038d802b",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_11.png",
+      "bytes": 152,
+      "sha256": "1a6382ed01c70257c823d622853ef1b36c201bbf370944de805e460ccfe3e262",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_12.png",
+      "bytes": 152,
+      "sha256": "1a6382ed01c70257c823d622853ef1b36c201bbf370944de805e460ccfe3e262",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_13.png",
+      "bytes": 118,
+      "sha256": "dc3b0ff357a5d81a7889f32c56b6a65f886826e211e2d5d3769d7a4a7a2cc949",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_14.png",
+      "bytes": 118,
+      "sha256": "dc3b0ff357a5d81a7889f32c56b6a65f886826e211e2d5d3769d7a4a7a2cc949",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_15.png",
+      "bytes": 102,
+      "sha256": "7b58062419adb5d32050041ee3d6f0d8605bdb9ac539d67242970ae75e693575",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_16.png",
+      "bytes": 102,
+      "sha256": "d73ab519e7b8f307d10df57c1f8fd05724387434a0066c719afae8e43a8a5901",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_17.png",
+      "bytes": 111,
+      "sha256": "ea35f1c8e2b54b127e6b5510b386479217d832096ff5e233291c6b6067b389a7",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_18.png",
+      "bytes": 111,
+      "sha256": "ea35f1c8e2b54b127e6b5510b386479217d832096ff5e233291c6b6067b389a7",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_19.png",
+      "bytes": 211,
+      "sha256": "c1e8a8f781807aeeaa26ba56d9c1a223ce266d29807bdd5434ed3a0c848b7271",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_20.png",
+      "bytes": 189,
+      "sha256": "d0420de515b8d8faba83e93d9abaa3b432194e24ac54e530a4cda12152537d51",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_21.png",
+      "bytes": 236,
+      "sha256": "8269163162fe56bb0a79cfdd3bf496664b99b19e8c96cc115847c77911645198",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_22.png",
+      "bytes": 210,
+      "sha256": "ef77e3a9e850e89d28d274a9b77fb4acea64007b6d5750ffca0c42289b770716",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_23.png",
+      "bytes": 232,
+      "sha256": "d93e941dfe9b7b4646058a1cebbd9c8cc99941bde957d21f15abd5c1fdf8ed08",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/brick_loft/tile_24.png",
+      "bytes": 267,
+      "sha256": "8f4298b962ea08fa9ab20c2f10afbf917c5a1d45339332bb8341c328a2791352",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/terrain.png",
+      "bytes": 1169,
+      "sha256": "c1a018e45813c6eaa482d92177e476204d269b4decb016948f49b6ba3329e22c",
+      "width": 128,
+      "height": 48,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_01.png",
+      "bytes": 106,
+      "sha256": "e2468f06d5a40fd7edb4139e9f679b795afc6da897671bb21160cda6a998d5b7",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_02.png",
+      "bytes": 106,
+      "sha256": "e2468f06d5a40fd7edb4139e9f679b795afc6da897671bb21160cda6a998d5b7",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_03.png",
+      "bytes": 106,
+      "sha256": "e2468f06d5a40fd7edb4139e9f679b795afc6da897671bb21160cda6a998d5b7",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_04.png",
+      "bytes": 118,
+      "sha256": "7e8e6e84cc9e4757f9a927ce74af0fb277f1bb77bba930ff12bbcc9fcf237ce5",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_05.png",
+      "bytes": 119,
+      "sha256": "73946f748bd1336338990b623d788a2e413ec3c526e210cd78c0feddab20f0db",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_06.png",
+      "bytes": 117,
+      "sha256": "1c8b9051453b646e89c26c0bc8b238158bb9871c643585ed982ef7309a3aa8ab",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_07.png",
+      "bytes": 103,
+      "sha256": "2370b118ef422d9f093c48daa28270458b350a7ada8aa991da454aec1c7bfbf6",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_08.png",
+      "bytes": 149,
+      "sha256": "42a20a6f79eb5fa4514fbc7513f409032ce7ba189ce3c35a46d461a7b56529e0",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_09.png",
+      "bytes": 145,
+      "sha256": "6716eefe7496463fc4d27e75c157040e9b3530ba05ae3de7bb201078fabf23fa",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_10.png",
+      "bytes": 156,
+      "sha256": "2a27a1100c2a12c7e5bf41b86d3f9ce060f0c9f14f3a4b085471d3ff038d802b",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_11.png",
+      "bytes": 152,
+      "sha256": "1a6382ed01c70257c823d622853ef1b36c201bbf370944de805e460ccfe3e262",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_12.png",
+      "bytes": 152,
+      "sha256": "1a6382ed01c70257c823d622853ef1b36c201bbf370944de805e460ccfe3e262",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_13.png",
+      "bytes": 118,
+      "sha256": "dc3b0ff357a5d81a7889f32c56b6a65f886826e211e2d5d3769d7a4a7a2cc949",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_14.png",
+      "bytes": 118,
+      "sha256": "dc3b0ff357a5d81a7889f32c56b6a65f886826e211e2d5d3769d7a4a7a2cc949",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_15.png",
+      "bytes": 102,
+      "sha256": "7b58062419adb5d32050041ee3d6f0d8605bdb9ac539d67242970ae75e693575",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_16.png",
+      "bytes": 102,
+      "sha256": "d73ab519e7b8f307d10df57c1f8fd05724387434a0066c719afae8e43a8a5901",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_17.png",
+      "bytes": 111,
+      "sha256": "ea35f1c8e2b54b127e6b5510b386479217d832096ff5e233291c6b6067b389a7",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_18.png",
+      "bytes": 111,
+      "sha256": "ea35f1c8e2b54b127e6b5510b386479217d832096ff5e233291c6b6067b389a7",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_19.png",
+      "bytes": 211,
+      "sha256": "c1e8a8f781807aeeaa26ba56d9c1a223ce266d29807bdd5434ed3a0c848b7271",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_20.png",
+      "bytes": 189,
+      "sha256": "d0420de515b8d8faba83e93d9abaa3b432194e24ac54e530a4cda12152537d51",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_21.png",
+      "bytes": 236,
+      "sha256": "8269163162fe56bb0a79cfdd3bf496664b99b19e8c96cc115847c77911645198",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_22.png",
+      "bytes": 210,
+      "sha256": "ef77e3a9e850e89d28d274a9b77fb4acea64007b6d5750ffca0c42289b770716",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_23.png",
+      "bytes": 232,
+      "sha256": "d93e941dfe9b7b4646058a1cebbd9c8cc99941bde957d21f15abd5c1fdf8ed08",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/garden_home/tile_24.png",
+      "bytes": 267,
+      "sha256": "8f4298b962ea08fa9ab20c2f10afbf917c5a1d45339332bb8341c328a2791352",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/terrain.png",
+      "bytes": 1182,
+      "sha256": "91c654d601c2334342c8e610883ed8263c2a95178bb934f426122f6025e17eea",
+      "width": 128,
+      "height": 48,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_01.png",
+      "bytes": 106,
+      "sha256": "b5df67e92330873db0ee3225028dc7e9b76881035091e50d1624b729704a7bf4",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_02.png",
+      "bytes": 106,
+      "sha256": "b5df67e92330873db0ee3225028dc7e9b76881035091e50d1624b729704a7bf4",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_03.png",
+      "bytes": 106,
+      "sha256": "b5df67e92330873db0ee3225028dc7e9b76881035091e50d1624b729704a7bf4",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_04.png",
+      "bytes": 121,
+      "sha256": "19e3bb780d2f93ec275728acde428524eb76ccaa3ae66ea1af210e242a82581e",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_05.png",
+      "bytes": 119,
+      "sha256": "73946f748bd1336338990b623d788a2e413ec3c526e210cd78c0feddab20f0db",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_06.png",
+      "bytes": 117,
+      "sha256": "1c8b9051453b646e89c26c0bc8b238158bb9871c643585ed982ef7309a3aa8ab",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_07.png",
+      "bytes": 103,
+      "sha256": "2370b118ef422d9f093c48daa28270458b350a7ada8aa991da454aec1c7bfbf6",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_08.png",
+      "bytes": 149,
+      "sha256": "42a20a6f79eb5fa4514fbc7513f409032ce7ba189ce3c35a46d461a7b56529e0",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_09.png",
+      "bytes": 145,
+      "sha256": "6716eefe7496463fc4d27e75c157040e9b3530ba05ae3de7bb201078fabf23fa",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_10.png",
+      "bytes": 156,
+      "sha256": "2a27a1100c2a12c7e5bf41b86d3f9ce060f0c9f14f3a4b085471d3ff038d802b",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_11.png",
+      "bytes": 152,
+      "sha256": "1a6382ed01c70257c823d622853ef1b36c201bbf370944de805e460ccfe3e262",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_12.png",
+      "bytes": 152,
+      "sha256": "1a6382ed01c70257c823d622853ef1b36c201bbf370944de805e460ccfe3e262",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_13.png",
+      "bytes": 118,
+      "sha256": "dc3b0ff357a5d81a7889f32c56b6a65f886826e211e2d5d3769d7a4a7a2cc949",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_14.png",
+      "bytes": 118,
+      "sha256": "dc3b0ff357a5d81a7889f32c56b6a65f886826e211e2d5d3769d7a4a7a2cc949",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_15.png",
+      "bytes": 102,
+      "sha256": "7b58062419adb5d32050041ee3d6f0d8605bdb9ac539d67242970ae75e693575",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_16.png",
+      "bytes": 102,
+      "sha256": "d73ab519e7b8f307d10df57c1f8fd05724387434a0066c719afae8e43a8a5901",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_17.png",
+      "bytes": 111,
+      "sha256": "ea35f1c8e2b54b127e6b5510b386479217d832096ff5e233291c6b6067b389a7",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_18.png",
+      "bytes": 111,
+      "sha256": "ea35f1c8e2b54b127e6b5510b386479217d832096ff5e233291c6b6067b389a7",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_19.png",
+      "bytes": 211,
+      "sha256": "c1e8a8f781807aeeaa26ba56d9c1a223ce266d29807bdd5434ed3a0c848b7271",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_20.png",
+      "bytes": 189,
+      "sha256": "d0420de515b8d8faba83e93d9abaa3b432194e24ac54e530a4cda12152537d51",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_21.png",
+      "bytes": 236,
+      "sha256": "8269163162fe56bb0a79cfdd3bf496664b99b19e8c96cc115847c77911645198",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_22.png",
+      "bytes": 210,
+      "sha256": "ef77e3a9e850e89d28d274a9b77fb4acea64007b6d5750ffca0c42289b770716",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_23.png",
+      "bytes": 232,
+      "sha256": "d93e941dfe9b7b4646058a1cebbd9c8cc99941bde957d21f15abd5c1fdf8ed08",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "assets/tiles/sunny_apartment/tile_24.png",
+      "bytes": 267,
+      "sha256": "8f4298b962ea08fa9ab20c2f10afbf917c5a1d45339332bb8341c328a2791352",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA"
+    },
+    {
+      "path": "docs/art-review.md",
+      "bytes": 3939,
+      "sha256": "0ded1cb958b160381d84744ae0c19cfcd1dfbc1e0bd2c5b1cea2393be1495eae"
+    },
+    {
+      "path": "docs/character-design.md",
+      "bytes": 2805,
+      "sha256": "73d9fc868ea5de54f66ddf9bd9eb7b98f73b1645f90d297f3189e5dd04933bad"
+    },
+    {
+      "path": "docs/integration.md",
+      "bytes": 4319,
+      "sha256": "023a15a1339dd2b980b4ca2744c47c849455d3ca2502b3357f42cb96aa32ac4c"
+    },
+    {
+      "path": "docs/migration.json",
+      "bytes": 683,
+      "sha256": "109e24067efc69ce09bedfe878ab9016da4ff73ac3c564c5f231b9b4227dd91c"
+    },
+    {
+      "path": "docs/occlusion.md",
+      "bytes": 2607,
+      "sha256": "7767038fd21a330fd13a85bce626e6f39f27430aa6cc60371c297f8ba6c7035f"
+    },
+    {
+      "path": "docs/revision-v6.1.json",
+      "bytes": 1943,
+      "sha256": "6dd9afa239e8ebd9f45496f9973f434c4b07ca2a1b6467d35d0d389d40ee3823"
+    },
+    {
+      "path": "dot-home-preview.html",
+      "bytes": 121432,
+      "sha256": "ccde9f3cbcb13e4de9ae837091ccfdd82beb0a9709ae3777cdfecf9db59f3dae"
+    },
+    {
+      "path": "maps/brick_loft.runtime.json",
+      "bytes": 22316,
+      "sha256": "ce3070951e626242de10f89b40798a51f9d785477b1b7bf6d02bc0ff72e6c150"
+    },
+    {
+      "path": "maps/brick_loft.tmj",
+      "bytes": 45561,
+      "sha256": "530f55c26cf8186de0612690a593cb190d517f16de28e43c4b8ca265b6eaf0ad"
+    },
+    {
+      "path": "maps/garden_home.runtime.json",
+      "bytes": 22355,
+      "sha256": "ecd64314568ead1bd1bfbb3e686d4e6de8e3a52c78ccfeb8226e5fa47b4e164e"
+    },
+    {
+      "path": "maps/garden_home.tmj",
+      "bytes": 45163,
+      "sha256": "c77821fc94e92cb5c43db58215bd9ab0e1eec5a50ff8cedd7e94a5cddc22ab8c"
+    },
+    {
+      "path": "maps/sunny_apartment.runtime.json",
+      "bytes": 22002,
+      "sha256": "0c40fabbf20aa1a0b7fa66d0b2cb54bc178fb0d4a4df33cf2b9e456a22260712"
+    },
+    {
+      "path": "maps/sunny_apartment.tmj",
+      "bytes": 44606,
+      "sha256": "b2dc3ef7e45f000788b4af5d5e920cf4ad9159af29b95481c9c177d32cd1403d"
+    },
+    {
+      "path": "preview/data.js",
+      "bytes": 105777,
+      "sha256": "e41318a5deb0a6ed4e650babbc89acec0b914af817cf0a91497521196cd0bd3d"
+    },
+    {
+      "path": "preview/data.json",
+      "bytes": 95487,
+      "sha256": "72c71c030302329aae9022baaaf8ac7f43c9ad333aa46e9825d67a566c404ad4"
+    },
+    {
+      "path": "preview/index.html",
+      "bytes": 3972,
+      "sha256": "66aae4e67ab6a99102d3c15c7fb4b71aafed6a199cb2ebb939f4e3c0d5426308"
+    },
+    {
+      "path": "preview/runtime.js",
+      "bytes": 10942,
+      "sha256": "7365d96e3fc5b1d31aa0e372d385a6e870f92f01c9ca5486c19495e2b38e61f8"
+    },
+    {
+      "path": "previews/before-after.png",
+      "bytes": 36226,
+      "sha256": "b9b9e62b753dadc4c2a1285ab3078732532522caa612c8a6f04f040581501535",
+      "width": 912,
+      "height": 344,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/brick_loft/full_map_448x320.png",
+      "bytes": 16316,
+      "sha256": "c0eeaf5203adedd9c7c9d65bc3e7f34a0308d69ee2cc26505196e7c1199cc671",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/brick_loft/full_map_896x640.png",
+      "bytes": 23265,
+      "sha256": "66e52683207f53d71e51b95dab3753d96c84b61adfd94cc1b2b320d10608a1d2",
+      "width": 896,
+      "height": 640,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/brick_loft/game_448x320.png",
+      "bytes": 19515,
+      "sha256": "08ac2da9e93ee9d4c81a4c8d6b37a4c7eeb1124fb1cecfa2767d8a52a60d812e",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/brick_loft/grayscale.png",
+      "bytes": 9169,
+      "sha256": "a4a09ac238f86a83c086991d3f1a26cd67b2418e122e05b0ee6d0515f14c6245",
+      "width": 448,
+      "height": 320,
+      "mode": "L"
+    },
+    {
+      "path": "previews/brick_loft/viewport_320x224.png",
+      "bytes": 10196,
+      "sha256": "280b9746a75e33d449621306e154806fa7af7b0e8a9998b1ece10dbfba5a5b3d",
+      "width": 320,
+      "height": 224,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/brick_loft/viewport_640x448.png",
+      "bytes": 14203,
+      "sha256": "64d697b2758ae6ac4ebff61da8325957009c42e8bad95d8cd33fa296a77573cf",
+      "width": 640,
+      "height": 448,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/character-scale.png",
+      "bytes": 5429,
+      "sha256": "6dc5a2a959c6cbd267e0e6dfcaf53b7ae6358a8e001c8c3f6c94b3a6338605c1",
+      "width": 720,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/characters-before-after.png",
+      "bytes": 14640,
+      "sha256": "5e5eec803ed4b07deb49dee8ea9a3f06ca95594638f5d656d3a886aa5a010414",
+      "width": 768,
+      "height": 448,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/characters-directions_3x.png",
+      "bytes": 37340,
+      "sha256": "0c9b2588faba5907a21438db6eacd9fc79bd7a1baa885de5f6f8045726858908",
+      "width": 1152,
+      "height": 672,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/characters-walk.gif",
+      "bytes": 216156,
+      "sha256": "72b61a37da21af8d53e9d4af4b3cd1fd2da52117c094f40ce71213de7c654bab"
+    },
+    {
+      "path": "previews/characters_1x.png",
+      "bytes": 3206,
+      "sha256": "05ab1b916ae57deb06dea77eeffc95f13e3966258f4297cbd793669280460b8b",
+      "width": 144,
+      "height": 64,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/characters_6x.png",
+      "bytes": 7159,
+      "sha256": "e4afd04958572f03beafbb5a23844aeeafa891fd21d31e8ab805607de044f4ae",
+      "width": 864,
+      "height": 384,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/color-before-after.png",
+      "bytes": 116345,
+      "sha256": "03ee5ec85c5b1bec882a9aa7aa67da0072b4074121e960937e3eed740df4343f",
+      "width": 912,
+      "height": 1000,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/garden_home/full_map_448x320.png",
+      "bytes": 19845,
+      "sha256": "a0d05424b333ee6475b28c830683818e695e4267c17c3205ea3e788f0004ad70",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/garden_home/full_map_896x640.png",
+      "bytes": 28905,
+      "sha256": "1e9583ce4d233ad4e05068212527c8e473b37529a6cea3880a407a78fb2db24e",
+      "width": 896,
+      "height": 640,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/garden_home/game_448x320.png",
+      "bytes": 22923,
+      "sha256": "e168d349891d5ee6c48932057c3a95b284398b1c6467092fa732e74a6933f488",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/garden_home/grayscale.png",
+      "bytes": 11361,
+      "sha256": "27c7ba0d736df0b5816ce3554c6190da868a168773e191bd8611ba47d9220cfd",
+      "width": 448,
+      "height": 320,
+      "mode": "L"
+    },
+    {
+      "path": "previews/garden_home/viewport_320x224.png",
+      "bytes": 13255,
+      "sha256": "49d779919f24d73952d794ec1533b0dc1a572fb02e72c7c2e626993fc29c8310",
+      "width": 320,
+      "height": 224,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/garden_home/viewport_640x448.png",
+      "bytes": 18424,
+      "sha256": "d479d1c37e153c49f6e46a1088d41029c6bad303d109ecb582f47a198a31a0f9",
+      "width": 640,
+      "height": 448,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/occlusion-comparison.png",
+      "bytes": 46242,
+      "sha256": "d9cd2b60037e9349dc3d5d1274bd57b1498775e73fe24e2e61badd7d11ddfae8",
+      "width": 1920,
+      "height": 481,
+      "mode": "RGB"
+    },
+    {
+      "path": "previews/presets-3.png",
+      "bytes": 59622,
+      "sha256": "c174fb8949ed28906327ab2dd96e6cd7018a4757b28c059d91bc05ce9bbce830",
+      "width": 1376,
+      "height": 344,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/style-sheet_1x.png",
+      "bytes": 18083,
+      "sha256": "5433a713a91cdfc2dca6089334ace8875f55c6d263827b725d44268a38b7a721",
+      "width": 384,
+      "height": 304,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/style-sheet_4x.png",
+      "bytes": 34890,
+      "sha256": "72aa594d0868821375482038b19740c665daa1de21d1fe5e9d0ec7b488eba296",
+      "width": 1536,
+      "height": 1216,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/sunny_apartment/full_map_448x320.png",
+      "bytes": 16342,
+      "sha256": "f98f8f5d83b4da2be323d28670610b4069244e2b2908ce9c70510fdccdd0b0b8",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/sunny_apartment/full_map_896x640.png",
+      "bytes": 22839,
+      "sha256": "021879325409e188b09c54cbfd18d3ab0e81aa549240ec85deeefa816bdad14d",
+      "width": 896,
+      "height": 640,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/sunny_apartment/game_448x320.png",
+      "bytes": 19512,
+      "sha256": "ee465ee8c8069851eb32151c7d4c549bd6e6ab7b757b416713ca9933112907bf",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/sunny_apartment/grayscale.png",
+      "bytes": 9020,
+      "sha256": "953a1f1d4ba6c352f47d303f251cd1ad04d09658864f71a169860eaf5cfa3780",
+      "width": 448,
+      "height": 320,
+      "mode": "L"
+    },
+    {
+      "path": "previews/sunny_apartment/viewport_320x224.png",
+      "bytes": 11769,
+      "sha256": "701abf556d8727219611c44d179cd275e6a47be98f4511962839da81d4c16e7d",
+      "width": 320,
+      "height": 224,
+      "mode": "RGBA"
+    },
+    {
+      "path": "previews/sunny_apartment/viewport_640x448.png",
+      "bytes": 16026,
+      "sha256": "10b7993cbe6349b97a79c363da0df5105b1cd14eb6540a4ad4075dd9d05b5708",
+      "width": 640,
+      "height": 448,
+      "mode": "RGBA"
+    },
+    {
+      "path": "qa/adapter_validation.json",
+      "bytes": 1368,
+      "sha256": "18be9ff6558a1f123a5499e182158ddbcef6aaab52419423e8245b4210586d3f"
+    },
+    {
+      "path": "qa/brick_loft-occlusion-browser.png",
+      "bytes": 98715,
+      "sha256": "a1493d4c0adb20714826a803fc962fe88658c43c8f5ef940ba19c18ef17ed25a",
+      "width": 1100,
+      "height": 1023,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/brick_loft-shelf-before.png",
+      "bytes": 15068,
+      "sha256": "6ba81062d109327eea187a75decd5d3c09d8d682054bf27b13b0780756d4b033",
+      "width": 640,
+      "height": 449,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/brick_loft-shelf-behind.png",
+      "bytes": 16595,
+      "sha256": "8fb4b8b9d992058437c5ae8e37659e7a9579f33fcb38194ad3a18c1e8f0901b1",
+      "width": 640,
+      "height": 449,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/brick_loft-shelf-front.png",
+      "bytes": 16003,
+      "sha256": "b893be748c81984e21fcaad11d62c2cf5baa1d3a49f1a247bc93aa19f8c6450f",
+      "width": 640,
+      "height": 449,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/brick_loft_independent.png",
+      "bytes": 16316,
+      "sha256": "c0eeaf5203adedd9c7c9d65bc3e7f34a0308d69ee2cc26505196e7c1199cc671",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "qa/browser_validation.json",
+      "bytes": 35854,
+      "sha256": "3ddc6a674af223bad12619d66e45d898461c91126de00357b962aedfa44353bf"
+    },
+    {
+      "path": "qa/character_validation.json",
+      "bytes": 1290,
+      "sha256": "4d733d685b9c4c9ffd45ea4fb7695a60da87fa034406c70a50551a03327b7c22"
+    },
+    {
+      "path": "qa/external-brick_loft-browser.png",
+      "bytes": 94582,
+      "sha256": "7094d25f63860051278c5ef7c8d88292e3371a8b6e839e2147ac2536c57baba4",
+      "width": 1100,
+      "height": 1023,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/external-garden_home-browser.png",
+      "bytes": 105141,
+      "sha256": "783ee14b288c359166a1ae70fd822e5de7f5a531014fad1667782e05e299a929",
+      "width": 1100,
+      "height": 1011,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/external-sunny_apartment-browser.png",
+      "bytes": 97024,
+      "sha256": "5784a074fc82f8891679b8c5e46d7142706655079ec96cfe9e6f35a623496c5d",
+      "width": 1100,
+      "height": 1023,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/file-brick_loft-browser.png",
+      "bytes": 95204,
+      "sha256": "a4050333cce0e74f6265e06ec7237e2b0b9551b9bdb70826eb31488e1c244b23",
+      "width": 1100,
+      "height": 1023,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/file-garden_home-browser.png",
+      "bytes": 105765,
+      "sha256": "07e5f895663302273c695fc55db5ad05c687c7054a2dd7a4c36f894755b7a2c7",
+      "width": 1100,
+      "height": 1011,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/file-sunny_apartment-browser.png",
+      "bytes": 97612,
+      "sha256": "9efa27fdd8297252d83f237794f033fd136ddd58d4f56623b9e4ac3fa0dc5a3c",
+      "width": 1100,
+      "height": 1023,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/garden_home-occlusion-browser.png",
+      "bytes": 107322,
+      "sha256": "1dc83a6aaaa77f273e48acad1f5adeca57f85e259af0a0548afbe2bd3fe965b3",
+      "width": 1100,
+      "height": 1023,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/garden_home-shelf-before.png",
+      "bytes": 18712,
+      "sha256": "270f0e9db82abab5e0ca3e094ec5d60a103d56b66aad8f249610c110f4dec765",
+      "width": 640,
+      "height": 449,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/garden_home-shelf-behind.png",
+      "bytes": 19368,
+      "sha256": "88f861c918126b95803f487bbd36c2de3836c0c35a5bedde3ec9abb397a4119f",
+      "width": 640,
+      "height": 449,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/garden_home-shelf-front.png",
+      "bytes": 18102,
+      "sha256": "e8d3a663de1e89ea430c200ade89fe92054c854ac670629b392088a14894e35b",
+      "width": 640,
+      "height": 449,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/garden_home_independent.png",
+      "bytes": 19845,
+      "sha256": "a0d05424b333ee6475b28c830683818e695e4267c17c3205ea3e788f0004ad70",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "qa/mobile-browser.png",
+      "bytes": 91512,
+      "sha256": "502b9f4d4a723988ab78f17873c457487bf25b411fe10573282e0f768b48dd0e",
+      "width": 375,
+      "height": 1266,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/portable-brick_loft-browser.png",
+      "bytes": 95204,
+      "sha256": "a4050333cce0e74f6265e06ec7237e2b0b9551b9bdb70826eb31488e1c244b23",
+      "width": 1100,
+      "height": 1023,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/portable-garden_home-browser.png",
+      "bytes": 105765,
+      "sha256": "07e5f895663302273c695fc55db5ad05c687c7054a2dd7a4c36f894755b7a2c7",
+      "width": 1100,
+      "height": 1011,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/portable-sunny_apartment-browser.png",
+      "bytes": 97612,
+      "sha256": "9efa27fdd8297252d83f237794f033fd136ddd58d4f56623b9e4ac3fa0dc5a3c",
+      "width": 1100,
+      "height": 1023,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/report.md",
+      "bytes": 4118,
+      "sha256": "8629540db5b28b5e32360a0c94b1d3d7bf821a445a67fa0fd38af9639c0ce8fe"
+    },
+    {
+      "path": "qa/selection-browser.png",
+      "bytes": 83220,
+      "sha256": "59242adebc29344ce74721a15274abc0581af0b90fdb8057f5d19d66d1d25b85",
+      "width": 1100,
+      "height": 900,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/sunny_apartment-occlusion-browser.png",
+      "bytes": 96859,
+      "sha256": "ce2add577ba59286ca4b77baff91a92038d4024805244ec42cc32eee1689eabc",
+      "width": 1100,
+      "height": 1023,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/sunny_apartment-shelf-before.png",
+      "bytes": 13486,
+      "sha256": "785ceb6a02b5012e4f98d17cd686a8bac82f43f7be5c00d7ad39f4333533a446",
+      "width": 640,
+      "height": 449,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/sunny_apartment-shelf-behind.png",
+      "bytes": 14370,
+      "sha256": "a2569e211645cbf175a6d876fded515d274f9f4b13bee14fca3370e87e72fc14",
+      "width": 640,
+      "height": 449,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/sunny_apartment-shelf-front.png",
+      "bytes": 13306,
+      "sha256": "1a93d2bcd3c5304b1f70b44c94fdb4a71d4f4bd960e9ced7b6bf4c02be0120a7",
+      "width": 640,
+      "height": 449,
+      "mode": "RGB"
+    },
+    {
+      "path": "qa/sunny_apartment_independent.png",
+      "bytes": 16342,
+      "sha256": "f98f8f5d83b4da2be323d28670610b4069244e2b2908ce9c70510fdccdd0b0b8",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "qa/validation.json",
+      "bytes": 28657,
+      "sha256": "059f28b45e23570636f925387edff7988b78bd9031139805c13847577d761d2e"
+    },
+    {
+      "path": "requirements.txt",
+      "bytes": 15,
+      "sha256": "6b5894932a14d8f0ca4c66d5e220c1c34804eff22a77a1b7963513d6f9546525"
+    },
+    {
+      "path": "shared/occlusion.js",
+      "bytes": 801,
+      "sha256": "4f346a6e373d9ae5496e624ce32d3ea10de7b274b3de395392d869c4c40d3461"
+    },
+    {
+      "path": "sources/adapter-check.mjs",
+      "bytes": 2569,
+      "sha256": "03a94fa9cf9eecc68f55579c68a2d6f9fb36f778e8fbf0e9ab4124a17e2d6ec2"
+    },
+    {
+      "path": "sources/baseline-preview.html",
+      "bytes": 243288,
+      "sha256": "b79adc107e712e328a7d73cb6ae5daf41ee68a2fcaab774e1325609a9468c466"
+    },
+    {
+      "path": "sources/browser-check.cjs",
+      "bytes": 11968,
+      "sha256": "2a665a1c81e2e0b4292dca7fd5be741507e054a2ea828bdbb711675807a0b8c6"
+    },
+    {
+      "path": "sources/build.py",
+      "bytes": 34350,
+      "sha256": "77a86922146e8e9c52542b0ff1af85930dbbdd8780b36d5201395eb11661570b"
+    },
+    {
+      "path": "sources/character-prompt-v6.2.md",
+      "bytes": 3158,
+      "sha256": "a030fac61412f0e7409ec8e0de381f48c0d629ffb1cb90300fae4edb8d11845e"
+    },
+    {
+      "path": "sources/character-review.py",
+      "bytes": 3744,
+      "sha256": "5c980aa61b029a124146a0c2181b406ce89e0bd51b4b981b611a22b94a2ebaf8"
+    },
+    {
+      "path": "sources/characters-atlas.png",
+      "bytes": 1993777,
+      "sha256": "cac01321cd022737f679e1e07b7676fdbdee6fbfe60d320cb1a93689359732f1",
+      "width": 1681,
+      "height": 936,
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/furniture-atlas.png",
+      "bytes": 1205750,
+      "sha256": "85a70a14aecbbc85bf0b2bfd1a28ef22ed0499e271d299f78729de551f244970",
+      "width": 1402,
+      "height": 1122,
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/generation-prompts.md",
+      "bytes": 7630,
+      "sha256": "74d28f9930cc201a3482bc11c708f9aabc5633511087a578f4fd8a497a22fce0"
+    },
+    {
+      "path": "sources/occlusion-proof.py",
+      "bytes": 707,
+      "sha256": "260fc499757a0750d21d33c777f27e2d208b0adc66dd1883de9c1ce42ad46dc1"
+    },
+    {
+      "path": "sources/package.py",
+      "bytes": 1531,
+      "sha256": "39af0a340bd11663f609f0b0b8e8209756c2c9bd6440963d8b29987e459f5148"
+    },
+    {
+      "path": "sources/report.py",
+      "bytes": 4926,
+      "sha256": "ee42c0579f0afd57679edca3702be64c5112ae3fb69eee74513d17f867c19fde"
+    },
+    {
+      "path": "sources/v6-color-baseline/brick_loft.png",
+      "bytes": 15739,
+      "sha256": "4b495f57ea1e58d253e7a7370a411ea9a362e2171d942110c86e79b102065834",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/v6-color-baseline/garden_home.png",
+      "bytes": 19776,
+      "sha256": "6597652140e08fc83472aa2eee8945b9cb1d604a1aa82ccb41ca940886610e50",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/v6-color-baseline/sunny_apartment.png",
+      "bytes": 15323,
+      "sha256": "28beac60af267a7e5d9fc5cfefd4ca1d2480960cd12abd96937dd167c8c23344",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/v6.1-character-baseline/adult_female.png",
+      "bytes": 7686,
+      "sha256": "7e7d5e4eaaffec29f5b7cf7e7acf6d2660f9bf0ed2b03c04643598e8c92c443a",
+      "width": 96,
+      "height": 160,
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/v6.1-character-baseline/adult_male.png",
+      "bytes": 6546,
+      "sha256": "337714abe73499a4d1a5d3c83b593eb7ac6365274a97eed0854bc4d081d142a2",
+      "width": 96,
+      "height": 160,
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/v6.1-character-baseline/brick_loft.png",
+      "bytes": 16316,
+      "sha256": "c0eeaf5203adedd9c7c9d65bc3e7f34a0308d69ee2cc26505196e7c1199cc671",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/v6.1-character-baseline/child.png",
+      "bytes": 6861,
+      "sha256": "c78864e611e174fabe260cbab0a2ee00ac0bd4d46c75a38e18bfa1b6c2b11123",
+      "width": 96,
+      "height": 160,
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/v6.1-character-baseline/garden_home.png",
+      "bytes": 19845,
+      "sha256": "a0d05424b333ee6475b28c830683818e695e4267c17c3205ea3e788f0004ad70",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/v6.1-character-baseline/sunny_apartment.png",
+      "bytes": 16342,
+      "sha256": "f98f8f5d83b4da2be323d28670610b4069244e2b2908ce9c70510fdccdd0b0b8",
+      "width": 448,
+      "height": 320,
+      "mode": "RGBA"
+    },
+    {
+      "path": "sources/validate.py",
+      "bytes": 7579,
+      "sha256": "73947f443b34a4ae1e55f5f1e962c5ecb536835a203d3f00166a000bbcd9b1af"
+    },
+    {
+      "path": "tilesets/brick_loft.tsj",
+      "bytes": 268,
+      "sha256": "d5c6f745abd6bf37a5ae9da2c5c066220820ee8948b3efbeccf2b4268c19540a"
+    },
+    {
+      "path": "tilesets/garden_home.tsj",
+      "bytes": 270,
+      "sha256": "c1e569b5ed915c570f31180378a38d0c2b161f90e1238b3f1650c02cf1a95a47"
+    },
+    {
+      "path": "tilesets/objects.tsj",
+      "bytes": 3755,
+      "sha256": "2c5a008ed6d608e0b006917f90f2f2351f11c256f3de81f13c777cfe24b434c1"
+    },
+    {
+      "path": "tilesets/sunny_apartment.tsj",
+      "bytes": 278,
+      "sha256": "05ab2ec1ca82a6f9a302499a1fe9fc90b357126b56c059fe4e651cfbbcfb87a4"
+    }
+  ]
+}

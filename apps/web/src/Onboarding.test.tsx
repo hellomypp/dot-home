@@ -137,8 +137,7 @@ it("이전 단계와 새로고침에 집 이름, 캐릭터, 외형을 보존한�
   fireEvent.change(screen.getByLabelText("내 캐릭터 이름"), {
     target: { value: "하늘" },
   });
-  fireEvent.click(screen.getByRole("tab", { name: "헤어" }));
-  fireEvent.click(screen.getByRole("button", { name: "검정 단발" }));
+  fireEvent.click(screen.getByRole("button", { name: "파란 겉옷" }));
   fireEvent.click(screen.getByRole("button", { name: "이전" }));
   expect((screen.getByLabelText("집 이름") as HTMLInputElement).value).toBe(
     "느린 집",
@@ -156,7 +155,7 @@ it("이전 단계와 새로고침에 집 이름, 캐릭터, 외형을 보존한�
   expect(body).toMatchObject({
     name: "느린 집",
     memberName: "하늘",
-    appearance: "v1:1000",
+    appearance: "v2:adult_male",
   });
   expect(sessionStorage.getItem("dot-home:onboarding:google-user")).toBeNull();
 });
@@ -175,7 +174,7 @@ it("0마리 생성과 중복 클릭 방지를 검증하고 완료 후 게임에 
   fireEvent.click(button);
   fireEvent.click(button);
   await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
-  expect(Object.keys(JSON.parse(post.mock.calls[0][0]!.body as string)).sort()).toEqual(["appearance","memberName","name"]);
+  expect(Object.keys(JSON.parse(post.mock.calls[0][0]!.body as string)).sort()).toEqual(["appearance","memberName","name","presetId"]);
   finish(
     new Response(
       JSON.stringify({ household: { id: "created", name: "새 집" } }),
@@ -198,7 +197,7 @@ it("API 오류가 나도 입력과 외형이 유지되어 재시도할 수 있�
   fireEvent.change(screen.getByLabelText("내 캐릭터 이름"), {
     target: { value: "보존할 이름" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "푸른 셔츠" }));
+  fireEvent.click(screen.getByRole("button", { name: "파란 겉옷" }));
   fireEvent.click(screen.getByRole("button", { name: "우리 집 만들기" }));
   expect(await screen.findByRole("alert")).toHaveProperty(
     "textContent",
@@ -209,7 +208,7 @@ it("API 오류가 나도 입력과 외형이 유지되어 재시도할 수 있�
   ).toBe("보존할 이름");
   expect(
     screen
-      .getByRole("button", { name: "푸른 셔츠" })
+      .getByRole("button", { name: "파란 겉옷" })
       .getAttribute("aria-pressed"),
   ).toBe("true");
   expect(
@@ -287,26 +286,17 @@ it("구형 색상은 유지하고 새 외형의 네 항목을 손실 없이 복�
   });
 });
 
-it("꾸미기 분류는 방향키로 이동하고 선택한 외형을 유지한다", async () => {
-  show();
-  await house();
+it("제공된 캐릭터 스타일을 선택하고 프리셋과 함께 저장한다", async () => {
+  show();await house();
+  fireEvent.click(screen.getByRole("button", {name:/컬러 타운하우스/}));
   character();
-  const top = screen.getByRole("tab", { name: "상의" });
-  fireEvent.keyDown(top, { key: "ArrowRight" });
-  expect(
-    screen.getByRole("tab", { name: "하의" }).getAttribute("aria-selected"),
-  ).toBe("true");
-  fireEvent.click(screen.getByRole("button", { name: "청바지" }));
-  fireEvent.keyDown(screen.getByRole("tab", { name: "하의" }), { key: "End" });
-  fireEvent.click(screen.getByRole("button", { name: "동그란 안경" }));
-  fireEvent.click(screen.getByRole("button", { name: "우리 집 만들기" }));
-  await waitFor(() => expect(post).toHaveBeenCalledOnce());
-  expect(JSON.parse(post.mock.calls[0][0]!.body as string).appearance).toBe(
-    "v1:0011",
-  );
+  fireEvent.click(screen.getByRole("button", {name:"노란 멜빵 캐릭터"}));
+  fireEvent.click(screen.getByRole("button", {name:"우리 집 만들기"}));
+  await waitFor(()=>expect(post).toHaveBeenCalledOnce());
+  expect(JSON.parse(post.mock.calls[0][0]!.body as string)).toMatchObject({appearance:"v2:child",presetId:"brick_loft"});
 });
 
 it("구형 draft의 인원/반려동물 필드를 무시하고 필요한 값만 복원한다",()=>{
   sessionStorage.setItem("dot-home:onboarding:a",JSON.stringify({updatedAt:Date.now(),draft:{step:2,name:"이전 집",memberName:"이전 이름",appearance:"v1:3212",people:0,petCount:999,pets:[{name:"옛 동물"}],token:"비밀 아님 테스트"}}));
-  expect(readDraft("a","기본")).toEqual({step:2,name:"이전 집",memberName:"이전 이름",appearance:"v1:3212"});
+  expect(readDraft("a","기본")).toEqual({step:2,name:"이전 집",memberName:"이전 이름",appearance:"v1:3212",presetId:"warm-wood-home"});
 });

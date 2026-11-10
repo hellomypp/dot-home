@@ -1,4 +1,11 @@
-# 도트홈 v0.6 개발판
+# 도트홈 개발판
+
+비공개 미리보기에서는 자동 위치·귀가와 이전 집의 내 기록을 사용할 수 있다. 브라우저 알림은 VAPID 설정을 완료한 환경에서 기기별로 켤 수 있다. 구현과 실제 검증 범위는 [v0.9 작업 기록](docs/V09_WORKPLAN.md)과 [검증 기록](docs/VERIFICATION.md)을 확인한다.
+
+## 로컬 작업: v6.2 그래픽과 v0.7 공유 집 설정
+
+정원집·햇살 아파트·벽돌 로프트, 제공된 캐릭터 3종, 대표의 공유 가구 외형 설정을 구현했다. 기존 Google/초대/가족·반려동물 정책은 유지한다. [구현·데이터 호환·검증 기록](docs/V62_INTEGRATION.md)을 확인한다. 이번 변경은 외부 배포 및 GitHub push 전 상태다.
+
 
 움직이는 집 장면과 서버에 저장되는 공동생활 기능을 구현한 첫 개발 버전입니다. 원본 명세는 보존했습니다. **운영 출시 완료나 M0~M3 전체 검증 완료를 뜻하지 않습니다.**
 
@@ -22,11 +29,11 @@ bash scripts/dev.sh
 - API는 loopback 8080, Vite가 REST/OAuth/WebSocket을 프록시합니다.
 - Node 24.15+ / pnpm 11.25.0 / Java 21. 이 Mac에서는 번들 런타임 fallback도 제공합니다.
 - 개발용 임의 계정 키 로그인이 필요한 자동/로컬 테스트만 `bash scripts/server.sh dev`로 실행합니다. 이 로그인은 loopback 호스트에서만 허용되고 운영/원격 Google 로그인과 함께 사용할 수 없습니다.
-- iPhone 미리보기는 `python3 scripts/remote-preview.py start|stop|status`를 사용합니다. [원격 실행](docs/IPHONE_PREVIEW.md) 참조. Google 설정 전에는 시안과 설정 대기 화면만 제공하며 원격 개발 계정 로그인을 허용하지 않습니다.
+- iPhone 미리보기는 `python3 scripts/remote-preview.py start|stop|status|upgrade`를 사용합니다. [원격 실행](docs/IPHONE_PREVIEW.md) 참조. Google 설정 전에는 시안과 설정 대기 화면만 제공하며 원격 개발 계정 로그인을 허용하지 않습니다.
 
 ## 모바일 온보딩
 
-스토리 시작 → 집 정보 → 캐릭터 꾸미기 → 입주 완료를 구현했습니다. 헤어·상의·하의·액세서리, 반려동물별 등록, 세션 임시 입력 복원과 작은 계정 메뉴를 제공합니다. [구현 결과·테스트·화면 캡처·iPhone 확인 방법](docs/ONBOARDING.md). 개발 서버의 `/studio/onboarding`에서 저장 없이 시안을 확인할 수 있습니다.
+스토리 시작 → 집 정보 → 캐릭터 꾸미기 → 입주 완료를 구현했습니다. 집 이름과 내 캐릭터를 설정하면 입주할 수 있습니다. 가족과 반려동물은 입주 후 추가합니다. 온보딩은 세션 임시 입력 복원과 작은 계정 메뉴를 제공합니다. [구현 결과·테스트·화면 캡처·iPhone 확인 방법](docs/ONBOARDING.md). 개발 서버의 `/studio/onboarding`에서 저장 없이 시안을 확인할 수 있습니다.
 
 ## 구현한 기능
 

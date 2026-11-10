@@ -58,7 +58,7 @@ it("쪽지 본문은 HTML 실행 없이 표시하고 떼기와 보관함을 API�
       return { ...note, state: "TAKEN" } as never;
     }
     return (
-      path.endsWith("archive") ? [note] : attached ? [note] : []
+      path.endsWith("archive/page") ? { items: [note], nextCursor: null } : attached ? [note] : []
     ) as never;
   });
   const { container } = show(
@@ -76,6 +76,21 @@ it("쪽지 본문은 HTML 실행 없이 표시하고 떼기와 보관함을 API�
   fireEvent.click(screen.getByRole("button", { name: "가족 보관함" }));
   expect(await screen.findByText(note.body)).toBeTruthy();
 });
+it("보관함의 다음 페이지를 기존 쪽지 아래에 이어 보여 준다", async () => {
+  const note = { id: "n", objectId: "fridge", authorMemberId: "a", state: "TAKEN", createdAt: new Date().toISOString(), version: 0 };
+  mocked.mockImplementation(async (path) => {
+    if (path.includes("?cursor=")) return { items: [{ ...note, id: "n2", body: "두 번째 페이지" }], nextCursor: null } as never;
+    if (path.endsWith("archive/page")) return { items: [{ ...note, body: "첫 번째 페이지" }], nextCursor: "next" } as never;
+    return [] as never;
+  });
+  show(<ObjectNotes householdId="h" memberId="a" isOwner />);
+  fireEvent.click(screen.getByRole("button", { name: "가족 보관함" }));
+  expect(await screen.findByText("첫 번째 페이지")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "보관한 쪽지 더 보기" }));
+  expect(await screen.findByText("두 번째 페이지")).toBeTruthy();
+  expect(screen.getByText("첫 번째 페이지")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "보관한 쪽지 더 보기" })).toBeNull();
+});
 it("쪽지 작성 실패 시 본문을 보존한다", async () => {
   mocked.mockImplementation(async (_path, method) => {
     if (method === "POST") throw new Error("연결을 다시 확인해주세요");
@@ -87,6 +102,21 @@ it("쪽지 작성 실패 시 본문을 보존한다", async () => {
   fireEvent.click(screen.getByRole("button", { name: "쪽지 붙이기" }));
   expect(await screen.findByRole("alert")).toBeTruthy();
   expect((input as HTMLTextAreaElement).value).toBe("남길 이야기");
+});
+it("쪽지는 이모지를 한 자로 세고 300자를 넘긴 초안을 그대로 표시한다", async () => {
+  mocked.mockResolvedValue([] as never);
+  show(<ObjectNotes householdId="h" memberId="a" isOwner />);
+  await screen.findByText("냉장고에 첫 쪽지를 붙여보세요.");
+  const input = screen.getByLabelText("가족에게 남길 쪽지");
+  const submit = screen.getByRole<HTMLButtonElement>("button", { name: "쪽지 붙이기" });
+  const limit = "🐾".repeat(300);
+  fireEvent.change(input, { target: { value: limit + "🐾" } });
+  expect(screen.getByText(/301\/300자/)).toBeTruthy();
+  expect(submit.disabled).toBe(true);
+  expect((input as HTMLTextAreaElement).value).toBe(limit + "🐾");
+  fireEvent.change(input, { target: { value: limit } });
+  fireEvent.click(submit);
+  expect(mocked).toHaveBeenCalledWith("/api/households/h/objects/fridge/notes", "POST", { body: limit });
 });
 it("캘린더는 월 탐색과 종일 일정 생성을 연결한다", async () => {
   mocked.mockResolvedValue([] as never);
@@ -118,6 +148,34 @@ it("캘린더는 월 탐색과 종일 일정 생성을 연결한다", async () =
     ),
   );
 });
+it("개인 공유 일정은 대표에게 내용 수정 대신 숨기기를 제공한다", async () => {
+  const today = seoulDate();
+  mocked.mockResolvedValue([{
+    id: "p", title: "개인 진료", description: "오전 일정", category: "GENERAL", allDay: true,
+    startDate: today, endDate: today, scope: "PERSONAL_SHARED", canEdit: false, canHide: true, version: 3,
+  }] as never);
+  show(<FamilyCalendar householdId="h" isOwner />);
+  expect(await screen.findByText("개인 진료")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "상세 / 수정" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "삭제" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "가족 화면에서 숨기기" }));
+  await waitFor(() => expect(mocked).toHaveBeenCalledWith(
+    "/api/households/h/calendar-events/p/hide", "POST", { version: 3 },
+  ));
+});
+it("일정 참석 응답은 본인 버전만 API에 보낸다", async () => {
+  const today = seoulDate();
+  mocked.mockResolvedValue([{
+    id: "rsvp", title: "가족 식사", description: "", category: "GENERAL", allDay: true,
+    startDate: today, endDate: today, canEdit: false, canRespond: true,
+    myRsvp: { status: "TENTATIVE", version: 2 },
+  }] as never);
+  show(<FamilyCalendar householdId="h" />);
+  fireEvent.click(await screen.findByRole("button", { name: /^참석$/ }));
+  await waitFor(() => expect(mocked).toHaveBeenCalledWith(
+    "/api/households/h/calendar-events/rsvp/rsvp", "PUT", { status: "ACCEPTED", version: 2 },
+  ));
+});
 it("UTC 자정 경계와 종일 날짜는 브라우저 로컬 시간대에 의존하지 않는다", () => {
   const timed = {
     allDay: false,
@@ -145,6 +203,7 @@ it("집들이는 로그인 후 방문 버튼을 눌러야 수락하고 텍스트
         user: { id: "visitor", name: "친구" },
         memberships: [],
       } as never;
+    if(path === "/api/visits/"+token && !method)return {householdName:"새 분위기의 친구 집",theme:"warm",guestbook:[],design:{presetId:"brick_loft",version:2,variants:{sofa:"blue"}}} as never;
     if (method === "POST")
       return {
         householdName: "친구 집",
@@ -169,6 +228,9 @@ it("집들이는 로그인 후 방문 버튼을 눌러야 수락하고 텍스트
     "/api/visits/" + token + "/accept",
     "POST",
   );
+  fireEvent.click(screen.getByRole("button",{name:"집 모습 새로고침"}));
+  expect(await screen.findByRole("heading",{name:"새 분위기의 친구 집 집들이"})).toBeTruthy();
+  expect(mocked).toHaveBeenCalledWith("/api/visits/"+token);
   expect(safeInvitePath("/visit/" + token)).toBe("/visit/" + token);
   expect(safeInvitePath("/visit/" + token + "?redirect=evil")).toBeNull();
 });

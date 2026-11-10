@@ -1,0 +1,1040 @@
+{
+  "movable": ["plant", "plant_b", "bookshelf", "sofa", "lamp", "coffee-table", "dining_table", "sideboard"],
+  "layoutGrid": 16,
+  "surfaces": {
+    "floor": {
+      "bounds": [53, 97, 342, 179],
+      "options": [
+        {"id": "original", "name": "프리셋 기본"},
+        {"id": "light_oak", "name": "연한 오크", "color": "#dbb98c"},
+        {"id": "mist_ash", "name": "안개빛 애쉬", "color": "#b6b6ac"}
+      ]
+    },
+    "wall": {
+      "bounds": [53, 48, 342, 43],
+      "options": [
+        {"id": "original", "name": "프리셋 기본"},
+        {"id": "sage", "name": "세이지", "color": "#c9d5ba"},
+        {"id": "soft_lilac", "name": "연보라", "color": "#e0cfe2"}
+      ]
+    }
+  },
+  "tankGrid": {"columns": 8, "rows": 6, "cellSize": 48, "baseInset": 6},
+  "maps": {
+    "warm-wood-home": {
+      "id": "warm-wood-home",
+      "tankSlots": [17, 18, 28, 30],
+      "backdrop": "/art/homes-v2/warm-wood-home/architecture.png",
+      "previewCrop": [
+        32,
+        16,
+        384,
+        288
+      ],
+      "walkBounds": [
+        53,
+        97,
+        342,
+        179
+      ],
+      "petSpawn": [
+        108,
+        256
+      ],
+      "spawns": [
+        [
+          224,
+          260
+        ],
+        [
+          248,
+          260
+        ],
+        [
+          224,
+          244
+        ]
+      ],
+      "visitorSpawn": [
+        76,
+        108
+      ],
+      "objects": [
+        {
+          "id": "rug",
+          "sprite": "/art/homes-v2/warm-wood-home/rug.png",
+          "x": 88,
+          "y": 172,
+          "width": 96,
+          "height": 64,
+          "depth": 236,
+          "layer": "ground",
+          "interactive": false,
+          "collision": null
+        },
+        {
+          "id": "entrance",
+          "sprite": "/art/homes-v2/warm-wood-home/door.png",
+          "x": 62,
+          "y": 50,
+          "width": 28,
+          "height": 46,
+          "depth": 96,
+          "layer": "wall",
+          "interactive": true,
+          "collision": [
+            62,
+            83,
+            28,
+            13
+          ],
+          "interactionAnchor": [
+            76,
+            108
+          ]
+        },
+        {
+          "id": "window",
+          "sprite": "/art/homes-v2/warm-wood-home/window.png",
+          "x": 114,
+          "y": 50,
+          "width": 52,
+          "height": 37,
+          "depth": 87,
+          "layer": "wall",
+          "interactive": false,
+          "collision": null
+        },
+        {
+          "id": "calendar",
+          "sprite": "/art/homes-v2/warm-wood-home/calendar.png",
+          "x": 200,
+          "y": 58,
+          "width": 16,
+          "height": 21,
+          "depth": 79,
+          "layer": "wall",
+          "interactive": true,
+          "collision": null,
+          "interactionAnchor": [
+            208,
+            107
+          ]
+        },
+        {
+          "id": "cupboard",
+          "sprite": "/art/homes-v2/warm-wood-home/cupboard.png",
+          "x": 240,
+          "y": 52,
+          "width": 44,
+          "height": 29,
+          "depth": 81,
+          "layer": "wall",
+          "interactive": false,
+          "collision": null
+        },
+        {
+          "id": "window_b",
+          "sprite": "/art/homes-v2/warm-wood-home/window.png",
+          "x": 314,
+          "y": 50,
+          "width": 52,
+          "height": 37,
+          "depth": 87,
+          "layer": "wall",
+          "interactive": false,
+          "collision": null
+        },
+        {
+          "id": "plant",
+          "sprite": "/art/homes-v2/warm-wood-home/plant.png",
+          "x": 173,
+          "y": 96,
+          "width": 28,
+          "height": 35,
+          "depth": 131,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            173,
+            119,
+            28,
+            12
+          ]
+        },
+        {
+          "id": "kitchen",
+          "sprite": "/art/homes-v2/warm-wood-home/kitchen.png",
+          "x": 244,
+          "y": 88,
+          "width": 72,
+          "height": 50,
+          "depth": 138,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            244,
+            111,
+            72,
+            27
+          ],
+          "occlusion": {
+            "alpha": 0.55,
+            "fadeMs": 160,
+            "restoreMs": 160,
+            "rearInset": 16
+          }
+        },
+        {
+          "id": "fridge",
+          "sprite": "/art/homes-v2/warm-wood-home/fridge.png",
+          "x": 324,
+          "y": 92,
+          "width": 28,
+          "height": 47,
+          "depth": 139,
+          "layer": "depth",
+          "interactive": true,
+          "collision": [
+            324,
+            118,
+            28,
+            21
+          ],
+          "interactionAnchor": [
+            338,
+            148
+          ],
+          "occlusion": {
+            "alpha": 0.55,
+            "fadeMs": 160,
+            "restoreMs": 160,
+            "rearInset": 16
+          }
+        },
+        {
+          "id": "bookshelf",
+          "sprite": "/art/homes-v2/warm-wood-home/bookcase.png",
+          "x": 60,
+          "y": 140,
+          "width": 32,
+          "height": 45,
+          "depth": 185,
+          "layer": "depth",
+          "interactive": true,
+          "interactionAnchor": [72, 198],
+          "collision": [
+            60,
+            166,
+            32,
+            19
+          ],
+          "occlusion": {
+            "alpha": 0.55,
+            "fadeMs": 160,
+            "restoreMs": 160,
+            "rearInset": 16
+          }
+        },
+        {
+          "id": "sofa",
+          "sprite": "/art/homes-v2/warm-wood-home/sofa.png",
+          "x": 104,
+          "y": 164,
+          "width": 64,
+          "height": 43,
+          "depth": 207,
+          "layer": "depth",
+          "interactive": true,
+          "collision": [
+            104,
+            186,
+            64,
+            21
+          ],
+          "interactionAnchor": [
+            176,
+            208
+          ]
+        },
+        {
+          "id": "lamp",
+          "sprite": "/art/homes-v2/warm-wood-home/lamp.png",
+          "x": 78,
+          "y": 177,
+          "width": 18,
+          "height": 41,
+          "depth": 218,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            78,
+            208,
+            18,
+            10
+          ]
+        },
+        {
+          "id": "coffee-table",
+          "sprite": "/art/homes-v2/warm-wood-home/coffee-table.png",
+          "x": 119,
+          "y": 211,
+          "width": 36,
+          "height": 25,
+          "depth": 236,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            119,
+            223,
+            36,
+            13
+          ]
+        },
+        {
+          "id": "dining_table",
+          "sprite": "/art/homes-v2/warm-wood-home/dining-set.png",
+          "x": 266,
+          "y": 178,
+          "width": 52,
+          "height": 48,
+          "depth": 226,
+          "layer": "depth",
+          "interactive": true,
+          "collision": [
+            266,
+            200,
+            52,
+            26
+          ],
+          "interactionAnchor": [
+            292,
+            240
+          ]
+        },
+        {
+          "id": "sideboard",
+          "sprite": "/art/homes-v2/warm-wood-home/sideboard.png",
+          "x": 342,
+          "y": 236,
+          "width": 40,
+          "height": 35,
+          "depth": 271,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            342,
+            255,
+            40,
+            16
+          ]
+        },
+        {
+          "id": "plant_b",
+          "sprite": "/art/homes-v2/warm-wood-home/plant.png",
+          "x": 354,
+          "y": 203,
+          "width": 28,
+          "height": 35,
+          "depth": 238,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            354,
+            223,
+            28,
+            15
+          ]
+        }
+      ]
+    },
+    "sunny_apartment": {
+      "id": "sunny_apartment",
+      "tankSlots": [17, 18, 28, 29],
+      "backdrop": "/art/homes-v2/modern-apartment/architecture.png",
+      "previewCrop": [
+        32,
+        16,
+        384,
+        288
+      ],
+      "walkBounds": [
+        53,
+        97,
+        342,
+        179
+      ],
+      "petSpawn": [
+        108,
+        256
+      ],
+      "spawns": [
+        [
+          224,
+          260
+        ],
+        [
+          248,
+          260
+        ],
+        [
+          224,
+          244
+        ]
+      ],
+      "visitorSpawn": [
+        76,
+        108
+      ],
+      "objects": [
+        {
+          "id": "rug",
+          "sprite": "/art/homes-v2/modern-apartment/rug.png",
+          "x": 88,
+          "y": 172,
+          "width": 96,
+          "height": 75,
+          "depth": 247,
+          "layer": "ground",
+          "interactive": false,
+          "collision": null
+        },
+        {
+          "id": "entrance",
+          "sprite": "/art/homes-v2/modern-apartment/door.png",
+          "x": 62,
+          "y": 50,
+          "width": 28,
+          "height": 43,
+          "depth": 93,
+          "layer": "wall",
+          "interactive": true,
+          "collision": [
+            62,
+            83,
+            28,
+            13
+          ],
+          "interactionAnchor": [
+            76,
+            108
+          ]
+        },
+        {
+          "id": "window",
+          "sprite": "/art/homes-v2/modern-apartment/window.png",
+          "x": 114,
+          "y": 50,
+          "width": 52,
+          "height": 37,
+          "depth": 87,
+          "layer": "wall",
+          "interactive": false,
+          "collision": null
+        },
+        {
+          "id": "calendar",
+          "sprite": "/art/homes-v2/modern-apartment/calendar.png",
+          "x": 200,
+          "y": 58,
+          "width": 16,
+          "height": 20,
+          "depth": 78,
+          "layer": "wall",
+          "interactive": true,
+          "collision": null,
+          "interactionAnchor": [
+            208,
+            107
+          ]
+        },
+        {
+          "id": "cupboard",
+          "sprite": "/art/homes-v2/modern-apartment/cupboard.png",
+          "x": 240,
+          "y": 52,
+          "width": 44,
+          "height": 32,
+          "depth": 84,
+          "layer": "wall",
+          "interactive": false,
+          "collision": null
+        },
+        {
+          "id": "window_b",
+          "sprite": "/art/homes-v2/modern-apartment/window.png",
+          "x": 314,
+          "y": 50,
+          "width": 52,
+          "height": 37,
+          "depth": 87,
+          "layer": "wall",
+          "interactive": false,
+          "collision": null
+        },
+        {
+          "id": "plant",
+          "sprite": "/art/homes-v2/modern-apartment/plant.png",
+          "x": 173,
+          "y": 96,
+          "width": 28,
+          "height": 35,
+          "depth": 131,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            173,
+            119,
+            28,
+            12
+          ]
+        },
+        {
+          "id": "kitchen",
+          "sprite": "/art/homes-v2/modern-apartment/kitchen.png",
+          "x": 244,
+          "y": 88,
+          "width": 72,
+          "height": 56,
+          "depth": 144,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            244,
+            117,
+            72,
+            27
+          ],
+          "occlusion": {
+            "alpha": 0.55,
+            "fadeMs": 160,
+            "restoreMs": 160,
+            "rearInset": 16
+          }
+        },
+        {
+          "id": "fridge",
+          "sprite": "/art/homes-v2/modern-apartment/fridge.png",
+          "x": 324,
+          "y": 92,
+          "width": 28,
+          "height": 44,
+          "depth": 136,
+          "layer": "depth",
+          "interactive": true,
+          "collision": [
+            324,
+            115,
+            28,
+            21
+          ],
+          "interactionAnchor": [
+            338,
+            148
+          ],
+          "occlusion": {
+            "alpha": 0.55,
+            "fadeMs": 160,
+            "restoreMs": 160,
+            "rearInset": 16
+          }
+        },
+        {
+          "id": "bookshelf",
+          "sprite": "/art/homes-v2/modern-apartment/bookcase.png",
+          "x": 342,
+          "y": 159,
+          "width": 32,
+          "height": 40,
+          "depth": 199,
+          "layer": "depth",
+          "interactive": true,
+          "interactionAnchor": [350, 211],
+          "collision": [
+            342,
+            180,
+            32,
+            19
+          ],
+          "occlusion": {
+            "alpha": 0.55,
+            "fadeMs": 160,
+            "restoreMs": 160,
+            "rearInset": 16
+          }
+        },
+        {
+          "id": "sofa",
+          "sprite": "/art/homes-v2/modern-apartment/sofa.png",
+          "x": 104,
+          "y": 164,
+          "width": 64,
+          "height": 50,
+          "depth": 214,
+          "layer": "depth",
+          "interactive": true,
+          "collision": [
+            104,
+            193,
+            64,
+            21
+          ],
+          "interactionAnchor": [
+            176,
+            208
+          ]
+        },
+        {
+          "id": "lamp",
+          "sprite": "/art/homes-v2/modern-apartment/lamp.png",
+          "x": 78,
+          "y": 177,
+          "width": 18,
+          "height": 31,
+          "depth": 208,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            78,
+            198,
+            18,
+            10
+          ]
+        },
+        {
+          "id": "coffee-table",
+          "sprite": "/art/homes-v2/modern-apartment/coffee-table.png",
+          "x": 119,
+          "y": 211,
+          "width": 36,
+          "height": 25,
+          "depth": 236,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            119,
+            223,
+            36,
+            13
+          ]
+        },
+        {
+          "id": "dining_table",
+          "sprite": "/art/homes-v2/modern-apartment/dining-set.png",
+          "x": 266,
+          "y": 178,
+          "width": 52,
+          "height": 60,
+          "depth": 238,
+          "layer": "depth",
+          "interactive": true,
+          "collision": [
+            266,
+            212,
+            52,
+            26
+          ],
+          "interactionAnchor": [
+            292,
+            252
+          ]
+        },
+        {
+          "id": "sideboard",
+          "sprite": "/art/homes-v2/modern-apartment/sideboard.png",
+          "x": 60,
+          "y": 235,
+          "width": 40,
+          "height": 33,
+          "depth": 268,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            60,
+            252,
+            40,
+            16
+          ]
+        },
+        {
+          "id": "plant_b",
+          "sprite": "/art/homes-v2/modern-apartment/plant.png",
+          "x": 354,
+          "y": 203,
+          "width": 28,
+          "height": 35,
+          "depth": 238,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            354,
+            223,
+            28,
+            15
+          ]
+        }
+      ]
+    },
+    "brick_loft": {
+      "id": "brick_loft",
+      "tankSlots": [17, 18, 19, 28, 29, 30],
+      "backdrop": "/art/homes-v2/color-townhouse/architecture.png",
+      "previewCrop": [
+        32,
+        16,
+        384,
+        288
+      ],
+      "walkBounds": [
+        53,
+        97,
+        342,
+        179
+      ],
+      "petSpawn": [
+        108,
+        256
+      ],
+      "spawns": [
+        [
+          224,
+          260
+        ],
+        [
+          248,
+          260
+        ],
+        [
+          224,
+          244
+        ]
+      ],
+      "visitorSpawn": [
+        76,
+        108
+      ],
+      "objects": [
+        {
+          "id": "rug",
+          "sprite": "/art/homes-v2/color-townhouse/rug.png",
+          "x": 88,
+          "y": 172,
+          "width": 96,
+          "height": 79,
+          "depth": 251,
+          "layer": "ground",
+          "interactive": false,
+          "collision": null
+        },
+        {
+          "id": "entrance",
+          "sprite": "/art/homes-v2/color-townhouse/door.png",
+          "x": 62,
+          "y": 50,
+          "width": 28,
+          "height": 41,
+          "depth": 91,
+          "layer": "wall",
+          "interactive": true,
+          "collision": [
+            62,
+            83,
+            28,
+            13
+          ],
+          "interactionAnchor": [
+            76,
+            108
+          ]
+        },
+        {
+          "id": "window",
+          "sprite": "/art/homes-v2/color-townhouse/window.png",
+          "x": 114,
+          "y": 50,
+          "width": 52,
+          "height": 37,
+          "depth": 87,
+          "layer": "wall",
+          "interactive": false,
+          "collision": null
+        },
+        {
+          "id": "calendar",
+          "sprite": "/art/homes-v2/color-townhouse/calendar.png",
+          "x": 200,
+          "y": 58,
+          "width": 16,
+          "height": 18,
+          "depth": 76,
+          "layer": "wall",
+          "interactive": true,
+          "collision": null,
+          "interactionAnchor": [
+            208,
+            107
+          ]
+        },
+        {
+          "id": "cupboard",
+          "sprite": "/art/homes-v2/color-townhouse/cupboard.png",
+          "x": 240,
+          "y": 52,
+          "width": 44,
+          "height": 42,
+          "depth": 94,
+          "layer": "wall",
+          "interactive": false,
+          "collision": null
+        },
+        {
+          "id": "window_b",
+          "sprite": "/art/homes-v2/color-townhouse/window.png",
+          "x": 314,
+          "y": 50,
+          "width": 52,
+          "height": 37,
+          "depth": 87,
+          "layer": "wall",
+          "interactive": false,
+          "collision": null
+        },
+        {
+          "id": "plant",
+          "sprite": "/art/homes-v2/color-townhouse/plant.png",
+          "x": 173,
+          "y": 96,
+          "width": 28,
+          "height": 31,
+          "depth": 127,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            173,
+            115,
+            28,
+            12
+          ]
+        },
+        {
+          "id": "kitchen",
+          "sprite": "/art/homes-v2/color-townhouse/kitchen.png",
+          "x": 244,
+          "y": 88,
+          "width": 72,
+          "height": 55,
+          "depth": 143,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            244,
+            116,
+            72,
+            27
+          ],
+          "occlusion": {
+            "alpha": 0.55,
+            "fadeMs": 160,
+            "restoreMs": 160,
+            "rearInset": 16
+          }
+        },
+        {
+          "id": "fridge",
+          "sprite": "/art/homes-v2/color-townhouse/fridge.png",
+          "x": 324,
+          "y": 92,
+          "width": 28,
+          "height": 42,
+          "depth": 134,
+          "layer": "depth",
+          "interactive": true,
+          "collision": [
+            324,
+            113,
+            28,
+            21
+          ],
+          "interactionAnchor": [
+            338,
+            148
+          ],
+          "occlusion": {
+            "alpha": 0.55,
+            "fadeMs": 160,
+            "restoreMs": 160,
+            "rearInset": 16
+          }
+        },
+        {
+          "id": "bookshelf",
+          "sprite": "/art/homes-v2/color-townhouse/bookcase.png",
+          "x": 60,
+          "y": 140,
+          "width": 32,
+          "height": 39,
+          "depth": 179,
+          "layer": "depth",
+          "interactive": true,
+          "interactionAnchor": [72, 190],
+          "collision": [
+            60,
+            160,
+            32,
+            19
+          ],
+          "occlusion": {
+            "alpha": 0.55,
+            "fadeMs": 160,
+            "restoreMs": 160,
+            "rearInset": 16
+          }
+        },
+        {
+          "id": "sofa",
+          "sprite": "/art/homes-v2/color-townhouse/sofa.png",
+          "x": 110,
+          "y": 163,
+          "width": 64,
+          "height": 58,
+          "depth": 221,
+          "layer": "depth",
+          "interactive": true,
+          "collision": [
+            110,
+            200,
+            64,
+            21
+          ],
+          "interactionAnchor": [
+            184,
+            208
+          ]
+        },
+        {
+          "id": "lamp",
+          "sprite": "/art/homes-v2/color-townhouse/lamp.png",
+          "x": 78,
+          "y": 177,
+          "width": 18,
+          "height": 26,
+          "depth": 203,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            78,
+            193,
+            18,
+            10
+          ]
+        },
+        {
+          "id": "coffee-table",
+          "sprite": "/art/homes-v2/color-townhouse/coffee-table.png",
+          "x": 119,
+          "y": 211,
+          "width": 36,
+          "height": 24,
+          "depth": 235,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            119,
+            222,
+            36,
+            13
+          ]
+        },
+        {
+          "id": "dining_table",
+          "sprite": "/art/homes-v2/color-townhouse/dining-set.png",
+          "x": 278,
+          "y": 189,
+          "width": 52,
+          "height": 57,
+          "depth": 246,
+          "layer": "depth",
+          "interactive": true,
+          "collision": [
+            278,
+            220,
+            52,
+            26
+          ],
+          "interactionAnchor": [
+            304,
+            260
+          ]
+        },
+        {
+          "id": "sideboard",
+          "sprite": "/art/homes-v2/color-townhouse/sideboard.png",
+          "x": 342,
+          "y": 236,
+          "width": 40,
+          "height": 32,
+          "depth": 268,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            342,
+            252,
+            40,
+            16
+          ]
+        },
+        {
+          "id": "plant_b",
+          "sprite": "/art/homes-v2/color-townhouse/plant.png",
+          "x": 354,
+          "y": 203,
+          "width": 28,
+          "height": 31,
+          "depth": 234,
+          "layer": "depth",
+          "interactive": false,
+          "collision": [
+            354,
+            219,
+            28,
+            15
+          ]
+        }
+      ]
+    }
+  },
+  "presets": [
+    {
+      "id": "warm-wood-home",
+      "name": "따뜻한 나무집"
+    },
+    {
+      "id": "sunny_apartment",
+      "name": "모던한 아파트"
+    },
+    {
+      "id": "brick_loft",
+      "name": "컬러 타운하우스"
+    }
+  ],
+  "aliases": {
+    "classic_home": "warm-wood-home",
+    "garden_home": "warm-wood-home"
+  },
+  "variants": {
+    "fridge": [
+      "original",
+      "leaf",
+      "star"
+    ],
+    "sofa": [
+      "sage",
+      "blue",
+      "leather"
+    ],
+    "table": [
+      "wood",
+      "round"
+    ]
+  }
+}

@@ -33,3 +33,8 @@ server:
         same-site: lax
 app:
   origin: ${APP_ORIGIN:https://localhost}
+  household-deletion-enabled: ${HOUSEHOLD_DELETION_ENABLED:false}
+  push:
+    public-key: ${PUSH_PUBLIC_KEY:}
+    private-key: ${PUSH_PRIVATE_KEY:}
+    subject: ${PUSH_SUBJECT:}

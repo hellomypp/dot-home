@@ -33,9 +33,20 @@ tasks.register('mysqlTest', Test) {
     useJUnitPlatform { includeTags 'mysql' }
 }
 
+tasks.register('replayHouseholdDeletions', JavaExec) {
+    description = 'Plans or applies deletion log entries to a restored database.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'kr.dothome.HouseholdDeletionReplay'
+}
+
 // Docker supplies the separately built SPA; no generated files are written to src/.
 tasks.named('processResources') {
     if (project.hasProperty('webDist')) {
         from(file(project.property('webDist'))) { into 'static' }
     }
+}
+
+// Single canonical asset/physics catalogue; never load sample characters as members.
+tasks.named('processResources') {
+    from(project.hasProperty('spaceCatalogue') ? file(project.property('spaceCatalogue')) : rootProject.file('../../assets/space-catalog.json')) { into 'spaces' }
 }

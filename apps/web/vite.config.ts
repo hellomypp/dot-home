@@ -20,6 +20,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
+      '^/healthz(?:\\?.*)?$': `http://127.0.0.1:${apiPort}`,
       '/api': `http://127.0.0.1:${apiPort}`,
       '/oauth2': `http://127.0.0.1:${apiPort}`,
       '/login/oauth2': `http://127.0.0.1:${apiPort}`,

@@ -1,0 +1,6 @@
+ALTER TABLE household_calendar_event ADD COLUMN title_editor_member_id VARCHAR(36);
+ALTER TABLE household_calendar_event ADD COLUMN description_editor_member_id VARCHAR(36);
+UPDATE household_calendar_event
+SET title_editor_member_id=created_by_member_id,description_editor_member_id=created_by_member_id
+WHERE version=0 AND created_by_member_id=updated_by_member_id;
+CREATE INDEX ix_calendar_author_history ON household_calendar_event(created_by_member_id,created_at,id);
