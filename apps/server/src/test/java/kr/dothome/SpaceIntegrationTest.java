@@ -18,6 +18,7 @@ class SpaceIntegrationTest {
     @Autowired SpaceEditAccess editAccess;
     @Autowired OwnershipService ownership;
     @Autowired MembershipLifecycle membership;
+    @Autowired MovementService movement;
     String user(){return identities.resolve("google",UUID.randomUUID().toString(),"검증").id;}
     @Test void sharedDesignPersistsAndVisitorsGetOnlyPublicDesign(){
         String owner=user(),family=user(),visitor=user();
@@ -140,6 +141,9 @@ class SpaceIntegrationTest {
         assertEquals(404,assertThrows(ApiException.class,()->editing.heartbeat(h,owner,session.id())).status.value());
         assertEquals("EDIT_SCOPE",assertThrows(ApiException.class,()->editing.draft(h,family,session.id(),
             new SpaceEditDraft(0L,new SpaceInput("brick_loft",0,Map.of())))).code);
+        var unauthorizedLayout=new SpaceInput("garden_home",0,Map.of(),Map.of("plant",new FurniturePosition(189,96)));
+        assertEquals("EDIT_SCOPE",assertThrows(ApiException.class,()->editing.draft(h,family,session.id(),
+            new SpaceEditDraft(0L,unauthorizedLayout))).code);
         var draft=editing.draft(h,family,session.id(),new SpaceEditDraft(0L,new SpaceInput("garden_home",0,Map.of("fridge","leaf"))));
         var commit=new SpaceEditCommit("save",0L,draft.draftVersion());
         assertEquals(1,editing.commit(h,family,session.id(),commit).committedVersion());
@@ -186,6 +190,44 @@ class SpaceIntegrationTest {
             statement.setTimestamp(1,Timestamp.from(time),Calendar.getInstance(TimeZone.getTimeZone("UTC")));
             statement.setString(2,id);
         });
+    }
+    @Test void layoutUsesSameGeometryForFamilyMovementVisitorsAndLegacySettings(){
+        String owner=user(),family=user(),visitor=user();
+        String h=homes.create(owner,new Api.CreateHouse("배치 집","대표","sage")).household().id();
+        var joined=homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("가족","sage"));
+        var ask=editAccess.ask(h,family,new AskSpaceEdit("move-furniture",Set.of(SpaceEditScope.LAYOUT)));
+        editAccess.decide(h,owner,ask.id(),new DecideSpaceEdit("permit",ask.version()),true);
+        var session=editing.start(h,family,new SpaceEditStart("layout",null,ask.id()));
+        for(var invalid:List.of(Map.of("entrance",new FurniturePosition(78,50)),
+            Map.of("plant",new FurniturePosition(190,96)),Map.of("sideboard",new FurniturePosition(214,236)))){
+            assertEquals(400,assertThrows(ApiException.class,()->editing.draft(h,family,session.id(),
+                new SpaceEditDraft(0L,new SpaceInput("garden_home",0,Map.of(),invalid)))).status.value());
+        }
+        var positions=Map.of("plant",new FurniturePosition(189,96));
+        var changed=new SpaceInput("garden_home",0,Map.of(),positions);
+        assertEquals(400,assertThrows(ApiException.class,()->SpaceLayout.validate(
+            new SpaceView("garden_home",0,Map.of(),Map.of("plant",new FurniturePosition(157,112))))).status.value());
+        var draft=editing.draft(h,family,session.id(),new SpaceEditDraft(0L,changed));
+        assertTrue(homes.design(h,owner).positions().isEmpty());
+        jdbc.update("UPDATE membership SET x=210,y=130,avatar_space='v62' WHERE id=?",joined.meMemberId());
+        var saved=editing.commit(h,family,session.id(),new SpaceEditCommit("layout-save",0L,draft.draftVersion())).world();
+        assertEquals(positions,saved.design().positions());
+        assertEquals(224,saved.members().stream().filter(m->m.id().equals(joined.meMemberId())).findFirst().orElseThrow().x());
+        assertEquals("이곳으로 이동할 수 없어요.",assertThrows(ApiException.class,()->movement.apply(h,family,
+            new Api.Intent("blocked-after-move","MOVE_INTENT","home",210d,130d,null))).getMessage());
+        var visit=visits.create(h,owner).url().substring(7);
+        assertEquals(positions,visits.enter(visit,visitor).design().positions());
+        var legacy=homes.design(h,owner,new SpaceInput("garden_home",1,Map.of("fridge","leaf")));
+        assertEquals(positions,legacy.design().positions());
+        assertTrue(homes.design(h,owner,new SpaceInput("sunny_apartment",2,Map.of())).design().positions().isEmpty());
+    }
+    @Test void pathValidationRejectsAnAccessibleTileInADisconnectedRoom(){
+        var target=new SpaceLayout.Point(96,24);
+        var room=new SpaceLayout.Room(new SpaceLayout.Box(0,0,112,80),
+            List.of(new SpaceLayout.Item("barrier",new SpaceLayout.Point(48,0),new SpaceLayout.Box(48,0,16,80),null),
+                new SpaceLayout.Item("anchor",target,null,target)),List.of(new SpaceLayout.Point(20,24)),List.of());
+        assertTrue(room.walkable(target.x(),target.y()));
+        assertThrows(ApiException.class,room::checkPaths);
     }
     private String tryStart(String h,String owner,String key,CountDownLatch gate)throws InterruptedException{
         gate.await();

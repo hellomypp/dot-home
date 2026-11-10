@@ -3,6 +3,7 @@ import { api, type Snapshot } from "../lib/api";
 import { catalogue, defaultDesign, mapFor, type SpaceDesign } from "../game/spaces";
 import { SpacePreview } from "./SpacePreview";
 import { SpaceEditRequests, type SpaceEditInbox, type SpaceEditRequest } from "./SpaceEditRequests";
+import { FurnitureLayout } from "./FurnitureLayout";
 import "./spaces.css";
 export function PresetPicker({
   value,
@@ -89,12 +90,14 @@ function SpaceEditor({ snapshot, source, onSaved, owner, approval, inbox, reload
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [selectedFurniture, setSelectedFurniture] = useState("plant");
   const pending = useRef(false);
   const startAttempt = useRef<{ requestId: string; recoverId?: string; approvalId?: string }>(null);
   const allowed = owner || !!approval;
   const activeId = session?.status === "ACTIVE" &&
     (owner ? !session.approvalId : !!approval && session.approvalId === approval.id) ? session.id : null;
   const draft = activeId ? unsaved ?? session!.draft : source;
+  const canMoveFurniture = !!activeId && (owner || approval?.scope.includes("LAYOUT"));
   const recoverable = session?.status === "RECOVERABLE";
 
   useEffect(() => {
@@ -174,10 +177,16 @@ function SpaceEditor({ snapshot, source, onSaved, owner, approval, inbox, reload
     if (!activeId || !session) return;
     return run(async () => {
       setUnsaved(design);
-      setSession(await api<EditSession>(`${path}/${activeId}/draft`, "PATCH", {
-        draftVersion: session.draftVersion,
-        design,
-      }));
+      try {
+        setSession(await api<EditSession>(`${path}/${activeId}/draft`, "PATCH", {
+          draftVersion: session.draftVersion,
+          design,
+        }));
+      } catch (failure) {
+        if (failure && typeof failure === "object" && "status" in failure &&
+            (failure.status === 400 || failure.status === 403)) setUnsaved(null);
+        throw failure;
+      }
       setUnsaved(null);
     });
   }
@@ -208,7 +217,18 @@ function SpaceEditor({ snapshot, source, onSaved, owner, approval, inbox, reload
   return (
     <section className="space-settings" aria-busy={busy || (allowed && !ready && !error)}>
       <p>가족과 함께 보는 집 분위기예요. 저장 전까지 변경 내용은 나에게만 보여요.</p>
-      <SpacePreview design={draft} />
+      <SpacePreview design={draft} selected={canMoveFurniture ? selectedFurniture : undefined} />
+      {canMoveFurniture && <FurnitureLayout design={draft} selected={selectedFurniture} onSelect={setSelectedFurniture}
+        onChange={design => void changeDraft(design)} disabled={busy || !!unsaved} />}
+      {error && (
+        <>
+          <p role="alert" className="error-message">{error}</p>
+          <div className="form-actions">
+            {unsaved && <button className="button secondary" disabled={busy} onClick={() => void changeDraft(unsaved)}>초안 다시 저장</button>}
+            <button className="button secondary" disabled={busy} onClick={() => void refresh()}>편집 상태 다시 확인</button>
+          </div>
+        </>
+      )}
       <SpaceEditRequests snapshot={snapshot} owner={owner} inbox={inbox} reload={reloadAccess} editingNow={!!activeId} />
       {session?.status === "COMMITTED" && <p role="status">집 분위기를 저장했어요.</p>}
       {allowed && !ready && !error && <p role="status">집 분위기를 불러오는 중이에요.</p>}
@@ -230,7 +250,9 @@ function SpaceEditor({ snapshot, source, onSaved, owner, approval, inbox, reload
           <p className="muted">선택한 내용은 초안으로 보관돼요. 편집은 한 번에 최대 20분 동안 할 수 있어요.</p>
           {(owner || approval?.scope.includes("PRESET")) && (
             <PresetPicker disabled={busy || !!unsaved} value={draft.presetId}
-              onChange={(presetId) => void changeDraft({ ...draft, presetId })} />
+              onChange={(presetId) => void changeDraft({ ...draft, presetId,
+                ...(draft.positions && mapFor(presetId).id !== mapFor(draft.presetId).id && { positions: {} }),
+              })} />
           )}
           {(owner || approval?.scope.includes("VARIANTS")) && <label>
             냉장고 외형
@@ -254,15 +276,6 @@ function SpaceEditor({ snapshot, source, onSaved, owner, approval, inbox, reload
             <button className="button secondary" disabled={busy} onClick={() => void cancel()}>편집 종료</button>
             <button className="button primary" disabled={busy || !!unsaved || session.draftVersion === 0}
               onClick={() => void commit()}>집 분위기 저장</button>
-          </div>
-        </>
-      )}
-      {error && (
-        <>
-          <p role="alert" className="error-message">{error}</p>
-          <div className="form-actions">
-            {unsaved && <button className="button secondary" disabled={busy} onClick={() => void changeDraft(unsaved)}>초안 다시 저장</button>}
-            <button className="button secondary" disabled={busy} onClick={() => void refresh()}>편집 상태 다시 확인</button>
           </div>
         </>
       )}

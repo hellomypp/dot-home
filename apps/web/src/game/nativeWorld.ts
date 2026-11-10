@@ -8,7 +8,7 @@ import { makeCat } from "./art";
 import {
   assetBase,
   catalogue,
-  mapFor,
+  mapForDesign,
   defaultDesign,
   fridgeMagnet,
   nativeCharacter,
@@ -181,7 +181,7 @@ class NativeHome extends Phaser.Scene {
     this.objects = [];
     this.markers = [];
     const design = this.view.design || defaultDesign;
-    this.map = mapFor(design.presetId);
+    this.map = mapForDesign(design);
     this.designKey = JSON.stringify(design);
     this.add.image(0, 0, this.map.backdrop).setOrigin(0, 0).setDepth(-1000);
     const magnet = fridgeMagnet(design);

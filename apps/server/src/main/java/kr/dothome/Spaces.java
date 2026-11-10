@@ -1,12 +1,20 @@
 package kr.dothome;
 
 import java.util.*;
+import jakarta.validation.Valid;
 import tools.jackson.databind.*;
+import tools.jackson.core.type.TypeReference;
 import org.springframework.core.io.ClassPathResource;
 import jakarta.validation.constraints.*;
 
-record SpaceView(String presetId,long version,Map<String,String> variants) {}
-record SpaceInput(@NotBlank String presetId,@PositiveOrZero long version,@NotNull Map<String,String> variants) {}
+record SpaceView(String presetId,long version,Map<String,String> variants,Map<String,FurniturePosition> positions) {
+    SpaceView{positions=positions==null?Map.of():Map.copyOf(positions);}
+    SpaceView(String presetId,long version,Map<String,String> variants){this(presetId,version,variants,Map.of());}
+}
+record SpaceInput(@NotBlank String presetId,@PositiveOrZero long version,@NotNull Map<String,String> variants,
+    @Size(max=8) Map<String,@NotNull @Valid FurniturePosition> positions) {
+    SpaceInput(String presetId,long version,Map<String,String> variants){this(presetId,version,variants,null);}
+}
 final class Spaces {
     static final ObjectMapper JSON=new ObjectMapper();
     static final JsonNode DATA;
@@ -22,30 +30,34 @@ final class Spaces {
         }
     }
     static Map<String,String> overrides(Household house){try{return JSON.readValue(house.objectVariants,Map.class);}catch(Exception e){throw new IllegalStateException("Invalid stored space design");}}
-    static SpaceView view(Household h){return new SpaceView(h.presetId,h.designVersion,Map.copyOf(overrides(h)));}
+    static Map<String,FurniturePosition> positions(Household house){
+        return JSON.readValue(house.objectPositions,new TypeReference<Map<String,FurniturePosition>>(){});
+    }
+    static SpaceView view(Household h){return new SpaceView(h.presetId,h.designVersion,Map.copyOf(overrides(h)),positions(h));}
+    static boolean sameMap(String a,String b){return mapId(a).equals(mapId(b));}
+    static SpaceView proposed(Household house,SpaceInput input){
+        validate(input.presetId(),input.variants());
+        var placements=input.positions()==null
+            ? sameMap(house.presetId,input.presetId())?positions(house):Map.<String,FurniturePosition>of()
+            : input.positions();
+        if(placements.size()>DATA.get("movable").size() || placements.values().stream().anyMatch(Objects::isNull))
+            throw ApiException.invalid("가구의 위치를 확인해 주세요.");
+        var design=new SpaceView(input.presetId(),input.version(),Map.copyOf(input.variants()),placements);
+        SpaceLayout.validate(design);
+        return design;
+    }
     static JsonNode map(String preset){return DATA.get("maps").get(mapId(preset));}
     static boolean tankSlot(String preset,int slot){
         for(var allowed:map(preset).path("tankSlots"))if(allowed.asInt()==slot)return true;
         return false;
     }
     static boolean walkable(double x,double y,String preset){
-        if(!Double.isFinite(x)||!Double.isFinite(y))return false;
-        var map=map(preset);if(map==null)return false;
-        var bounds=map.get("walkBounds");
-        double left=x-6,right=x+6,top=y-8,bottom=y;
-        int bx=bounds.get(0).asInt(),by=bounds.get(1).asInt();
-        if(left<bx||right>bx+bounds.get(2).asInt()||top<by||bottom>by+bounds.get(3).asInt())return false;
-        for(var object:map.get("objects")){
-            var collision=object.get("collision");
-            if(collision==null||collision.isNull())continue;
-            int cx=collision.get(0).asInt(),cy=collision.get(1).asInt();
-            if(left<cx+collision.get(2).asInt()&&right>cx&&top<cy+collision.get(3).asInt()&&bottom>cy)return false;
-        }
-        return true;
+        return map(preset)!=null && SpaceLayout.room(new SpaceView(preset,0,Map.of())).walkable(x,y);
     }
-    static double[] position(Member member,String preset){
-        if(!"legacy".equals(member.avatarSpace)&&walkable(member.x,member.y,preset))return new double[]{member.x,member.y};
-        return spawn(preset,0);
+    static double[] position(Member member,SpaceLayout.Room room){
+        if(!"legacy".equals(member.avatarSpace)&&room.walkable(member.x,member.y))return new double[]{member.x,member.y};
+        var spawn=room.spawns().getFirst();
+        return new double[]{spawn.x(),spawn.y()};
     }
     static double[] spawn(String preset,long index){
         var spawns=map(preset).get("spawns");

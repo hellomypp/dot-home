@@ -2,16 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import {
   defaultDesign,
   mapFor,
+  mapForDesign,
   renderPreview,
   type SpaceDesign,
 } from "../game/spaces";
 export function SpacePreview({
   design = defaultDesign,
+  selected,
 }: {
   design?: SpaceDesign;
+  selected?: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null),
-    [error, setError] = useState(false);
+    [error, setError] = useState(false),
+    [art, setArt] = useState<{ preset: string; images: Map<string, HTMLImageElement> }>();
   const m = mapFor(design.presetId);
   const [x, y, width, height] = m.previewCrop;
   useEffect(() => {
@@ -34,17 +38,7 @@ export function SpacePreview({
       ),
     )
       .then(() => {
-        if (!alive) return;
-        const buffer = document.createElement("canvas");
-        buffer.width = 448;
-        buffer.height = 320;
-        renderPreview(buffer.getContext("2d")!, m, images, design);
-        const c = ref.current?.getContext("2d");
-        if (c) {
-          c.imageSmoothingEnabled = false;
-          c.clearRect(0, 0, width, height);
-          c.drawImage(buffer, -x, -y);
-        }
+        if (alive) setArt({ preset: m.id, images });
       })
       .catch(() => {
         if (alive) setError(true);
@@ -52,7 +46,19 @@ export function SpacePreview({
     return () => {
       alive = false;
     };
-  }, [design.presetId, JSON.stringify(design.variants)]);
+  }, [m]);
+  useEffect(() => {
+    if (art?.preset !== m.id) return;
+    const context = ref.current?.getContext("2d");
+    if (!context) return;
+    const buffer = document.createElement("canvas");
+    buffer.width = 448;
+    buffer.height = 320;
+    renderPreview(buffer.getContext("2d")!, mapForDesign(design), art.images, design, selected);
+    context.imageSmoothingEnabled = false;
+    context.clearRect(0, 0, width, height);
+    context.drawImage(buffer, -x, -y);
+  }, [art, m.id, design, selected, x, y, width, height]);
   return (
     <div className="space-preview full-room">
       {error ? (

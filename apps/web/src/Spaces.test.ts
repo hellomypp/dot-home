@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   catalogue,
   mapFor,
+  mapForDesign,
   canStand,
   path,
   petClearsPeople,
@@ -44,6 +45,24 @@ describe("shared home layouts", () => {
       expect(canStand({ x: 338, y: 133 }, m)).toBe(false);
       expect(canStand({ x: 338, y: 148 }, m)).toBe(true);
     }
+  });
+  it("moves a bookshelf sprite, collision, depth and interaction point together", () => {
+    const base = mapFor("warm-wood-home");
+    const original = base.objects.find(object => object.id === "bookshelf")!;
+    const moved = mapForDesign({
+      presetId: base.id,
+      version: 1,
+      variants: {},
+      positions: { bookshelf: { x: original.x + 16, y: original.y + 16 } },
+    }).objects.find(object => object.id === "bookshelf")!;
+    expect(moved).toMatchObject({
+      x: 76,
+      y: 156,
+      depth: 201,
+      collision: [76, 182, 32, 19],
+      interactionAnchor: [88, 214],
+    });
+    expect(original.interactionAnchor).toEqual([72, 198]);
   });
   it("finds a free pet spawn and routes pets around a character's visible sprite", () => {
     const map = mapFor("warm-wood-home");

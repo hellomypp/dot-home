@@ -127,8 +127,7 @@ class SpaceEditing {
         var design=input.design();
         if(row.baseDesignVersion!=design.version() || house.designVersion!=row.baseDesignVersion)
             throw ApiException.conflict("집 분위기가 바뀌었어요. 최신 설정으로 다시 시작해 주세요.");
-        Spaces.validate(design.presetId(),design.variants());
-        var next=new SpaceView(design.presetId(),design.version(),Map.copyOf(design.variants()));
+        var next=Spaces.proposed(house,design);
         SpaceEditAccess.checkScope(grant,Spaces.view(house),next);
         if(!next.equals(row.draft())){
             if(row.draftVersion!=input.draftVersion())throw ApiException.conflict("다른 기기에서 초안을 바꿨어요.");
@@ -168,7 +167,7 @@ class SpaceEditing {
             throw ApiException.conflict("편집 내용이 바뀌었어요. 최신 초안을 확인해 주세요.");
         var draft=row.draft();
         SpaceEditAccess.checkScope(grant,Spaces.view(house),draft);
-        var world=homes.saveDesign(house,member.id,new SpaceInput(draft.presetId(),draft.version(),draft.variants()));
+        var world=homes.saveDesign(house,member.id,new SpaceInput(draft.presetId(),draft.version(),draft.variants(),draft.positions()));
         row.endedAt=now;
         row.commitRequestId=input.requestId();
         row.committedVersion=world.design().version();

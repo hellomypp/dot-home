@@ -93,7 +93,7 @@ class MigrationRetentionTest {
                 """);
             sql.executeUpdate("INSERT INTO pet(id,household_id,name,kind,appearance) VALUES('pet','house','모카','cat','cream')");
             var before=rows(connection);
-            Flyway.configure().dataSource(url,username(),password()).load().migrate();
+            Flyway.configure().dataSource(url,username(),password()).target("27").load().migrate();
             assertEquals(before,rows(connection));
             try(var sessions=sql.executeQuery("SELECT COUNT(*) FROM space_edit_session")){
                 assertTrue(sessions.next());

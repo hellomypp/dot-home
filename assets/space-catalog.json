@@ -1,4 +1,6 @@
 {
+  "movable": ["plant", "plant_b", "bookshelf", "sofa", "lamp", "coffee-table", "dining_table", "sideboard"],
+  "layoutGrid": 16,
   "tankGrid": {"columns": 8, "rows": 6, "cellSize": 48, "baseInset": 6},
   "maps": {
     "warm-wood-home": {

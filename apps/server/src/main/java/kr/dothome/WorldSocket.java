@@ -112,9 +112,9 @@ class MovementService {
             throw ApiException.invalid("이 장면에서는 캐릭터를 직접 움직일 수 없어요.");
         var seen=requests.computeIfAbsent(member.id,k->new LinkedHashSet<>());synchronized(seen){if(seen.contains(intent.requestId()))return;}
         long now=System.currentTimeMillis();Long previous=rate.put(member.id,now);if(previous!=null&&now-previous<120)throw ApiException.invalid("이동 요청이 너무 빨라요.");
-        if(intent.kind().equals("MOVE_INTENT")){if(intent.x()==null||intent.y()==null||!(intent.scene().equals("home")?Spaces.walkable(intent.x(),intent.y(),house.presetId):walkable(intent.x(),intent.y(),intent.scene())))throw ApiException.invalid("이곳으로 이동할 수 없어요.");member.x=intent.x();member.y=intent.y();member.avatarSpace="v62";member.action="walk";}
+        if(intent.kind().equals("MOVE_INTENT")){if(intent.x()==null||intent.y()==null||!(intent.scene().equals("home")?SpaceLayout.room(Spaces.view(house)).walkable(intent.x(),intent.y()):walkable(intent.x(),intent.y(),intent.scene())))throw ApiException.invalid("이곳으로 이동할 수 없어요.");member.x=intent.x();member.y=intent.y();member.avatarSpace="v62";member.action="walk";}
         else{if(!Set.of("sofa","fridge","table","window","calendar","entrance","pet_rest").contains(Objects.toString(intent.target(),"")))throw ApiException.invalid("알 수 없는 가구예요.");member.action="idle";}
-        member.avatarUpdatedAt=Instant.now();synchronized(seen){seen.add(intent.requestId());while(seen.size()>256)seen.remove(seen.iterator().next());}homes.emit(house,"AVATAR_ACTION_CHANGED",homes.memberView(member,house.presetId));
+        member.avatarUpdatedAt=Instant.now();synchronized(seen){seen.add(intent.requestId());while(seen.size()>256)seen.remove(seen.iterator().next());}homes.emit(house,"AVATAR_ACTION_CHANGED",homes.memberView(member,house));
     }
 }
 

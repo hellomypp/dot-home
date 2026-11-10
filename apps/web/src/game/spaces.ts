@@ -3,6 +3,7 @@ export interface SpaceDesign {
   presetId: string;
   version: number;
   variants: Record<string, string>;
+  positions?: Record<string, Point>;
 }
 export interface MapObject {
   id: string;
@@ -40,6 +41,8 @@ export const catalogue = raw as unknown as {
   presets: { id: string; name: string }[];
   variants: Record<string, string[]>;
   aliases: Record<string, string>;
+  movable: string[];
+  layoutGrid: number;
 };
 export const warmWoodPreset = "warm-wood-home";
 export const defaultDesign: SpaceDesign = {
@@ -53,6 +56,27 @@ export function mapFor(id = warmWoodPreset) {
   return Object.hasOwn(catalogue.maps, key)
     ? catalogue.maps[key]
     : catalogue.maps[warmWoodPreset];
+}
+export function mapForDesign(design: SpaceDesign = defaultDesign): RuntimeMap {
+  const map = mapFor(design.presetId);
+  if (!design.positions || !Object.keys(design.positions).length) return map;
+  return {
+    ...map,
+    objects: map.objects.map(object => {
+      const position = design.positions?.[object.id];
+      if (!position || !catalogue.movable.includes(object.id)) return object;
+      const dx = position.x - object.x, dy = position.y - object.y;
+      const offset = ([x, y, ...size]: number[]) => [x + dx, y + dy, ...size];
+      return {
+        ...object,
+        x: position.x,
+        y: position.y,
+        depth: object.depth + dy,
+        collision: object.collision && offset(object.collision),
+        interactionAnchor: object.interactionAnchor && offset(object.interactionAnchor),
+      };
+    }),
+  };
 }
 export function tankPoint(map: RuntimeMap, slot: number | null | undefined) {
   if (slot == null || !map.tankSlots.includes(slot)) return undefined;
@@ -219,6 +243,7 @@ export function renderPreview(
   m: RuntimeMap,
   images: Map<string, HTMLImageElement>,
   d: SpaceDesign,
+  selected?: string,
 ) {
   c.imageSmoothingEnabled = false;
   c.clearRect(0, 0, 448, 320);
@@ -237,4 +262,15 @@ export function renderPreview(
   m.objects.filter((o) => o.layer === "depth")
     .sort((a, b) => a.depth - b.depth)
     .forEach(drawObject);
+  const highlighted = m.objects.find(object => object.id === selected);
+  if (highlighted) {
+    c.setLineDash([3, 2]);
+    c.strokeStyle = "#244437";
+    c.lineWidth = 3;
+    c.strokeRect(highlighted.x - 2, highlighted.y - 2, highlighted.width + 4, highlighted.height + 4);
+    c.strokeStyle = "#fff8da";
+    c.lineWidth = 1;
+    c.strokeRect(highlighted.x - 2, highlighted.y - 2, highlighted.width + 4, highlighted.height + 4);
+    c.setLineDash([]);
+  }
 }

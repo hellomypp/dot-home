@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { api, type Snapshot } from "../lib/api";
 
-export const editScopeLabels = { PRESET: "집 프리셋", VARIANTS: "가구 외형" } as const;
+export const editScopeLabels = { PRESET: "집 프리셋", VARIANTS: "가구 외형", LAYOUT: "가구 배치" } as const;
 export type EditScope = keyof typeof editScopeLabels;
 export interface SpaceEditRequest {
   id: string;

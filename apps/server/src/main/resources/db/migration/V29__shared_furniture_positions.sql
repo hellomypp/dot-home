@@ -1,0 +1,1 @@
+ALTER TABLE household ADD COLUMN object_positions VARCHAR(2048) NOT NULL DEFAULT '{}';

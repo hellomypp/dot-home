@@ -23,6 +23,7 @@ class Household extends Row {
     @Column(nullable=false,length=32) String presetId="classic_home";
     long designVersion;
     @Column(nullable=false,length=512) String objectVariants="{}";
+    @Column(nullable=false,length=2048) String objectPositions="{}";
     long revision;
     Instant pendingDeleteUntil;
     @Column(length=80) String deletionRequestId;

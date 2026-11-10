@@ -161,3 +161,26 @@
   border-radius: 50%;
   background: #ae6844;
 }
+
+.furniture-layout {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 0;
+  min-width: 0;
+}
+.furniture-layout legend {
+  font-weight: 650;
+  padding: 0 4px;
+}
+.furniture-directions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.furniture-directions .button {
+  min-width: 44px;
+  padding-inline: 10px;
+}

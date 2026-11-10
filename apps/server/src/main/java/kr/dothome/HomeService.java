@@ -72,12 +72,15 @@ class HomeService {
         owner(h,user);
         if(spaceEdits.findFirstByHouseholdIdAndEndedAtIsNullAndLeaseUntilAfter(id,Instant.now()).isPresent())
             throw SpaceEditing.busy();
+        if(input.positions()!=null)throw ApiException.invalid("가구 배치는 편집 세션에서 저장해 주세요.");
         return saveDesign(h,requireMember(id,user).id,input);
     }
     Api.World saveDesign(Household h,String memberId,SpaceInput input){
-        Spaces.validate(input.presetId(),input.variants());
         if(h.designVersion!=input.version())throw ApiException.conflict("다른 기기에서 집 분위기를 바꿨어요. 최신 설정을 확인해 주세요.");
-        h.presetId=input.presetId();try{h.objectVariants=Spaces.JSON.writeValueAsString(new TreeMap<>(input.variants()));}catch(Exception e){throw ApiException.invalid("가구 외형을 확인해 주세요.");}
+        var design=Spaces.proposed(h,input);
+        h.presetId=design.presetId();
+        h.objectVariants=Spaces.JSON.writeValueAsString(new TreeMap<>(design.variants()));
+        h.objectPositions=Spaces.JSON.writeValueAsString(new TreeMap<>(design.positions()));
         h.designVersion++;emit(h,"SPACE_DESIGN_CHANGED",Spaces.view(h));return snapshot(h,memberId);
     }
     static String petName(String value) {
@@ -209,7 +212,7 @@ class HomeService {
         Member member=member(household.id,userId,input.memberName(),input.appearance(),"MEMBER");
         placeAtSpawn(member,household.presetId,members.countByHouseholdIdAndActiveTrue(household.id));
         members.save(member);
-        invitation.acceptedBy=userId;invitation.acceptedAt=Instant.now();emit(household,"MEMBER_JOINED",memberView(member,household.presetId));return snapshot(household,member.id);
+        invitation.acceptedBy=userId;invitation.acceptedAt=Instant.now();emit(household,"MEMBER_JOINED",memberView(member,household));return snapshot(household,member.id);
     }
     Invitation invitation(String token) { if(token==null || !token.matches("[A-Za-z0-9_-]{43}")) throw gone(); return invitations.findByTokenHash(hash(token)).orElseThrow(HomeService::gone); }
     static void available(Invitation i) { if(i.cancelled || i.acceptedBy!=null || !i.expiresAt.isAfter(Instant.now())) throw gone(); }
@@ -222,7 +225,7 @@ class HomeService {
         Member me=requireMember(householdId,userId);
         if(input.appearance()!=null&&!input.appearance().matches("v2:(adult_female|adult_male|child)"))throw ApiException.invalid("캐릭터 스타일을 확인해 주세요.");
         boolean changed=input.appearance()!=null&&!input.appearance().equals(me.appearance);if(changed)me.appearance=input.appearance();
-        if(!me.name.equals(name)||changed){me.name=name;emit(household,"MEMBER_PROFILE_CHANGED",memberView(me,household.presetId));}
+        if(!me.name.equals(name)||changed){me.name=name;emit(household,"MEMBER_PROFILE_CHANGED",memberView(me,household));}
         return snapshot(household,me.id);
     }
     Api.World workShift(String householdId,String userId,boolean working) {
@@ -252,7 +255,7 @@ class HomeService {
         changed|=expressions.legacy(me,saved,"mood",input.mood(),input.expiresInMinutes(),now);
         changed|=expressions.legacy(me,saved,"food",input.food(),input.expiresInMinutes(),now);
         changed|=expressions.legacy(me,saved,"thought",input.thought(),input.expiresInMinutes(),now);
-        if(changed)emit(house,"STATUS_CHANGED",memberView(me,house.presetId,saved,now,false));
+        if(changed)emit(house,"STATUS_CHANGED",memberView(me,SpaceLayout.room(Spaces.view(house)),saved,now,false));
         return snapshot(house,me.id);
     }
     private static void moveAvatarToScene(Household house,Member member,String place,Instant now){
@@ -326,15 +329,17 @@ class HomeService {
         Instant now=Instant.now();
         var householdMembers=members.findByHouseholdIdAndActiveTrueOrderById(household.id);
         var saved=expressions.load(householdMembers);
+        var design=Spaces.view(household);
+        var room=SpaceLayout.room(design);
         var memberViews=householdMembers.stream()
-            .map(member->memberView(member,household.presetId,saved.getOrDefault(member.id,Map.of()),now,member.id.equals(meId))).toList();
-        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId,household.pendingDeleteUntil,household.deletionVersion,deletionAvailable),meId,household.revision,now,memberViews,pets.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(HomeService::petView).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),householdEvents(household.id,householdMembers),Spaces.view(household),
+            .map(member->memberView(member,room,saved.getOrDefault(member.id,Map.of()),now,member.id.equals(meId))).toList();
+        return new Api.World(new Api.HouseView(household.id,household.name,household.ownerId,household.pendingDeleteUntil,household.deletionVersion,deletionAvailable),meId,household.revision,now,memberViews,pets.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(HomeService::petView).toList(),pantry.findByHouseholdIdOrderByName(household.id).stream().map(HomeService::pantryView).toList(),householdEvents(household.id,householdMembers),design,
             dependents.findByHouseholdIdAndArchivedAtIsNullOrderById(household.id).stream().map(DependentView::from).toList());
     }
-    Api.MemberView memberView(Member m,String preset){
-        return memberView(m,preset,expressions.load(m),Instant.now(),false);
+    Api.MemberView memberView(Member m,Household house){
+        return memberView(m,SpaceLayout.room(Spaces.view(house)),expressions.load(m),Instant.now(),false);
     }
-    private Api.MemberView memberView(Member m,String preset,Map<String,MemberExpression> saved,Instant now,boolean own){
+    private Api.MemberView memberView(Member m,SpaceLayout.Room room,Map<String,MemberExpression> saved,Instant now,boolean own){
         var shared=expressions.publicPlace(m,saved,now);
         // Unshared external scenes never carry their last coordinates to another member.
         boolean activity=("office".equals(m.place)&&"working".equals(m.action))
@@ -342,7 +347,7 @@ class HomeService {
         boolean sharedActivity=activity&&!"UNSHARED".equals(shared.status());
         boolean mask=!own&&!"MANUAL".equals(shared.status())&&!"home".equals(m.place)&&!sharedActivity;
         String place=mask?"outside":m.place;
-        double[] point=mask?new double[]{320,288}:"home".equals(place)?Spaces.position(m,preset):new double[]{m.x,m.y};
+        double[] point=mask?new double[]{320,288}:"home".equals(place)?Spaces.position(m,room):new double[]{m.x,m.y};
         var current=expressions.state(m,saved,now,false);
         Instant expires=current.values().stream().map(ExpressionValue::expiresAt).max(Comparator.naturalOrder()).orElse(null);
         Instant updated=current.values().stream().map(ExpressionValue::updatedAt).max(Comparator.naturalOrder()).orElse(m.statusUpdatedAt);
