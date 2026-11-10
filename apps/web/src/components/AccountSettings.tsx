@@ -11,6 +11,7 @@ import {
 import { Link } from "react-router-dom";
 import type { Snapshot } from "../lib/api";
 import type { Place } from "../game/types";
+import type { WindowWeatherView } from "../lib/windowWeather";
 import { Portrait } from "./Portrait";
 import { NicknameForm } from "./NicknameForm";
 import { CharacterStyleForm } from "./CharacterStyleForm";
@@ -20,6 +21,7 @@ export function AccountSettings({
   place,
   palette,
   reduced,
+  windowWeather,
   onPalette,
   onReduced,
   onOpen,
@@ -31,6 +33,7 @@ export function AccountSettings({
   place: Place;
   palette: "warm" | "dusk";
   reduced: boolean;
+  windowWeather?: WindowWeatherView;
   onPalette: (p: "warm" | "dusk") => void;
   onReduced: (v: boolean) => void;
   onOpen: (p: "design" | "housewarming" | "invite" | "membership" | "exports" | "deletion") => void;
@@ -142,6 +145,19 @@ export function AccountSettings({
         <p className="muted">
           다른 가족을 구경해도 기록은 항상 내 이름으로 남아요.
         </p>
+        {windowWeather && (
+          <p className="muted">
+            {windowWeather.source === "fallback" ? "창밖 날씨를 확인할 수 없어 기본 하늘을 보여 줘요."
+              : windowWeather.source === "recent" && windowWeather.observation ? (
+                <>창밖에는 <time dateTime={new Date(windowWeather.observation.observedAt).toISOString()}>
+                  {new Intl.DateTimeFormat("ko-KR", {
+                    timeZone: windowWeather.observation.timezone, month: "numeric", day: "numeric",
+                    hour: "numeric", minute: "2-digit",
+                  }).format(windowWeather.observation.observedAt)}
+                </time>에 확인한 날씨가 표시돼요.</>
+              ) : "현재 지역 날씨가 창밖에 표시돼요."}
+          </p>
+        )}
       </section>
       {studio ? (
         <Link className="button primary" to="/login">

@@ -7,6 +7,11 @@ export interface WindowSky {
   weather: WindowWeather | null;
   light: WindowLight;
 }
+type ForecastObservation = { weather: WindowWeather; isDay: boolean; observedAt: number; timezone: string };
+export interface WindowWeatherView extends WindowSky {
+  source: "live" | "recent" | "fallback";
+  observation?: ForecastObservation;
+}
 
 const weatherCodes: Record<WindowWeather, number[]> = {
   clear: [0, 1],
@@ -30,35 +35,68 @@ export function windowLight(hour: number, isDay = hour >= 6 && hour < 19): Windo
 }
 
 type Region = { latitude: string; longitude: string };
+export const weatherRefreshInterval = 30 * 60 * 1000;
+export const maxWeatherAge = 2 * 60 * 60 * 1000;
+const clockOptions = { hour: "2-digit", hourCycle: "h23" } as const;
+const deviceClock = new Intl.DateTimeFormat("ko-KR", clockOptions);
+
+export function parseForecast(result: {
+  timezone?: unknown;
+  current?: { weather_code?: unknown; is_day?: unknown; time?: unknown };
+}, now = Date.now()): ForecastObservation {
+  const weather = classifyWeather(result.current?.weather_code);
+  const daylight = result.current?.is_day;
+  const stamp = result.current?.time;
+  if (!weather || (daylight !== 0 && daylight !== 1) || typeof result.timezone !== "string" ||
+      typeof stamp !== "number" || !Number.isSafeInteger(stamp) || stamp <= 0 || stamp * 1000 > now + 900_000) {
+    throw new Error("Weather data unavailable");
+  }
+  new Intl.DateTimeFormat("ko-KR", { ...clockOptions, timeZone: result.timezone });
+  return { weather, isDay: daylight === 1, timezone: result.timezone, observedAt: stamp * 1000 };
+}
+
+export function selectWindowWeather(now: Date, data?: ForecastObservation, providerFailed = false): WindowWeatherView {
+  const age = data ? now.getTime() - data.observedAt : Infinity;
+  const observation = data && age <= maxWeatherAge ? data : undefined;
+  const clock = observation
+    ? new Intl.DateTimeFormat("ko-KR", { ...clockOptions, timeZone: observation.timezone })
+    : deviceClock;
+  const hour = Number(clock.formatToParts(now).find(part => part.type === "hour")?.value);
+  const live = !!observation && !providerFailed && age <= weatherRefreshInterval;
+  return {
+    light: windowLight(hour, live ? observation?.isDay : undefined),
+    weather: observation?.weather ?? null,
+    source: observation ? live ? "live" : "recent" : "fallback",
+    observation,
+  };
+}
+
 async function readWeather(region: Region, signal: AbortSignal) {
   const params = new URLSearchParams({
     ...region,
     current: "weather_code,is_day",
     timezone: "auto",
+    timeformat: "unixtime",
     forecast_days: "1",
   });
-  const response = await fetch("https://api.open-meteo.com/v1/forecast?" + params, {
-    signal, credentials: "omit", referrerPolicy: "no-referrer",
-  });
-  if (!response.ok) throw new Error("Weather request failed");
-  const result = await response.json();
-  const weather = classifyWeather(result.current?.weather_code);
-  const daylight = result.current?.is_day;
-  if (!weather || (daylight !== 0 && daylight !== 1) || typeof result.timezone !== "string") {
-    throw new Error("Weather data unavailable");
+  const request = new AbortController();
+  const cancel = () => request.abort();
+  if (signal.aborted) cancel();
+  signal.addEventListener("abort", cancel, { once: true });
+  const timeout = window.setTimeout(cancel, 8000);
+  try {
+    const response = await fetch("https://api.open-meteo.com/v1/forecast?" + params, {
+      signal: request.signal, credentials: "omit", referrerPolicy: "no-referrer",
+    });
+    if (!response.ok) throw new Error("Weather request failed");
+    return parseForecast(await response.json());
+  } finally {
+    window.clearTimeout(timeout);
+    signal.removeEventListener("abort", cancel);
   }
-  const clock = new Intl.DateTimeFormat("ko-KR", {
-    timeZone: result.timezone, hour: "2-digit", hourCycle: "h23",
-  });
-  return { weather, isDay: daylight === 1, clock };
 }
 
-const deviceClock = new Intl.DateTimeFormat("ko-KR", {
-  hour: "2-digit", hourCycle: "h23",
-});
-const refreshInterval = 15 * 60 * 1000;
-
-export function useWindowSky(inHome: boolean): WindowSky {
+export function useWindowSky(inHome: boolean): WindowWeatherView {
   const [now, setNow] = useState(() => new Date());
   const [region, setRegion] = useState<Region | null>(null);
   const requestedLocation = useRef(false);
@@ -82,13 +120,10 @@ export function useWindowSky(inHome: boolean): WindowSky {
   const forecast = useQuery({
     queryKey: ["window-weather", region],
     queryFn: inHome && region ? ({ signal }) => readWeather(region, signal) : skipToken,
-    staleTime: refreshInterval,
-    refetchInterval: refreshInterval,
-    gcTime: 0,
+    staleTime: weatherRefreshInterval,
+    refetchInterval: weatherRefreshInterval,
+    gcTime: maxWeatherAge,
     retry: false,
   });
-  const data = Date.now() - forecast.dataUpdatedAt <= 2 * refreshInterval ? forecast.data : undefined;
-  const clock = data?.clock ?? deviceClock;
-  const hour = Number(clock.formatToParts(now).find((part) => part.type === "hour")?.value);
-  return { light: windowLight(hour, data?.isDay), weather: data?.weather ?? null };
+  return selectWindowWeather(now, forecast.data, forecast.isError);
 }

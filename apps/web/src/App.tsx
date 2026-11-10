@@ -1227,10 +1227,11 @@ function GamePage({ studio = false }: { studio?: boolean }) {
           <footer className="game-footer">
             <span>
               DOT HOME <i>·</i> 우리의 작은 일상
-              {place === "home" && windowSky.weather && (
+              {place === "home" && !neutral && (
                 <>
                   <i>·</i>
-                  <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">날씨 Open-Meteo</a>
+                  {windowSky.weather ? <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">날씨 Open-Meteo</a>
+                    : <span>기본 하늘</span>}
                 </>
               )}
             </span>
@@ -1428,6 +1429,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               place={place}
               palette={palette}
               reduced={reduced}
+              windowWeather={place === "home" && !neutral ? windowSky : undefined}
               onPalette={setPalette}
               onReduced={setReduced}
               onOpen={setPanel}
