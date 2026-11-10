@@ -98,6 +98,16 @@ GitHub Actions `Verify`는 web 테스트/빌드 → server의 test+mysqlTest+boo
 1. GitHub 저장소 Settings → Rules → Rulesets 또는 Branches에서 main 보호 규칙을 만들고 PR을 요구한다. Required status checks는 실제 실행 이름 **web, server, container**를 선택한다. 우회 허용 범위를 검토한다. 보호 규칙 적용 여부는 최종 보고와 구분한다.
 2. Railway 앱 Settings → Source/Deploy의 **Wait for CI**를 켠다. 필요 시 Railway GitHub App 권한 갱신을 직접 승인한다. main 연결 및 자동 배포 활성화를 확인한다. [Wait for CI](https://docs.railway.com/deployments/github-autodeploys).
 3. PR의 세 검사를 통과한 변경만 main에 병합한다. main에서 재실행한 Actions 성공 후 Railway가 배포하고 healthcheck 성공 시 동일 URL의 트래픽을 전환하는지 확인한다.
+
+## 공개 주소 사전 점검
+
+배포 후 저장소 루트에서 `https://beta.example.org`를 실제 공개 주소로 바꿔 실행한다.
+
+```bash
+python3 scripts/beta-preflight.py https://beta.example.org
+```
+
+HTTPS 인증서 검증, DB 준비 응답, 집 선택·계정 설정·초대·방문 경로의 직접 접속, 푸시 파일과 캐시, Google 콜백, 세션 쿠키, 미인증 API 차단을 확인한다. 로그인 세션이나 비밀번호를 입력할 필요가 없다. Google 리디렉션은 따라가지 않고 검사 실패 시 경로와 실패 항목만 출력한다. GitHub Actions의 컨테이너 검사도 같은 명령을 로컬 이미지에 실행한다. 실제 Google 계정과 단말 검증은 아래 베타 인수 절차에서 수행한다.
 4. 배포 실패는 Deployments에서 원인을 확인한다. 이전 정상 배포가 계속 제공되는지 확인하고 필요하면 해당 배포의 메뉴 → Rollback을 사용한다. DB/볼륨을 삭제하지 않는다. 최초 배포 실패에는 이전 정상 배포가 없다.
 5. Flyway 적용은 앱 rollback과 별개다. V1~V6를 변경하지 않고 V7을 추가했으며 향후 schema 변경은 이전 앱과 호환되는 추가 방식으로 먼저 배포한다. 파괴적인 migration을 앱 rollback으로 되돌릴 수 없다.
 
@@ -134,7 +144,17 @@ SSH 명령이 실패하면 빈/불완전 dump를 정상 백업으로 취급하�
 - [ ] 로그아웃 세션/소켓 종료, 만료·취소 초대 거절, 타 가구 API 차단
 - [ ] 동일 이미지 재배포·서버 재시작 후 기존 집/가족/쪽지/일정/방명록 유지
 - [ ] iPhone Safari / Android Chrome / PC Chrome / iPad Safari에서 위 흐름과 모바일 키보드·스크롤
+- [ ] 두 Google 테스트 계정으로 아래 실기기 푸시·귀가 시나리오 실행
 - [ ] 플랫폼 edge 로그 토큰 처리 확인, 백업 활성화 및 빈 DB 복원 시험
+
+### 실기기 푸시·귀가 시나리오
+
+1. 첫 번째 Google 테스트 계정으로 집을 만들고 두 번째 계정에 가족 초대를 보낸다. 두 번째 단말에서 링크를 열고 Google 인증 뒤 같은 초대 화면으로 돌아오는지 확인한다. 입주를 누르기 전과 누른 뒤의 가족 목록을 첫 번째 단말에서 확인한다.
+2. iPhone에서는 Safari에서 해당 주소를 홈 화면에 추가한 뒤 그 아이콘으로 다시 연다. 수신 계정의 알림함에서 기기 알림과 이 집의 가족 공지 수신을 켠다. Android Chrome에서도 같은 절차로 기기 알림을 연결하고 OS 권한을 허용한다.
+3. 수신 단말의 화면을 잠근 뒤 다른 계정에서 테스트 공지를 올린다. OS 알림과 앱 안 알림함을 각각 확인한다. 기본 잠금 화면에는 공지 본문과 가족 이름이 없어야 한다. 집별 잠금 화면 상세 표시를 켜고 새 공지를 올리면 가족 이름과 알림 종류만 표시되어야 한다. 알림을 누르면 해당 집의 알림함이 열린다.
+4. 수신 계정이 이 집의 귀가 알림을 켠 뒤 발신 계정에서 집 도착을 기록한다. 수신 화면에 기록이 한 번만 나타나는지 확인한다. 귀가 수신을 끄거나 수신 계정에서 로그아웃한 뒤 새 이벤트의 OS 알림이 오지 않는지 따로 확인한다.
+
+기록에는 앱 커밋, 검증 환경, OS·브라우저 버전, 각 단계의 결과를 남긴다. 초대 링크, OAuth URL, 실제 위치, 이메일은 결과에 첨부하지 않는다.
 
 ## 비용과 중지
 

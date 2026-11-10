@@ -23,14 +23,8 @@ docker run -d --name "$app" --network "$network" -p 127.0.0.1::8080 \
 host_port=$(docker port "$app" 8080/tcp); base="http://$host_port"
 wait_app(){ host_port=$(docker port "$app" 8080/tcp); base="http://$host_port"; for attempt in $(seq 1 90); do if curl -fsS --max-time 8 "$base/healthz" >"$artifact_dir/health" 2>/dev/null; then return; fi; sleep 2; done; docker logs --tail 60 "$app" >&2; return 1; }
 wait_app
-for route in / /login /onboarding /home/example /invite/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa /visit/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; do
- curl -fsS -D "$artifact_dir/headers" "$base$route" >"$artifact_dir/index"
- python3 - "$artifact_dir" <<'PY'
-from pathlib import Path
-import sys
-p=Path(sys.argv[1]);assert '<div id="root">' in (p/'index').read_text();assert 'no-store' in (p/'headers').read_text().lower()
-PY
-done
+python3 "$(dirname "$0")/beta-preflight.py" https://beta.example.org --http-port "${host_port##*:}"
+curl -fsS "$base/" >"$artifact_dir/index"
 asset=$(python3 - "$artifact_dir/index" <<'PY'
 import re,sys
 print(re.search(r'src="(/assets/[^\"]+\.js)"',open(sys.argv[1]).read()).group(1))
@@ -38,22 +32,15 @@ PY
 )
 curl -fsS -D "$artifact_dir/asset-headers" "$base$asset" >/dev/null
 curl -fsS -D "$artifact_dir/art-headers" "$base/art/v62/assets/characters/adult_female.png" >"$artifact_dir/character.png"
-[[ $(curl -sS -o /dev/null -w '%{http_code}' "$base/assets/missing.js") == 404 ]]
-[[ $(curl -sS -o /dev/null -w '%{http_code}' "$base/api/me") == 401 ]]
-[[ $(curl -sS -o /dev/null -w '%{http_code}' -X POST "$base/api/auth/dev") == 403 ]]
 [[ $(curl -sS -o /dev/null -w '%{http_code}' "$base/studio") != 200 ]]
-curl -fsS "$base/api/auth/config" >"$artifact_dir/auth"
-curl -fsS -D "$artifact_dir/csrf-headers" "$base/api/auth/csrf" >"$artifact_dir/csrf"
 curl -sS -D "$artifact_dir/oauth-headers" -o /dev/null -H 'Host: untrusted.example' -H 'X-Forwarded-Host: evil.example' -H 'X-Forwarded-Proto: http' "$base/oauth2/authorization/google"
 docker cp "$app:/app/app.jar" "$artifact_dir/app.jar" >/dev/null
 python3 - "$artifact_dir" <<'PY'
 from pathlib import Path
-import sys,json,zipfile,urllib.parse,struct
+import sys,zipfile,urllib.parse,struct
 p=Path(sys.argv[1]);assert 'immutable' in (p/'asset-headers').read_text().lower()
 assert 'immutable' in (p/'art-headers').read_text().lower()
 assert struct.unpack('>II',(p/'character.png').read_bytes()[16:24])==(96,160)
-headers=(p/'csrf-headers').read_text().lower();assert all(v in headers for v in ['secure','httponly','samesite=lax','referrer-policy: no-referrer','strict-transport-security:'])
-a=json.loads((p/'auth').read_text());assert a=={'googleEnabled':True,'devEnabled':False}
 lines=(p/'oauth-headers').read_text().splitlines();location=next(l.split(':',1)[1].strip() for l in lines if l.lower().startswith('location:'))
 query=urllib.parse.parse_qs(urllib.parse.urlsplit(location).query);assert query['redirect_uri']==['https://beta.example.org/login/oauth2/code/google']
 with zipfile.ZipFile(p/'app.jar') as z:
