@@ -10,11 +10,15 @@ if [[ "${1:-dev}" == dev ]]; then
 fi
 if [[ "${1:-}" == google || "${1:-}" == preview ]]; then
   dot_home_google_env="${DOT_HOME_GOOGLE_ENV_FILE:-$PWD/../../.tools/google.env}"
+  dot_home_push_env="${DOT_HOME_PUSH_ENV_FILE:-$PWD/../../.tools/push.env}"
+  set -a
   if [[ -f "$dot_home_google_env" ]]; then
-    set -a
     source "$dot_home_google_env"
-    set +a
   fi
+  if [[ -f "$dot_home_push_env" ]]; then
+    source "$dot_home_push_env"
+  fi
+  set +a
   dot_home_profiles=local
   if [[ "${1:-}" == google || -n "${GOOGLE_CLIENT_ID:-}" && -n "${GOOGLE_CLIENT_SECRET:-}" ]]; then
     dot_home_profiles=local,google

@@ -10,6 +10,7 @@ import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import org.springframework.data.domain.Pageable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -57,6 +58,7 @@ interface HouseholdNotifications extends JpaRepository<HouseholdNotification,Str
     void purge(Instant cutoff);
 }
 
+record NotificationCreated(HouseholdNotification notification) {}
 record NotificationView(String id,NotificationKind kind,String actorMemberId,Instant createdAt,Instant readAt) {}
 record NotificationPage(List<NotificationView> items,String nextCursor,long unreadCount) {}
 
@@ -67,9 +69,10 @@ class HouseholdNotificationService {
     private final HouseholdNotifications notifications;
     private final NotificationPreferenceService preferences;
     private final Members members;
+    private final ApplicationEventPublisher publisher;
 
-    HouseholdNotificationService(HomeService homes,HouseholdNotifications notifications,NotificationPreferenceService preferences,Members members){
-        this.homes=homes;this.notifications=notifications;this.preferences=preferences;this.members=members;
+    HouseholdNotificationService(HomeService homes,HouseholdNotifications notifications,NotificationPreferenceService preferences,Members members,ApplicationEventPublisher publisher){
+        this.homes=homes;this.notifications=notifications;this.preferences=preferences;this.members=members;this.publisher=publisher;
     }
 
     void add(Household house,String recipient,String actor,NotificationKind kind,String source,Instant now){
@@ -82,6 +85,7 @@ class HouseholdNotificationService {
         row.sourceId=source;
         row.createdAt=now;
         notifications.save(row);
+        publisher.publishEvent(new NotificationCreated(row));
     }
 
     void arrival(Household house,Member actor,String eventId,Instant now){

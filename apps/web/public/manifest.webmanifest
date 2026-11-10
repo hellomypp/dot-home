@@ -1,0 +1,14 @@
+{
+  "id": "/",
+  "name": "도트홈",
+  "short_name": "도트홈",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f5ee",
+  "theme_color": "#f7f5ee",
+  "icons": [
+    { "src": "/art/app-icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

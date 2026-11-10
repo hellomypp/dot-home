@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { BrowserPushControl, browserPushPath, type BrowserPushConfiguration } from "./BrowserPushControl";
 
 const categories = {
   EDIT: { label: "집 편집", detail: "편집 요청과 승인, 권한 종료" },
@@ -9,9 +10,15 @@ const categories = {
   ARRIVAL: { label: "가족 귀가", detail: "위치를 공유한 가족의 귀가 소식" },
 } as const;
 type NotificationGroup = keyof typeof categories;
+interface QuietHours {
+  startMinute: number | null;
+  endMinute: number | null;
+  timeZone: string;
+}
 interface Settings {
   enabled: Record<NotificationGroup, boolean>;
   version: number;
+  quietHours?: QuietHours;
 }
 
 export function NotificationSettings({ house, readOnly, back }: {
@@ -23,15 +30,26 @@ export function NotificationSettings({ house, readOnly, back }: {
   const key = ["notification-settings", house] as const;
   const client = useQueryClient();
   const query = useQuery({ queryKey: key, queryFn: () => api<Settings>(path) });
+  const push = useQuery({
+    queryKey: ["browser-push"], queryFn: () => api<BrowserPushConfiguration>(browserPushPath), retry: false,
+  });
   const [draft, setDraft] = useState<Settings>();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const current = draft ?? query.data;
+  const quiet = current?.quietHours;
+  const deviceZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const sameTime = quiet?.startMinute != null && quiet.startMinute === quiet.endMinute;
+  function setHours(value: QuietHours) {
+    if (!current) return;
+    setSaved(false);
+    setDraft({ ...current, quietHours: value });
+  }
 
   async function save() {
-    if (!draft || pending.current) return;
+    if (!draft || pending.current || sameTime) return;
     pending.current = true;
     setBusy(true);
     setError("");
@@ -70,6 +88,34 @@ export function NotificationSettings({ house, readOnly, back }: {
           ))}
         </fieldset>
       )}
+      {push.data?.available && (
+        <>
+          <BrowserPushControl configuration={push.data} />
+          {quiet && <fieldset disabled={busy || readOnly}>
+            <legend>조용한 시간</legend>
+            <p className="muted">이 집의 브라우저 알림을 쉬는 시간이에요. 소식은 알림함에서 볼 수 있어요.</p>
+            <label className="checkbox-label">
+              <input type="checkbox" checked={quiet.startMinute !== null}
+                onChange={event => setHours({ ...quiet, startMinute: event.target.checked ? 1320 : null,
+                  endMinute: event.target.checked ? 480 : null })} />
+              조용한 시간 사용
+            </label>
+            {quiet.startMinute !== null && quiet.endMinute !== null && (
+              <div className="quiet-hours-fields">
+                <TimeInput label="시작" minute={quiet.startMinute} onChange={minute => setHours({ ...quiet, startMinute: minute })} />
+                <TimeInput label="종료" minute={quiet.endMinute} onChange={minute => setHours({ ...quiet, endMinute: minute })} />
+                <p>시간대 · {quiet.timeZone}</p>
+                {deviceZone && quiet.timeZone !== deviceZone && (
+                  <button type="button" className="button secondary" onClick={() => setHours({ ...quiet, timeZone: deviceZone })}>
+                    기기 시간대 사용
+                  </button>
+                )}
+              </div>
+            )}
+            {sameTime && <p role="alert" className="error-message">시작과 종료 시간을 다르게 설정해 주세요.</p>}
+          </fieldset>}
+        </>
+      )}
       {saved && <p role="status">알림 설정을 저장했어요.</p>}
       {error && <p role="alert" className="error-message">{error}</p>}
       {(query.isError || error) && (
@@ -83,10 +129,19 @@ export function NotificationSettings({ house, readOnly, back }: {
       )}
       <div className="form-actions">
         <button className="button secondary" disabled={busy} onClick={back}>알림함으로</button>
-        {!readOnly && <button className="button primary" disabled={busy || !draft} onClick={() => void save()}>
+        {!readOnly && <button className="button primary" disabled={busy || !draft || sameTime} onClick={() => void save()}>
           알림 설정 저장
         </button>}
       </div>
     </section>
   );
+}
+
+function TimeInput({ label, minute, onChange }: { label: string; minute: number; onChange: (minute: number) => void }) {
+  const value = [Math.floor(minute / 60), minute % 60].map(number => String(number).padStart(2, "0")).join(":");
+  return <label>{label}<input type="time" value={value} onChange={event => {
+    if (!event.target.value) return;
+    const [hours, minutes] = event.target.value.split(":").map(Number);
+    onChange(hours * 60 + minutes);
+  }} /></label>;
 }

@@ -22,6 +22,8 @@ class SpaController {
 @Configuration
 class AssetConfiguration implements WebMvcConfigurer {
     @Override public void addResourceHandlers(ResourceHandlerRegistry registry){
+        registry.addResourceHandler("/push-worker.js","/manifest.webmanifest")
+            .addResourceLocations("classpath:/static/").setCacheControl(CacheControl.noCache());
         registry.addResourceHandler("/art/v62/**").addResourceLocations("classpath:/static/art/v62/").setCacheControl(CacheControl.maxAge(365,TimeUnit.DAYS).cachePublic().immutable());
         registry.addResourceHandler("/assets/**").addResourceLocations("classpath:/static/assets/").setCacheControl(CacheControl.maxAge(365,TimeUnit.DAYS).cachePublic().immutable());
     }

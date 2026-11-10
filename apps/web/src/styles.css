@@ -48,3 +48,15 @@
 .foreground-location .location-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .foreground-location .location-actions .button { margin-top: 0; }
 .foreground-location .button { min-height: 44px; }
+
+.notification-device {
+  display: grid;
+  justify-items: start;
+  gap: 0.55rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--line);
+}
+.notification-device :is(h3, p) { margin: 0; }
+.quiet-hours-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; }
+.quiet-hours-fields :is(p, button) { grid-column: 1 / -1; }
+.quiet-hours-fields input { min-height: 44px; min-width: 0; width: 100%; }

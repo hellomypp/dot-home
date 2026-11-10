@@ -279,3 +279,9 @@ home 좌표는 448×320 map의 발 중앙이며 서버와 웹이 같은 collisio
 
 - 생활 기록의 귀가는 `POST /api/households/{id}/me/arrivals`로 `{requestId,message}`를 보낸다. 위치 공유에 동의한 사용자는 수동 HOME과 귀가 기록을 함께 남기며, 이미 HOME이면 `{event:null,alreadyHome:true}`가 반환된다. 미공유 시 사용자가 직접 작성한 생활 기록만 남긴다. 기존 `/events`는 호환을 위해 유지한다.
 - `notification-settings.enabled.ARRIVAL`은 집별 개인 수신 동의이며 기본값은 OFF다. 공유 동의가 있는 사람의 수동·자동 귀가를 수신에 동의한 활성 가족에게만 개인 알림으로 남긴다. 기존 알림 설정과 읽음 상태는 유지된다.
+
+### 기기 브라우저 알림
+
+- `GET /api/me/browser-push`는 사용 가능 여부와 VAPID 공개키를 반환한다. `PUT /api/me/browser-push`와 `POST /api/me/browser-push/status`, `POST /api/me/browser-push/disable`는 세션 본인의 `{endpoint}`를 처리한다. 등록과 해제에 CSRF가 적용된다. 서버는 알려진 HTTPS 푸시 공급자 주소만 받는다.
+- 집별 알림 설정에 `quietHours: {startMinute,endMinute,timeZone}`가 추가됐다. 분 값은 0–1439 범위, 둘 다 null이면 조용한 시간 OFF, 시간대는 IANA 이름이다. 기본 시간은 Asia/Seoul 22:00–08:00이고 기기 시간대를 선택할 수 있다.
+- 수신 시간·종류·권한과 출처 만료를 전송 직전에 다시 확인한다. 조용한 시간의 알림은 앱 안에서만 조회한다. 브라우저 알림의 기본 본문은 ‘가족의 새 소식이 있어요.’다.
