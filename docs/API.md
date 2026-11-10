@@ -122,6 +122,12 @@
 - `PATCH /api/households/{id}/me/work-shift`에 `{working:true}`를 보내면 본인의 가상 장면이 달빛 광산으로 바뀐다. false는 근무를 마치고 집으로 돌아간다. 실제 장소나 공유 동의를 변경하지 않는다.
 - 집별 위치 공유를 허용한 경우에만 다른 가족이 가상 근무 장면을 볼 수 있다. 근무 장면에서는 STOMP 이동·가구 조작을 거절한다. 광석·코인은 장면 연출이며 보유량에 기록하지 않는다.
 
+## 학교 수업
+
+- `PATCH /api/households/{id}/me/school-day`의 `{"attending":true}`는 본인을 교실로 이동시키고, `{"attending":false}`는 교실에 있는 본인을 집으로 돌려보낸다. 응답은 최신 world다. 같은 요청을 반복해도 상태가 같으면 revision을 올리지 않는다.
+- `SCHOOL_DAY_CHANGED` 커밋 후 이벤트를 받으면 가족 클라이언트는 world를 다시 읽는다. 집별 위치 공유 동의가 있어야 다른 가족이 수업 장면을 볼 수 있다. 등교와 하교는 실제 위치나 공유 동의를 수정하지 않는다.
+- 교실에서는 STOMP 이동·가구 조작이 거절된다. 주변 학생과 선생님은 수업 장면의 연출용 캐릭터다.
+
 ## v0.9 독립 표현
 
 - GET `/api/households/{h}/me/state` → `{expressions,place,sharing,revision,serverTime}`. 본인의 `thought`, `food`, `mood`, `physical`, `availability`에 값·수정 시각·만료 시각·버전을 반환한다. 만료한 값은 null이다.

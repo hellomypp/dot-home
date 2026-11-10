@@ -218,13 +218,19 @@ class HomeService {
         return snapshot(household,me.id);
     }
     Api.World workShift(String householdId,String userId,boolean working) {
+        return startOrEndActivity(householdId,userId,working,"office","working","WORK_SHIFT_CHANGED");
+    }
+    Api.World schoolDay(String householdId,String userId,boolean attending) {
+        return startOrEndActivity(householdId,userId,attending,"school","studying","SCHOOL_DAY_CHANGED");
+    }
+    private Api.World startOrEndActivity(String householdId,String userId,boolean active,String place,String action,String signal) {
         var house=lock(householdId,userId);
         var me=requireMember(householdId,userId);
-        boolean atWork="office".equals(me.place);
-        if(working? !atWork||!"working".equals(me.action) : atWork){
-            moveAvatarToScene(house,me,working?"OFFICE":"HOME",Instant.now());
-            if(working)me.action="working";
-            emit(house,"WORK_SHIFT_CHANGED",Map.of("memberId",me.id));
+        boolean alreadyThere=place.equals(me.place);
+        if(active? !alreadyThere||!action.equals(me.action) : alreadyThere){
+            moveAvatarToScene(house,me,active?place:"HOME",Instant.now());
+            if(active)me.action=action;
+            emit(house,signal,Map.of("memberId",me.id));
         }
         return snapshot(house,me.id);
     }
@@ -323,8 +329,10 @@ class HomeService {
     private Api.MemberView memberView(Member m,String preset,Map<String,MemberExpression> saved,Instant now,boolean own){
         var shared=expressions.publicPlace(m,saved,now);
         // Unshared external scenes never carry their last coordinates to another member.
-        boolean sharedWork="office".equals(m.place)&&"working".equals(m.action)&&!"UNSHARED".equals(shared.status());
-        boolean mask=!own&&!"MANUAL".equals(shared.status())&&!"home".equals(m.place)&&!sharedWork;
+        boolean activity=("office".equals(m.place)&&"working".equals(m.action))
+            ||("school".equals(m.place)&&"studying".equals(m.action));
+        boolean sharedActivity=activity&&!"UNSHARED".equals(shared.status());
+        boolean mask=!own&&!"MANUAL".equals(shared.status())&&!"home".equals(m.place)&&!sharedActivity;
         String place=mask?"outside":m.place;
         double[] point=mask?new double[]{320,288}:"home".equals(place)?Spaces.position(m,preset):new double[]{m.x,m.y};
         var current=expressions.state(m,saved,now,false);

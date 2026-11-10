@@ -25,6 +25,8 @@ class HomeController {
     @PostMapping("/api/invitations/{token}/accept") Api.World accept(Principal p,@PathVariable String token,@Valid @RequestBody Api.Accept body) { return service.accept(token,p.getName(),body); }
     @PatchMapping("/api/households/{id}/me/work-shift") Api.World workShift(Principal p,@PathVariable String id,
         @Valid @RequestBody Api.WorkShift body) { return service.workShift(id,p.getName(),body.working()); }
+    @PatchMapping("/api/households/{id}/me/school-day") Api.World schoolDay(Principal p,@PathVariable String id,
+        @Valid @RequestBody Api.SchoolDay body) { return service.schoolDay(id,p.getName(),body.attending()); }
     @PatchMapping("/api/households/{id}/me/status") Api.World status(Principal p,@PathVariable String id,@Valid @RequestBody Api.Status body) { return service.status(id,p.getName(),body); }
     @PatchMapping("/api/households/{id}/me/profile") Api.World profile(Principal p,@PathVariable String id,@Valid @RequestBody Api.Profile body) { return service.profile(id,p.getName(),body); }
     @GetMapping("/api/households/{id}/pantry-items") List<Api.PantryView> pantry(Principal p,@PathVariable String id) { return service.pantry(id,p.getName()); }

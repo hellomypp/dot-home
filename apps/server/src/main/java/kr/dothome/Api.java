@@ -27,6 +27,7 @@ public final class Api {
     public record Profile(@NotBlank @Size(max=40) String memberName,@Size(max=24) String appearance) {public Profile(String memberName){this(memberName,null);}}
     public record Accept(@NotBlank @Size(max=40) String memberName,@NotBlank @Size(max=24) String appearance) {}
     public record WorkShift(@NotNull Boolean working) {}
+    public record SchoolDay(@NotNull Boolean attending) {}
     public record Status(@Pattern(regexp="home|office|school|outside") String place,@Size(max=80) String mood,@Size(max=80) String food,@Size(max=200) String thought,@Min(1) @Max(1440) Integer expiresInMinutes) {}
     public record CreatePantry(@NotBlank @Size(max=80) String name,@NotBlank @Size(max=40) String location,@PositiveOrZero double quantity,@NotBlank @Size(max=16) String unit,LocalDate expiresOn) {}
     public record UpdatePantry(@PositiveOrZero double quantity,@PositiveOrZero long version) {}

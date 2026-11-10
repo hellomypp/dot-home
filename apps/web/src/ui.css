@@ -1792,13 +1792,14 @@ textarea {
   font-weight: 600;
 }
 .work-shift .button { padding: 8px 12px; min-height: 44px; }
-.world-canvas.moon-mine {
+.world-canvas.observation-world {
   width: 100%;
   height: auto;
   min-height: 0;
   max-height: 500px;
   aspect-ratio: 320 / 224;
-  background: #171a35;
   overflow: hidden;
 }
-.work-shift .button { margin-inline-start: auto; }
+.world-canvas.moon-mine { background: #171a35; }
+.world-canvas.sunlit-classroom { background: #eee1bf; }
+.activity-actions { display: flex; gap: 6px; margin-inline-start: auto; }

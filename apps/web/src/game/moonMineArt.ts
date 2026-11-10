@@ -1,9 +1,9 @@
-export const mineSize = { width: 320, height: 224 };
+import { observationSize } from "./observationScene";
 
 export function makeMoonMine() {
   const canvas = document.createElement("canvas");
-  canvas.width = mineSize.width;
-  canvas.height = mineSize.height;
+  canvas.width = observationSize.width;
+  canvas.height = observationSize.height;
   const ctx = canvas.getContext("2d")!;
   const rect = (color: string, x: number, y: number, w: number, h: number) => {
     ctx.fillStyle = color;

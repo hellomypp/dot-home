@@ -57,6 +57,7 @@ import {
   MessageCircle,
   Package,
   Pickaxe,
+  GraduationCap,
   Plus,
   Refrigerator,
   Send,
@@ -615,7 +616,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     const timer = window.setTimeout(() => setScenePreview(null), scenePreview.duration);
     return () => window.clearTimeout(timer);
   }, [scenePreview]);
-  const [workPending, setWorkPending] = useState(false);
+  const [activityPending, setActivityPending] = useState(false);
   const [tick, setTick] = useState(0);
   const live = useRef<ReturnType<typeof connectWorld> | null>(null);
   const snapshot = studio ? sample : query.data,
@@ -628,10 +629,11 @@ function GamePage({ studio = false }: { studio?: boolean }) {
       qc.removeQueries({ predicate: (entry) => entry.queryKey[1] === id && entry.queryKey[0] !== "world" });
   }, [studio, accessLost, id, qc]);
   const observedPresence = currentSharedPlace(observedMember?.sharedPlace);
-  const sharedShift = observedMember?.place === "office" && observedMember.action === "working" &&
-    observedPresence?.status !== "UNSHARED";
+  const activityScene = observedMember?.place === "office" && observedMember.action === "working" ||
+    observedMember?.place === "school" && observedMember.action === "studying";
+  const sharedActivity = activityScene && observedPresence?.status !== "UNSHARED";
   const neutral = observedMember?.id !== own?.id &&
-    Boolean(observedPresence && observedPresence.status !== "MANUAL" && !sharedShift);
+    Boolean(observedPresence && observedPresence.status !== "MANUAL" && !sharedActivity);
   const windowSky = useWindowSky(!accessLost && !neutral && observedMember?.place === "home");
   useEffect(() => {
     if (!studio && !query.isError && query.data && own)
@@ -681,16 +683,18 @@ function GamePage({ studio = false }: { studio?: boolean }) {
   async function refresh() {
     if (!studio) await query.refetch();
   }
-  async function changeWorkShift() {
-    if (!snapshot || !own || workPending) return;
-    const working = own.place !== "office";
-    setWorkPending(true);
+  async function changeActivity(place: "office" | "school") {
+    if (!snapshot || !own || activityPending) return;
+    const starting = own.place !== place;
+    setActivityPending(true);
     try {
       if (studio) {
         setSample({ ...snapshot, members: snapshot.members.map((member) =>
-          member.id === own.id ? { ...member, place: working ? "office" : "home" } : member) });
+          member.id === own.id ? { ...member, place: starting ? place : "home" } : member) });
       } else {
-        const data = await api<Snapshot>(`/api/households/${snapshot.household.id}/me/work-shift`, "PATCH", { working });
+        const endpoint = place === "office" ? "work-shift" : "school-day";
+        const payload = place === "office" ? { working: starting } : { attending: starting };
+        const data = await api<Snapshot>(`/api/households/${snapshot.household.id}/me/${endpoint}`, "PATCH", payload);
         qc.setQueryData(["world", id], data);
       }
       setObserved(own.id);
@@ -698,7 +702,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
     } catch (failure) {
       setError((failure as Error).message);
     } finally {
-      setWorkPending(false);
+      setActivityPending(false);
     }
   }
   async function leave() {
@@ -731,7 +735,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
         );
     }
     if (e.type === "visibility-resume") void refresh();
-    if (e.type === "move-intent" && !studio && own?.place !== "office" && !snapshot?.household.pendingDeleteUntil)
+    if (e.type === "move-intent" && !studio && own?.place !== "office" && own?.place !== "school" && !snapshot?.household.pendingDeleteUntil)
       live.current?.send({
         requestId: crypto.randomUUID(),
         kind: "MOVE_INTENT",
@@ -873,7 +877,9 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                     {m.id === own.id && <em>나</em>}
                   </strong>
                   <small>{m.place === "office" && (m.id === own.id || m.sharedPlace?.status !== "UNSHARED")
-                    ? "근무중" : sharedPlaceLabel(m.sharedPlace, places[m.place])}</small>
+                    ? "근무중" : m.place === "school" && (m.id === own.id || m.sharedPlace?.status !== "UNSHARED")
+                    ? "수업중"
+                    : sharedPlaceLabel(m.sharedPlace, places[m.place])}</small>
                 </span>
                 <ChevronRight size={15} />
               </button>
@@ -968,10 +974,19 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               {!snapshot.household.pendingDeleteUntil && (
                 <div className="work-shift">
                   {place === "office" && !neutral && <span>달빛 광산 · 근무중</span>}
-                  <button className="button secondary" type="button" disabled={workPending} onClick={() => void changeWorkShift()}>
-                    <Pickaxe size={15} aria-hidden="true" />
-                    {workPending ? "이동 중…" : own.place === "office" ? "퇴근" : "출근"}
-                  </button>
+                  {place === "school" && !neutral && <span>햇살 교실 · 수업중</span>}
+                  <div className="activity-actions">
+                    {own.place !== "school" && (
+                      <button className="button secondary" type="button" disabled={activityPending} onClick={() => void changeActivity("office")}>
+                        <Pickaxe size={15} aria-hidden="true" /> {own.place === "office" ? "퇴근" : "출근"}
+                      </button>
+                    )}
+                    {own.place !== "office" && (
+                      <button className="button secondary" type="button" disabled={activityPending} onClick={() => void changeActivity("school")}>
+                        <GraduationCap size={16} aria-hidden="true" /> {own.place === "school" ? "하교" : "등교"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
               <div className={`scene-card${place === "home" && !neutral ? " home-scene-card" : ""}`}>
@@ -989,7 +1004,7 @@ function GamePage({ studio = false }: { studio?: boolean }) {
                   ) : (
                     <>
                       <span className="scene-caption" aria-hidden="true">
-                        <i /> {place === "office" ? "달빛 광산" : observedPresence?.place ? sharedPlaces[observedPresence.place] : places[place]}
+                        <i /> {place === "office" ? "달빛 광산" : place === "school" ? "햇살 교실" : observedPresence?.place ? sharedPlaces[observedPresence.place] : places[place]}
                       </span>
                       <Suspense
                         fallback={

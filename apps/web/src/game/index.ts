@@ -1,3 +1,4 @@
+import { mountClassroom } from './classroom';
 import { mountMoonMine } from './moonMine';
 import { ActorSpeechBubble } from './ActorSpeechBubble';
 import { makePetHabitat } from './petHabitat';
@@ -90,7 +91,8 @@ function mountLegacyWorld(parent:HTMLElement,initial:WorldView,onEvent:(event:Wo
 
 export function mountWorld(parent:HTMLElement,initial:WorldView,onEvent:(event:WorldEvent)=>void):WorldHandle{
   const renderer = (place: WorldView["place"]) =>
-    place === "home" ? mountNativeWorld : place === "office" ? mountMoonMine : mountLegacyWorld;
+    place === "home" ? mountNativeWorld : place === "office" ? mountMoonMine :
+      place === "school" ? mountClassroom : mountLegacyWorld;
   let mount = renderer(initial.place);
   let current = mount(parent, initial, onEvent);
   return {

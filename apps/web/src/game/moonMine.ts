@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { assetBase, nativeCharacter } from "./spaces";
-import { makeMoonMine, mineSize } from "./moonMineArt";
+import { makeMoonMine } from "./moonMineArt";
+import { mountObservationScene } from "./observationScene";
 import type { WorldHandle, WorldView } from "./types";
 
 const avatarX = 145;
@@ -110,31 +111,5 @@ class MoonMine extends Phaser.Scene {
 }
 
 export function mountMoonMine(parent: HTMLElement, initial: WorldView): WorldHandle {
-  parent.classList.add("moon-mine");
-  const scene = new MoonMine(initial);
-  const game = new Phaser.Game({
-    type: Phaser.AUTO,
-    parent,
-    width: mineSize.width,
-    height: mineSize.height,
-    pixelArt: true,
-    backgroundColor: "#171a35",
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    fps: { target: 30 },
-    audio: { noAudio: true },
-    render: { preserveDrawingBuffer: true },
-    scene,
-  });
-  const observer = new ResizeObserver(() => {
-    if (game.isBooted) game.scale.refresh();
-  });
-  observer.observe(parent);
-  return {
-    update: (view) => scene.setView(view),
-    destroy: () => {
-      observer.disconnect();
-      game.destroy(true);
-      parent.classList.remove("moon-mine");
-    },
-  };
+  return mountObservationScene(parent, new MoonMine(initial), "moon-mine", "#171a35");
 }

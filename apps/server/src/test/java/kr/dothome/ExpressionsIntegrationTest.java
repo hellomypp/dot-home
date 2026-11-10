@@ -92,6 +92,32 @@ class ExpressionsIntegrationTest {
         assertEquals("outside",homes.world(h,family).members().stream().filter(m->m.id().equals(miner)).findFirst().orElseThrow().place());
         assertEquals("home",homes.workShift(h,owner,false).members().stream().filter(m->m.id().equals(miner)).findFirst().orElseThrow().place());
     }
+    @Test void schoolDayPersistsAndRespectsHouseholdConsent(){
+        String owner=user(),family=user();
+        var created=house(owner);
+        String h=created.household().id(),student=created.meMemberId();
+        homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("가족","sage"));
+        assertEquals(403,assertThrows(ApiException.class,()->homes.schoolDay(h,user(),true)).status.value());
+        var attending=homes.schoolDay(h,owner,true);
+        assertEquals(attending.revision(),homes.schoolDay(h,owner,true).revision());
+        var reloaded=homes.world(h,owner).members().stream().filter(m->m.id().equals(student)).findFirst().orElseThrow();
+        assertEquals("school",reloaded.place());
+        assertEquals("studying",reloaded.action());
+        assertEquals("outside",homes.world(h,family).members().stream().filter(m->m.id().equals(student)).findFirst().orElseThrow().place());
+        assertThrows(ApiException.class,()->movement.apply(h,owner,new Api.Intent("school-move","MOVE_INTENT","school",320d,288d,null)));
+        assertThrows(ApiException.class,()->movement.apply(h,owner,new Api.Intent("school-interact","INTERACT_INTENT","school",null,null,"table")));
+        homes.expressions(h,owner,patch("share-school","""
+            {"sharing":{"enabled":true,"version":0}}
+            """));
+        var visible=homes.world(h,family).members().stream().filter(m->m.id().equals(student)).findFirst().orElseThrow();
+        assertEquals("school",visible.place());
+        assertEquals("studying",visible.action());
+        assertNull(visible.sharedPlace().place());
+        var home=homes.schoolDay(h,owner,false);
+        assertEquals(home.revision(),homes.schoolDay(h,owner,false).revision());
+        assertEquals("home",home.members().stream().filter(m->m.id().equals(student)).findFirst().orElseThrow().place());
+        assertTrue(homes.expressions(h,owner).sharing().enabled());
+    }
     @Test void manualPlaceExpiresAndRevocationHidesLocationWithoutClearingExpressions(){
         String owner=user(),guest=user();
         var created=house(owner);
