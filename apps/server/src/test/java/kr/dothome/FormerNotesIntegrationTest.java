@@ -1,6 +1,8 @@
 package kr.dothome;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 import javax.sql.DataSource;
@@ -23,6 +25,7 @@ class FormerNotesIntegrationTest {
     @Autowired CalendarService calendar;
     @Autowired HouseholdRequestService requests;
     @Autowired HouseholdNotificationService notifications;
+    @Autowired RepeatCareService care;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate sql;
     @Autowired DataSource dataSource;
@@ -141,6 +144,10 @@ class FormerNotesIntegrationTest {
         requests.edit(h,family,mixed.id(),json.readTree("{\"version\":"+edited.version()+",\"title\":\"내가 다시 바꾼 제목\"}"));
         var other=requests.create(h,owner,new CreateRequest("other-notice",RequestKind.NOTICE,"다른 가족의 공지","",List.of(),null));
         requests.acknowledge(h,owner,original.id());
+        var pet=homes.addPet(h,family,new Api.PetInput("별이","cat","cream")).pets().getFirst();
+        var rule=care.save(h,family,null,new RepeatCareInput(CareProfileType.PET,pet.id(),"자동 돌봄",List.of(DayOfWeek.values()),
+            LocalTime.of(19,0),"Asia/Seoul",null));
+        care.generate(rule.id(),rule.nextAt());
         assertEquals(2,notifications.list(h,owner,null,10).unreadCount());
         membership.leave(h,family,new LeaveHouse("request-leave"));
         var page=formerNotes.page(FormerRecordKind.REQUEST,family,null,20);
@@ -152,6 +159,7 @@ class FormerNotesIntegrationTest {
         assertEquals(0,sql.queryForObject("SELECT COUNT(*) FROM notice_acknowledgement WHERE request_id=?",Integer.class,original.id()));
         assertEquals(1,sql.queryForObject("SELECT COUNT(*) FROM household_request WHERE id=?",Integer.class,mixed.id()));
         assertEquals(1,notifications.list(h,owner,null,10).unreadCount());
+        assertEquals(1,sql.queryForObject("SELECT COUNT(*) FROM household_request WHERE care_rule_id=?",Integer.class,rule.id()));
     }
 
     @Test void replayErasesFormerRequestAndItsReceiptCannotRecreateIt(){

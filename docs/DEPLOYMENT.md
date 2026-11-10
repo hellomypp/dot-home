@@ -153,9 +153,19 @@ DB를 백업한 뒤 V7을 적용한다. planned_people은 새 JPA/DTO/UI/정책�
 
 ### 복원에서 삭제 기록 재적용
 
-1. 전체 백업과 별개로 최신 `household_deletion_log`의 데이터를 보관한다. MySQL에서는 `mysqldump --single-transaction --no-create-info --skip-triggers --skip-add-locks --no-tablespaces --set-gtid-purged=OFF --insert-ignore … household_deletion_log`로 데이터만 내보낼 수 있다. 계정 암호는 명령줄에 넣지 않는다. [MySQL 8.4 mysqldump](https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html).
-2. 별도 빈 DB에 전체 백업을 복원하고 현재 애플리케이션에 포함된 Flyway 마이그레이션을 모두 적용한다. 복원 DB에 최신 집 삭제 로그와 `former_record_deletion`을 병합하고, 애플리케이션에 연결하기 전에 복원 DB 전용 `RESTORE_DB_URL`, `RESTORE_DB_USER`, `RESTORE_DB_PASSWORD`를 설정한다.
-3. 조회 모드로 정리 대상 수를 확인한 후 적용한다. 두 번째 조회가 0건인지 확인하고, 보존할 집에서 로그인을 비롯한 핵심 동작을 검증한다.
+1. 전체 백업과 별개로 최신 `household_deletion_log`, `former_record_deletion`을 권한 제한된 파일에 보관한다. MySQL의 `--login-path`는 계정 암호를 명령줄에 남기지 않는다. [MySQL 8.4 mysqldump](https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html)
+2. 별도 빈 DB에 전체 백업을 복원하고 현재 애플리케이션에 포함된 Flyway 마이그레이션을 모두 적용한다. 아래 명령의 두 접속 설정과 DB 이름이 원본과 격리 복원 DB를 가리키는지 확인하고 최신 로그를 병합한다.
+
+```bash
+umask 077
+mysqldump --login-path=source-reader --single-transaction --no-create-info \
+  --skip-triggers --skip-add-locks --skip-disable-keys --no-tablespaces \
+  --set-gtid-purged=OFF --complete-insert --insert-ignore \
+  "$DOT_HOME_SOURCE_DB" household_deletion_log former_record_deletion > deletion-logs.sql
+mysql --login-path=isolated-restore "$DOT_HOME_RESTORE_DB" < deletion-logs.sql
+```
+
+3. 복원 DB 전용 `RESTORE_DB_URL`, `RESTORE_DB_USER`, `RESTORE_DB_PASSWORD`를 설정한다. 앱에서 사용하기 전에 조회 모드로 정리 대상 수를 확인한 뒤 적용한다. 두 번째 조회가 0건인지 확인하고 보존할 집의 핵심 동작을 검증한다.
 
 ```bash
 bash scripts/server.sh replayHouseholdDeletions --args=--plan
