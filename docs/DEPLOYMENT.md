@@ -163,4 +163,4 @@ bash scripts/server.sh replayHouseholdDeletions --args=--apply
 bash scripts/server.sh replayHouseholdDeletions --args=--plan
 ```
 
-`--apply`는 삭제 로그가 있는 집과 쪽지만 정리한다. 쪽지는 원래 집과 작성자 식별자가 모두 일치해야 제거하고, 해당 집의 준비된 내보내기 파일을 만료시킨다. 삭제 로그 자체와 계정, 나머지 기록은 보존한다. H2와 MySQL 8.4의 격리 DB에서 재실행을 확인했다.
+`--apply`는 삭제 로그가 있는 집과 기록만 정리한다. 기록은 원래 집과 작성자 식별자가 모두 일치해야 제거하고, 해당 집의 준비된 내보내기 파일을 만료시킨다. 삭제 로그 자체와 계정, 나머지 기록은 보존한다. H2와 MySQL 8.4의 격리 DB에서 재실행을 확인했다.

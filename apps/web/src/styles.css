@@ -86,3 +86,5 @@
 .former-note > p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0.5rem 0; }
 .former-note-confirmation { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .former-note-confirmation p { flex-basis: 100%; }
+.former-records-tabs { display: flex; flex-wrap: wrap; margin: 0.8rem 0; }
+.former-note h3 { margin: 0.45rem 0; font-size: 1rem; overflow-wrap: anywhere; }

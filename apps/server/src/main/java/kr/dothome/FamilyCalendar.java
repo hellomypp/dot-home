@@ -32,6 +32,7 @@ class HouseholdCalendarEvent extends Row {
     Instant startAt,endAt;
     @Column(nullable=false,length=64) String timeZone;
     @Column(nullable=false,length=36) String createdByMemberId,updatedByMemberId;
+    @Column(length=36) String titleEditorMemberId,descriptionEditorMemberId;
     Instant createdAt=Instant.now(),updatedAt=Instant.now();
     @Version long version;
 }
@@ -184,8 +185,12 @@ class CalendarService {
             }
         }
         event.householdId=h;
-        event.title=input.title().strip();
-        event.description=input.description().strip();
+        String title=input.title().strip();
+        String description=input.description().strip();
+        if(!title.equals(event.title))event.titleEditorMemberId=me.id;
+        if(!description.equals(event.description))event.descriptionEditorMemberId=me.id;
+        event.title=title;
+        event.description=description;
         event.category=input.category();
         event.allDay=input.allDay();
         event.startDate=input.startDate();

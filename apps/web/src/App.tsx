@@ -71,7 +71,7 @@ import {
   X,
 } from "lucide-react";
 import { SessionBar } from "./components/SessionBar";
-import { FormerNotesPanel } from "./components/FormerNotesPanel";
+import { FormerRecordsPanel } from "./components/FormerRecordsPanel";
 import { Portrait } from "./components/Portrait";
 import { Modal } from "./components/Modal";
 const WorldCanvas = lazy(() =>
@@ -462,7 +462,7 @@ function AccountPage() {
     retry: false,
     refetchOnMount: "always",
   });
-  if (identity.isPending || identity.isFetching) return <Loading />;
+  if (identity.isPending) return <Loading />;
   if (identity.error instanceof ApiError && identity.error.status === 401)
     return <Navigate to="/login" replace />;
   return (
@@ -478,7 +478,7 @@ function AccountPage() {
             <ErrorMessage message={identity.error.message} />
             <button className="button secondary" onClick={() => void identity.refetch()}>다시 확인</button>
           </>
-        ) : identity.data && <FormerNotesPanel user={identity.data.user.id} />}
+        ) : identity.data && <FormerRecordsPanel user={identity.data.user.id} />}
         <Link className="button secondary" to={identity.data?.memberships.length ? "/homes" : "/onboarding"}>
           {identity.data?.memberships.length ? "집 선택으로" : "시작 화면으로"}
         </Link>
