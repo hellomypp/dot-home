@@ -243,7 +243,7 @@ World에는 design을 추가했다. 기존 방문 전용 DTO도 householdName/th
 ### 가족의 일회성 집 편집 승인
 
 - `GET /api/households/{id}/edit-requests` → `{requests,activeEditor}`. 집 대표는 처리할 요청과 현재 편집자만 보고, 그 외 가족은 자신의 최신 요청만 본다.
-- 가족의 `POST /edit-requests` 본문은 `{requestId,scope}`다. 현 지원 범위는 `PRESET`, `VARIANTS`, `LAYOUT`이며 여러 범위를 함께 요청할 수 있다. 활성 요청이 있으면 기존 요청을 반환한다. 대표의 `POST /edit-requests/{requestId}/approve|reject` 본문은 `{requestId,version}`이고, 요청자 또는 대표는 `POST /edit-requests/{requestId}/cancel`에 `{version}`을 보낸다.
+- 가족의 `POST /edit-requests` 본문은 `{requestId,scope}`다. 지원 범위는 `PRESET`, `VARIANTS`, `LAYOUT`, `SURFACES`이며 여러 범위를 함께 요청할 수 있다. 활성 요청이 있으면 기존 요청을 반환한다. 대표의 `POST /edit-requests/{requestId}/approve|reject` 본문은 `{requestId,version}`이고, 요청자 또는 대표는 `POST /edit-requests/{requestId}/cancel`에 `{version}`을 보낸다.
 - 대기 요청과 승인 후 세션 시작 기한은 각각 30분이다. 가족은 세션 시작 시 `approvalId`를 보낸다. 동시 편집으로 시작이 실패하면 승인은 남는다. 초안 및 커밋에서 승인 범위를 확인하고, 한 번 저장하거나 취소하면 권한을 소진한다.
 - 대표는 `POST /edit-sessions/{sessionId}/revoke`로 활성 가족 세션을 회수한다. 가족은 새 승인을 받아 호환되는 초안을 이어갈 수 있다. 승인 변경은 내용 없는 `SPACE_EDIT_ACCESS_CHANGED` 이벤트로 알리고, 권한이 있는 계정만 요청함을 재조회한다.
 
@@ -251,6 +251,11 @@ World에는 design을 추가했다. 기존 방문 전용 DTO도 householdName/th
 
 - 공유 `design.positions`는 기본 위치에서 옮긴 사물만 `{objectId:{x,y}}`로 저장한다. 편집 세션의 초안에서 수정하며 카탈로그의 기본 위치 기준 16px씩 이동한다. 기존 `PATCH /design`은 같은 프리셋의 위치를 보존하고 새 프리셋에서는 기본 배치를 사용한다.
 - 가구 충돌 영역·깊이·상호작용 지점은 위치와 함께 이동한다. 겹침, 수조 자리, 스폰과 주요 사물까지의 동선을 서버에서 검사한다. 구조물과 고정 사물 ID는 편집할 수 없다. 방문자는 공유 디자인으로 동일한 방을 렌더링한다.
+
+### 벽과 바닥 마감
+
+- 공유 `design.surfaces`의 `{floorId,wallId}`는 편집 세션에서 저장한다. 카탈로그의 마감 ID만 허용한다. 가족은 `SURFACES` 승인이 있어야 변경할 수 있다.
+- 기존 집은 각 프리셋의 원본 마감을 사용한다. 명시적으로 고른 마감은 프리셋을 바꿔도 유지한다. 가족 게임과 공개 방문 화면에는 저장한 마감이 표시된다.
 
 `PATCH /api/households/{id}/me/profile`는 기존 memberName 외에 선택적 appearance(v2의 세 스타일만)를 받는다. 생략 시 기존 외형을 유지한다. 서버 principal로 본인의 Membership만 수정하며 MEMBER_PROFILE_CHANGED 커밋 후 이벤트를 유지한다. Google 내부 Account/sub는 변경하지 않는다.
 

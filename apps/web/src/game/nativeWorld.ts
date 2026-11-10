@@ -4,6 +4,7 @@ import Phaser from "phaser";
 import { ActorSpeechBubble } from "./ActorSpeechBubble";
 import { ActorNameplate } from "./ActorNameplate";
 import { paintWindowSky } from "./windowSky";
+import { drawHomeArchitecture, hasCustomSurfaces } from "./homeSurfaces";
 import { makeCat } from "./art";
 import {
   assetBase,
@@ -72,6 +73,7 @@ class NativeHome extends Phaser.Scene {
   markers: Phaser.GameObjects.GameObject[] = [];
   lastInput = 0;
   designKey = "";
+  surfaceKey = "";
   skyKey = "";
   windowTexture!: Phaser.Textures.CanvasTexture;
   constructor(view: WorldView, emit: (e: WorldEvent) => void) {
@@ -183,7 +185,20 @@ class NativeHome extends Phaser.Scene {
     const design = this.view.design || defaultDesign;
     this.map = mapForDesign(design);
     this.designKey = JSON.stringify(design);
-    this.add.image(0, 0, this.map.backdrop).setOrigin(0, 0).setDepth(-1000);
+    const backdrop = this.map.backdrop;
+    const source = this.textures.get(backdrop).getSourceImage();
+    const drawable = source instanceof HTMLImageElement || source instanceof HTMLCanvasElement;
+    const surfaceKey = drawable && hasCustomSurfaces(design.surfaces) ? JSON.stringify([backdrop, design.surfaces]) : "";
+    if (surfaceKey !== this.surfaceKey) {
+      if (this.surfaceKey) this.textures.remove("room-surface");
+      if (surfaceKey && drawable) {
+        const texture = this.textures.createCanvas("room-surface", 448, 320)!;
+        drawHomeArchitecture(texture.getContext(), source, design.surfaces);
+        texture.refresh();
+      }
+      this.surfaceKey = surfaceKey;
+    }
+    this.add.image(0, 0, surfaceKey ? "room-surface" : backdrop).setOrigin(0, 0).setDepth(-1000);
     const magnet = fridgeMagnet(design);
     const add = (o: MapObject) => {
       const image = this.add

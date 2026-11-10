@@ -72,7 +72,7 @@ class HomeService {
         owner(h,user);
         if(spaceEdits.findFirstByHouseholdIdAndEndedAtIsNullAndLeaseUntilAfter(id,Instant.now()).isPresent())
             throw SpaceEditing.busy();
-        if(input.positions()!=null)throw ApiException.invalid("가구 배치는 편집 세션에서 저장해 주세요.");
+        if(input.positions()!=null||input.surfaces()!=null)throw ApiException.invalid("배치와 마감은 편집 세션에서 저장해 주세요.");
         return saveDesign(h,requireMember(id,user).id,input);
     }
     Api.World saveDesign(Household h,String memberId,SpaceInput input){
@@ -81,6 +81,8 @@ class HomeService {
         h.presetId=design.presetId();
         h.objectVariants=Spaces.JSON.writeValueAsString(new TreeMap<>(design.variants()));
         h.objectPositions=Spaces.JSON.writeValueAsString(new TreeMap<>(design.positions()));
+        h.floorStyle=design.surfaces().floorId();
+        h.wallStyle=design.surfaces().wallId();
         h.designVersion++;emit(h,"SPACE_DESIGN_CHANGED",Spaces.view(h));return snapshot(h,memberId);
     }
     static String petName(String value) {

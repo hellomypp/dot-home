@@ -7,12 +7,24 @@ import tools.jackson.core.type.TypeReference;
 import org.springframework.core.io.ClassPathResource;
 import jakarta.validation.constraints.*;
 
-record SpaceView(String presetId,long version,Map<String,String> variants,Map<String,FurniturePosition> positions) {
-    SpaceView{positions=positions==null?Map.of():Map.copyOf(positions);}
+record SpaceSurfaces(@NotBlank String floorId,@NotBlank String wallId) {
+    static final SpaceSurfaces DEFAULT=new SpaceSurfaces("original","original");
+}
+record SpaceView(String presetId,long version,Map<String,String> variants,Map<String,FurniturePosition> positions,SpaceSurfaces surfaces) {
+    SpaceView{
+        positions=positions==null?Map.of():Map.copyOf(positions);
+        surfaces=surfaces==null?SpaceSurfaces.DEFAULT:surfaces;
+    }
+    SpaceView(String presetId,long version,Map<String,String> variants,Map<String,FurniturePosition> positions){
+        this(presetId,version,variants,positions,null);
+    }
     SpaceView(String presetId,long version,Map<String,String> variants){this(presetId,version,variants,Map.of());}
 }
 record SpaceInput(@NotBlank String presetId,@PositiveOrZero long version,@NotNull Map<String,String> variants,
-    @Size(max=8) Map<String,@NotNull @Valid FurniturePosition> positions) {
+    @Size(max=8) Map<String,@NotNull @Valid FurniturePosition> positions,@Valid SpaceSurfaces surfaces) {
+    SpaceInput(String presetId,long version,Map<String,String> variants,Map<String,FurniturePosition> positions){
+        this(presetId,version,variants,positions,null);
+    }
     SpaceInput(String presetId,long version,Map<String,String> variants){this(presetId,version,variants,null);}
 }
 final class Spaces {
@@ -33,7 +45,9 @@ final class Spaces {
     static Map<String,FurniturePosition> positions(Household house){
         return JSON.readValue(house.objectPositions,new TypeReference<Map<String,FurniturePosition>>(){});
     }
-    static SpaceView view(Household h){return new SpaceView(h.presetId,h.designVersion,Map.copyOf(overrides(h)),positions(h));}
+    static SpaceView view(Household h){
+        return new SpaceView(h.presetId,h.designVersion,Map.copyOf(overrides(h)),positions(h),new SpaceSurfaces(h.floorStyle,h.wallStyle));
+    }
     static boolean sameMap(String a,String b){return mapId(a).equals(mapId(b));}
     static SpaceView proposed(Household house,SpaceInput input){
         validate(input.presetId(),input.variants());
@@ -42,9 +56,16 @@ final class Spaces {
             : input.positions();
         if(placements.size()>DATA.get("movable").size() || placements.values().stream().anyMatch(Objects::isNull))
             throw ApiException.invalid("가구의 위치를 확인해 주세요.");
-        var design=new SpaceView(input.presetId(),input.version(),Map.copyOf(input.variants()),placements);
+        var surfaces=input.surfaces()==null?new SpaceSurfaces(house.floorStyle,house.wallStyle):input.surfaces();
+        if(!surfaceAllowed("floor",surfaces.floorId()) || !surfaceAllowed("wall",surfaces.wallId()))
+            throw ApiException.invalid("지원하지 않는 바닥이나 벽 마감이에요.");
+        var design=new SpaceView(input.presetId(),input.version(),Map.copyOf(input.variants()),placements,surfaces);
         SpaceLayout.validate(design);
         return design;
+    }
+    private static boolean surfaceAllowed(String kind,String id){
+        for(var option:DATA.get("surfaces").get(kind).get("options"))if(option.get("id").asText().equals(id))return true;
+        return false;
     }
     static JsonNode map(String preset){return DATA.get("maps").get(mapId(preset));}
     static boolean tankSlot(String preset,int slot){

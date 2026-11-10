@@ -167,7 +167,8 @@ class SpaceEditing {
             throw ApiException.conflict("편집 내용이 바뀌었어요. 최신 초안을 확인해 주세요.");
         var draft=row.draft();
         SpaceEditAccess.checkScope(grant,Spaces.view(house),draft);
-        var world=homes.saveDesign(house,member.id,new SpaceInput(draft.presetId(),draft.version(),draft.variants(),draft.positions()));
+        var world=homes.saveDesign(house,member.id,
+            new SpaceInput(draft.presetId(),draft.version(),draft.variants(),draft.positions(),draft.surfaces()));
         row.endedAt=now;
         row.commitRequestId=input.requestId();
         row.committedVersion=world.design().version();

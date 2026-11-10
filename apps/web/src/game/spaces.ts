@@ -1,9 +1,11 @@
 import raw from "../../../../assets/space-catalog.json";
+import { drawHomeArchitecture, type SurfaceChoices } from "./homeSurfaces";
 export interface SpaceDesign {
   presetId: string;
   version: number;
   variants: Record<string, string>;
   positions?: Record<string, Point>;
+  surfaces?: SurfaceChoices;
 }
 export interface MapObject {
   id: string;
@@ -247,7 +249,7 @@ export function renderPreview(
 ) {
   c.imageSmoothingEnabled = false;
   c.clearRect(0, 0, 448, 320);
-  c.drawImage(images.get(m.backdrop)!, 0, 0);
+  drawHomeArchitecture(c, images.get(m.backdrop)!, d.surfaces);
   const magnet = fridgeMagnet(d);
   const drawObject = (o: MapObject) => {
     c.drawImage(images.get(o.sprite)!, o.x, o.y);

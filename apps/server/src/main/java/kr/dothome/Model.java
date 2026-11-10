@@ -24,6 +24,8 @@ class Household extends Row {
     long designVersion;
     @Column(nullable=false,length=512) String objectVariants="{}";
     @Column(nullable=false,length=2048) String objectPositions="{}";
+    @Column(nullable=false,length=32) String floorStyle="original";
+    @Column(nullable=false,length=32) String wallStyle="original";
     long revision;
     Instant pendingDeleteUntil;
     @Column(length=80) String deletionRequestId;

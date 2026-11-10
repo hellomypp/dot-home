@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-enum SpaceEditScope { PRESET, VARIANTS, LAYOUT }
+enum SpaceEditScope { PRESET, VARIANTS, LAYOUT, SURFACES }
 enum SpaceEditRequestState { PENDING, APPROVED, REJECTED, CANCELLED, USED, EXPIRED }
 
 @Entity @Table(name="space_edit_request")
@@ -212,7 +212,8 @@ class SpaceEditAccess {
         var basePositions=Spaces.sameMap(current.presetId(),draft.presetId())?current.positions():Map.of();
         if(!scopes.contains(SpaceEditScope.PRESET) && !current.presetId().equals(draft.presetId())
             || !scopes.contains(SpaceEditScope.VARIANTS) && !current.variants().equals(draft.variants())
-            || !scopes.contains(SpaceEditScope.LAYOUT) && !basePositions.equals(draft.positions()))
+            || !scopes.contains(SpaceEditScope.LAYOUT) && !basePositions.equals(draft.positions())
+            || !scopes.contains(SpaceEditScope.SURFACES) && !current.surfaces().equals(draft.surfaces()))
             throw new ApiException(HttpStatus.FORBIDDEN,"EDIT_SCOPE","승인받은 항목만 바꿀 수 있어요.");
     }
 

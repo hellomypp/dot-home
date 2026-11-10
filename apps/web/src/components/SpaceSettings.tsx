@@ -4,6 +4,7 @@ import { catalogue, defaultDesign, mapFor, type SpaceDesign } from "../game/spac
 import { SpacePreview } from "./SpacePreview";
 import { SpaceEditRequests, type SpaceEditInbox, type SpaceEditRequest } from "./SpaceEditRequests";
 import { FurnitureLayout } from "./FurnitureLayout";
+import { defaultSurfaces, surfaceCatalogue, type SurfaceChoices } from "../game/homeSurfaces";
 import "./spaces.css";
 export function PresetPicker({
   value,
@@ -98,6 +99,7 @@ function SpaceEditor({ snapshot, source, onSaved, owner, approval, inbox, reload
     (owner ? !session.approvalId : !!approval && session.approvalId === approval.id) ? session.id : null;
   const draft = activeId ? unsaved ?? session!.draft : source;
   const canMoveFurniture = !!activeId && (owner || approval?.scope.includes("LAYOUT"));
+  const canChangeSurfaces = !!activeId && (owner || approval?.scope.includes("SURFACES"));
   const recoverable = session?.status === "RECOVERABLE";
 
   useEffect(() => {
@@ -220,6 +222,11 @@ function SpaceEditor({ snapshot, source, onSaved, owner, approval, inbox, reload
       <SpacePreview design={draft} selected={canMoveFurniture ? selectedFurniture : undefined} />
       {canMoveFurniture && <FurnitureLayout design={draft} selected={selectedFurniture} onSelect={setSelectedFurniture}
         onChange={design => void changeDraft(design)} disabled={busy || !!unsaved} />}
+      {canChangeSurfaces && (
+        <SurfacePicker choices={draft.surfaces ?? defaultSurfaces} disabled={busy || !!unsaved}
+          open={!owner && approval?.scope.length === 1}
+          onChange={surfaces => void changeDraft({ ...draft, surfaces })} />
+      )}
       {error && (
         <>
           <p role="alert" className="error-message">{error}</p>
@@ -280,5 +287,35 @@ function SpaceEditor({ snapshot, source, onSaved, owner, approval, inbox, reload
         </>
       )}
     </section>
+  );
+}
+
+function SurfacePicker({ choices, onChange, disabled, open }: {
+  choices: SurfaceChoices;
+  onChange: (choices: SurfaceChoices) => void;
+  disabled: boolean;
+  open: boolean;
+}) {
+  return (
+    <details className="surface-picker" open={open}>
+      <summary>벽 · 바닥 마감</summary>
+      <div className="surface-options">
+        {(["wall", "floor"] as const).map(kind => {
+          const key = kind === "wall" ? "wallId" : "floorId";
+          const options = surfaceCatalogue[kind].options;
+          const current = options.find(option => option.id === choices[key]);
+          return (
+            <label key={kind}>
+              <span><i style={{ backgroundColor: current?.color }} aria-hidden="true" />
+                {kind === "wall" ? "벽 색상" : "바닥 마감"}</span>
+              <select value={choices[key]} disabled={disabled}
+                onChange={event => onChange({ ...choices, [key]: event.target.value })}>
+                {options.map(option => <option key={option.id} value={option.id}>{option.name}</option>)}
+              </select>
+            </label>
+          );
+        })}
+      </div>
+    </details>
   );
 }

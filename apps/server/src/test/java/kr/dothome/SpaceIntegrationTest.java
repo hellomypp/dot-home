@@ -229,6 +229,28 @@ class SpaceIntegrationTest {
         assertTrue(room.walkable(target.x(),target.y()));
         assertThrows(ApiException.class,room::checkPaths);
     }
+    @Test void surfacesAreValidatedScopedAndPreservedByLegacyPresetChanges(){
+        String owner=user(),family=user(),guest=user();
+        String h=homes.create(owner,new Api.CreateHouse("마감 집","대표","sage")).household().id();
+        homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("가족","sage"));
+        assertEquals(SpaceSurfaces.DEFAULT,homes.design(h,family).surfaces());
+        var pending=editAccess.ask(h,family,new AskSpaceEdit("surfaces",Set.of(SpaceEditScope.SURFACES)));
+        var grant=editAccess.decide(h,owner,pending.id(),new DecideSpaceEdit("approve-surfaces",pending.version()),true);
+        var session=editing.start(h,family,new SpaceEditStart("choose",null,grant.id()));
+        var wrong=new SpaceInput("garden_home",0,Map.of(),null,new SpaceSurfaces("sage","light_oak"));
+        assertEquals(400,assertThrows(ApiException.class,()->editing.draft(h,family,session.id(),new SpaceEditDraft(0L,wrong))).status.value());
+        var surfaces=new SpaceSurfaces("light_oak","sage");
+        var wrongScope=new SpaceInput("brick_loft",0,Map.of(),null,surfaces);
+        assertEquals("EDIT_SCOPE",assertThrows(ApiException.class,()->editing.draft(h,family,session.id(),new SpaceEditDraft(0L,wrongScope))).code);
+        var valid=new SpaceInput("garden_home",0,Map.of(),null,surfaces);
+        var draft=editing.draft(h,family,session.id(),new SpaceEditDraft(0L,valid));
+        assertEquals(SpaceSurfaces.DEFAULT,homes.design(h,owner).surfaces());
+        editing.commit(h,family,session.id(),new SpaceEditCommit("apply",0L,draft.draftVersion()));
+        assertEquals(surfaces,homes.design(h,owner).surfaces());
+        var visit=visits.create(h,owner).url().substring(7);
+        assertEquals(surfaces,visits.enter(visit,guest).design().surfaces());
+        assertEquals(surfaces,homes.design(h,owner,new SpaceInput("sunny_apartment",1,Map.of())).design().surfaces());
+    }
     private String tryStart(String h,String owner,String key,CountDownLatch gate)throws InterruptedException{
         gate.await();
         try{return editing.start(h,owner,new SpaceEditStart(key,null)).status();}
