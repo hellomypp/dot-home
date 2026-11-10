@@ -36,6 +36,7 @@ enum RequestState { ACTIVE, OPEN, CLAIMED, DONE, CANCELLED, EXPIRED }
 class HouseholdRequest extends Row {
     @Column(nullable=false,length=36) String householdId;
     @Column(nullable=false,length=36) String authorMemberId;
+    @Column(length=36) String titleEditorMemberId,bodyEditorMemberId;
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=16) RequestKind kind;
     @Enumerated(EnumType.STRING) @Column(length=16) ReactionSource sourceType;
     @Column(length=128) String sourceId;
@@ -210,6 +211,8 @@ class HouseholdRequestService {
             var request=new HouseholdRequest();
             request.householdId=h;
             request.authorMemberId=member.id;
+            request.titleEditorMemberId=member.id;
+            request.bodyEditorMemberId=member.id;
             request.kind=input.kind();
             request.sourceType=input.sourceType();
             request.sourceId=input.sourceId();
@@ -337,6 +340,8 @@ class HouseholdRequestService {
         }
         if(title.equals(request.title)&&body.equals(request.body)&&targets.equals(oldTargets)&&deadline.equals(request.dueAt))
             return viewFor(request,now,actor);
+        if(!title.equals(request.title))request.titleEditorMemberId=actor.id;
+        if(!body.equals(request.body))request.bodyEditorMemberId=actor.id;
         request.title=title;request.body=body;request.targetsJson=json.writeValueAsString(targets);
         request.dueAt=deadline;request.updatedAt=now;
         requests.flush();
@@ -485,6 +490,7 @@ class HouseholdRequestService {
 
 @Component
 class HouseholdCommandReceipts {
+    static final String REMOVED_RESPONSE="{\"formerRecordRemoved\":true}";
     private final RequestCommands commands;
     private final ObjectMapper json;
     HouseholdCommandReceipts(RequestCommands commands,ObjectMapper json){this.commands=commands;this.json=json;}
@@ -493,6 +499,8 @@ class HouseholdCommandReceipts {
         var saved=commands.findByMemberIdAndCommandScopeAndRequestKey(member.id,scope,key).orElse(null);
         if(saved!=null&&saved.expiresAt.isAfter(now)){
             if(!saved.bodyHash.equals(hash))throw new ApiException(HttpStatus.CONFLICT,"IDEMPOTENCY_CONFLICT","동일 요청 번호의 내용이 달라요.");
+            if(REMOVED_RESPONSE.equals(saved.responseJson))
+                throw new ApiException(HttpStatus.GONE,"FORMER_RECORD_REMOVED","삭제된 기록이에요.");
             return json.readValue(saved.responseJson,responseType);
         }
         var result=write.get();

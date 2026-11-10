@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { CalendarDays, StickyNote, Trash2 } from "lucide-react";
+import { Bell, CalendarDays, StickyNote, Trash2 } from "lucide-react";
 import { api, ApiError } from "../lib/api";
 
 interface FormerRecord {
@@ -18,12 +18,16 @@ interface FormerRecordPage {
 
 const groups = {
   notes: {
-    label: "쪽지", heading: "내가 붙인 쪽지", icon: StickyNote,
+    label: "쪽지", empty: "쪽지가", removed: "쪽지를", heading: "내가 붙인 쪽지", icon: StickyNote,
     intro: "퇴실한 집에 남아 있는 내 쪽지를 확인하고 삭제할 수 있어요.",
   },
   calendar: {
-    label: "일정", heading: "내가 만든 일정", icon: CalendarDays,
+    label: "일정", empty: "일정이", removed: "일정을", heading: "내가 만든 일정", icon: CalendarDays,
     intro: "퇴실한 집에서 내가 쓴 제목과 내용이 남아 있는 일정을 확인할 수 있어요.",
+  },
+  requests: {
+    label: "부탁·공지", empty: "부탁·공지가", removed: "부탁·공지를", heading: "내가 남긴 부탁·공지", icon: Bell,
+    intro: "퇴실한 집에서 내가 쓴 제목과 내용이 남아 있는 부탁, 공지와 약속을 확인할 수 있어요.",
   },
 } as const;
 type Kind = keyof typeof groups;
@@ -68,7 +72,7 @@ function FormerRecords({ user, kind }: { user: string; kind: Kind }) {
     try {
       await api(path + "/" + encodeURIComponent(note.id) + "?version=" + note.version, "DELETE");
       setConfirming(undefined);
-      setStatus(`${group.label}${kind === "notes" ? "를" : "을"} 삭제했어요.`);
+      setStatus(`${group.removed} 삭제했어요.`);
       await query.refetch();
     } catch (failure) {
       setError((failure as Error).message);
@@ -91,7 +95,7 @@ function FormerRecords({ user, kind }: { user: string; kind: Kind }) {
         <p role="alert" className="error-message">{query.error.message}</p>
         <button type="button" className="button secondary" onClick={() => void query.refetch()}>다시 불러오기</button>
       </div>}
-      {!query.isPending && !query.isError && !notes.length && <p className="muted">이전 집에 남긴 {group.label}{kind === "notes" ? "가" : "이"} 없어요.</p>}
+      {!query.isPending && !query.isError && !notes.length && <p className="muted">이전 집에 남긴 {group.empty} 없어요.</p>}
       {status && <p role="status">{status}</p>}
       {error && <p role="alert" className="error-message">{error}</p>}
       <ul>

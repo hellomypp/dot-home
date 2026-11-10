@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import tools.jackson.databind.ObjectMapper;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest @ActiveProfiles({"dev","test"})
@@ -20,6 +21,9 @@ class FormerNotesIntegrationTest {
     @Autowired FormerRecordService formerNotes;
     @Autowired HouseholdExportService exports;
     @Autowired CalendarService calendar;
+    @Autowired HouseholdRequestService requests;
+    @Autowired HouseholdNotificationService notifications;
+    @Autowired ObjectMapper json;
     @Autowired JdbcTemplate sql;
     @Autowired DataSource dataSource;
 
@@ -126,6 +130,45 @@ class FormerNotesIntegrationTest {
         assertEquals(1,HouseholdDeletionReplay.replayFormerRecords(dataSource,true));
         assertEquals(0,HouseholdDeletionReplay.replayFormerRecords(dataSource,true));
         assertEquals(0,sql.queryForObject("SELECT COUNT(*) FROM calendar_attendance WHERE event_id=?",Integer.class,event.id()));
+    }
+
+
+    @Test void formerRequestsProtectMixedTextAndRemoveOnlyOwnNoticesAndAlerts(){
+        var owner=user();var family=user();var h=house(owner,family);
+        var original=requests.create(h,family,new CreateRequest("own-notice",RequestKind.NOTICE,"내 공지","내가 쓴 내용",List.of(),null));
+        var mixed=requests.create(h,family,new CreateRequest("mixed-notice",RequestKind.NOTICE,"초기 제목","초기 내용",List.of(),null));
+        var edited=requests.edit(h,owner,mixed.id(),json.readTree("{\"version\":"+mixed.version()+",\"body\":\"다른 가족이 쓴 내용\"}"));
+        requests.edit(h,family,mixed.id(),json.readTree("{\"version\":"+edited.version()+",\"title\":\"내가 다시 바꾼 제목\"}"));
+        var other=requests.create(h,owner,new CreateRequest("other-notice",RequestKind.NOTICE,"다른 가족의 공지","",List.of(),null));
+        requests.acknowledge(h,owner,original.id());
+        assertEquals(2,notifications.list(h,owner,null,10).unreadCount());
+        membership.leave(h,family,new LeaveHouse("request-leave"));
+        var page=formerNotes.page(FormerRecordKind.REQUEST,family,null,20);
+        assertEquals(List.of(original.id()),page.items().stream().map(FormerRecord::id).toList());
+        assertThrows(ApiException.class,()->formerNotes.remove(FormerRecordKind.REQUEST,family,mixed.id(),edited.version()+1));
+        assertThrows(ApiException.class,()->formerNotes.remove(FormerRecordKind.REQUEST,family,other.id(),other.version()));
+        formerNotes.remove(FormerRecordKind.REQUEST,family,original.id(),original.version());
+        assertEquals(0,sql.queryForObject("SELECT COUNT(*) FROM household_request WHERE id=?",Integer.class,original.id()));
+        assertEquals(0,sql.queryForObject("SELECT COUNT(*) FROM notice_acknowledgement WHERE request_id=?",Integer.class,original.id()));
+        assertEquals(1,sql.queryForObject("SELECT COUNT(*) FROM household_request WHERE id=?",Integer.class,mixed.id()));
+        assertEquals(1,notifications.list(h,owner,null,10).unreadCount());
+    }
+
+    @Test void replayErasesFormerRequestAndItsReceiptCannotRecreateIt(){
+        var owner=user();var family=user();var h=house(owner,family);
+        var input=new CreateRequest("restored-request",RequestKind.TASK,"되살리면 안 되는 부탁","이전 내용",List.of(),null);
+        var old=requests.create(h,family,input);
+        var keep=requests.create(h,family,new CreateRequest("keep",RequestKind.TASK,"보존할 부탁","",List.of(),null));
+        sql.update("""
+            INSERT INTO former_record_deletion(record_kind,record_id,household_id,author_member_id,deleted_at)
+            VALUES('REQUEST',?,?,?,CURRENT_TIMESTAMP)
+            """,old.id(),h,old.authorMemberId());
+        assertEquals(1,HouseholdDeletionReplay.replayFormerRecords(dataSource,false));
+        assertEquals(1,HouseholdDeletionReplay.replayFormerRecords(dataSource,true));
+        assertEquals(0,HouseholdDeletionReplay.replayFormerRecords(dataSource,true));
+        assertEquals(410,assertThrows(ApiException.class,()->requests.create(h,family,input)).status.value());
+        assertEquals(1,sql.queryForObject("SELECT COUNT(*) FROM household_request WHERE id=?",Integer.class,keep.id()));
+        assertEquals(0,sql.queryForObject("SELECT COUNT(*) FROM request_command WHERE response_json LIKE '%이전 내용%'",Integer.class));
     }
 
 }

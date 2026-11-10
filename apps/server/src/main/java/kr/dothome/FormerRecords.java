@@ -16,7 +16,10 @@ enum FormerRecordKind {
     OBJECT_NOTE("object_note","author_member_id","NULL","r.body","","OBJECT_NOTE_CHANGED"),
     CALENDAR("household_calendar_event","created_by_member_id","r.title","r.description",
         "AND r.updated_by_member_id=m.id AND r.title_editor_member_id=m.id AND r.description_editor_member_id=m.id",
-        "CALENDAR_EVENT_CHANGED");
+        "CALENDAR_EVENT_CHANGED"),
+    REQUEST("household_request","author_member_id","r.title","r.body",
+        "AND r.care_rule_id IS NULL AND r.title_editor_member_id=m.id AND r.body_editor_member_id=m.id",
+        "HOUSEHOLD_REQUEST_CHANGED");
 
     final String table,author,title,body,condition,signal;
     FormerRecordKind(String table,String author,String title,String body,String condition,String signal){
@@ -27,6 +30,7 @@ enum FormerRecordKind {
         return switch(resource){
             case "notes" -> OBJECT_NOTE;
             case "calendar" -> CALENDAR;
+            case "requests" -> REQUEST;
             default -> throw ApiException.missing();
         };
     }
@@ -139,8 +143,24 @@ class FormerRecordService {
         if(kind==FormerRecordKind.CALENDAR)
             sql.update("DELETE FROM calendar_attendance WHERE event_id IN (SELECT id FROM household_calendar_event WHERE "+matching+")",
                 row.id(),row.household(),row.author());
+        if(kind==FormerRecordKind.REQUEST){
+            sql.update("DELETE FROM request_transition WHERE request_id IN (SELECT id FROM household_request WHERE "+matching+")",
+                row.id(),row.household(),row.author());
+            sql.update("DELETE FROM notice_acknowledgement WHERE request_id IN (SELECT id FROM household_request WHERE "+matching+")",
+                row.id(),row.household(),row.author());
+        }
         int affected=sql.update("DELETE FROM "+kind.table+" WHERE "+matching,row.id(),row.household(),row.author());
         if(affected==0)return false;
+        if(kind==FormerRecordKind.REQUEST){
+            sql.update("""
+                UPDATE request_command SET response_json=?
+                WHERE member_id IN (SELECT id FROM membership WHERE household_id=?)
+                  AND (command_scope LIKE ? OR (command_scope='create' AND response_json LIKE ?))
+                """,HouseholdCommandReceipts.REMOVED_RESPONSE,row.household(),row.id()+":%","%\"id\":\""+row.id()+"\"%");
+            sql.update("""
+                DELETE FROM household_notification WHERE household_id=? AND source_id=? AND kind IN ('FAMILY_TASK','FAMILY_NOTICE')
+                """,row.household(),row.id());
+        }
         sql.update("UPDATE household_export SET export_state='CANCELLED',payload=NULL WHERE household_id=? AND export_state='READY'",row.household());
         return true;
     }
