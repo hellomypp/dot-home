@@ -78,6 +78,30 @@ class MigrationRetentionTest {
         }
     }
 
+    @Test void v27AddsEditSessionsWithoutChangingSavedDesignOrFamilyRows()throws Exception{
+        String url=url();
+        Flyway.configure().dataSource(url,username(),password()).target("26").load().migrate();
+        try(var connection=DriverManager.getConnection(url,username(),password());var sql=connection.createStatement()){
+            sql.executeUpdate("INSERT INTO app_user(id,provider,subject,name) VALUES('user','test','v27','기존 계정')");
+            sql.executeUpdate("""
+                INSERT INTO household(id,name,owner_id,revision,preset_id,design_version,object_variants)
+                VALUES('house','기존 집','user',11,'brick_loft',3,'{"fridge":"star"}')
+                """);
+            sql.executeUpdate("""
+                INSERT INTO membership(id,household_id,user_id,name,appearance,role,place,mood,food,thought,x,y,action,active)
+                VALUES('member','house','user','기존 가족','sage','OWNER','home','','','',224,260,'idle',true)
+                """);
+            sql.executeUpdate("INSERT INTO pet(id,household_id,name,kind,appearance) VALUES('pet','house','모카','cat','cream')");
+            var before=rows(connection);
+            Flyway.configure().dataSource(url,username(),password()).load().migrate();
+            assertEquals(before,rows(connection));
+            try(var sessions=sql.executeQuery("SELECT COUNT(*) FROM space_edit_session")){
+                assertTrue(sessions.next());
+                assertEquals(0,sessions.getInt(1));
+            }
+        }
+    }
+
     @Test void v21PreservesHistoricalMembershipAndEnforcesSingleActiveGeneration()throws Exception{
         String url=url();
         Flyway.configure().dataSource(url,username(),password()).target("20").load().migrate();

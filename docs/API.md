@@ -232,6 +232,14 @@ variants의 키/값은 fridge=original|leaf|star, sofa=sage|blue|leather, table=
 
 World에는 design을 추가했다. 기존 방문 전용 DTO도 householdName/theme/guestbook에 design만 추가한다. Membership, pantry, notes, calendar 등 비공개 world는 반환하지 않는다. 방문자는 가족 design API 또는 가족 STOMP에 접근할 수 없다.
 
+### 대표의 집 분위기 편집 세션
+
+- `GET /api/households/{id}/edit-sessions` → `{session}`. 현 대표의 최신 세션을 반환하며 없으면 null이다. 세션에는 `id,status,draft,draftVersion,leaseUntil,expiresAt,committedVersion`이 들어간다. 초안은 기존 design DTO 형식이다.
+- `POST /edit-sessions` 본문 `{requestId,recoverId?}`. 집당 활성 세션 1개이며 같은 시작 명령은 기존 세션을 반환한다. 다른 시작 명령이나 기존 `PATCH /design`은 활성 세션이 있으면 409 `EDIT_BUSY`다. 같은 디자인 버전을 기반으로 한 이전 초안만 새 세션으로 복구할 수 있다.
+- 세션의 `PATCH /{sessionId}/draft`는 `{draftVersion,design}`을 검증해 비공개 초안만 갱신한다. `POST /{sessionId}/heartbeat`는 90초 임대를 연장한다. 세션의 전체 기한은 시작 후 20분이다. `POST /{sessionId}/cancel` 또는 임대 만료 후에는 같은 세션에서 저장할 수 없다.
+- `POST /{sessionId}/commit` 본문 `{requestId,baseDesignVersion,draftVersion}`. 한 트랜잭션에서 디자인을 저장하고 `{committedVersion,world}`를 반환한다. 같은 커밋 명령이나 `GET /{sessionId}/result?requestId=...`로 저장 결과를 확인할 수 있다. 초안·결과의 조회 기간은 종료 후 24시간이다.
+- 대표 이전과 집 삭제 대기 시작 시 기존 세션을 종료한다. 가족은 커밋 후의 기존 `SPACE_DESIGN_CHANGED` 이벤트와 공유 디자인만 받는다. 편집 요청·일회성 승인, 가구 이동, 벽·바닥 편집은 후속 계약이다.
+
 `PATCH /api/households/{id}/me/profile`는 기존 memberName 외에 선택적 appearance(v2의 세 스타일만)를 받는다. 생략 시 기존 외형을 유지한다. 서버 principal로 본인의 Membership만 수정하며 MEMBER_PROFILE_CHANGED 커밋 후 이벤트를 유지한다. Google 내부 Account/sub는 변경하지 않는다.
 
 home 좌표는 448×320 map의 발 중앙이며 서버와 웹이 같은 collision 카탈로그를 사용한다. 구형 좌표는 응답에서 안전한 spawn으로 투영하고 첫 새 이동 전까지 DB 원본을 보존한다. 다른 공간의 좌표 규칙은 유지한다. [상세](V62_INTEGRATION.md).

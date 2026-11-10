@@ -26,9 +26,10 @@ class HomeService {
     final PantryChanges changes;
     final LifeEvents events;
     final ExpressionStore expressions;
+    final SpaceEdits spaceEdits;
     final ApplicationEventPublisher publisher;
-    HomeService(Households households,Members members,Pets pets,DependentProfiles dependents,Invitations invitations,PantryItems pantry,PantryChanges changes,LifeEvents events,ExpressionStore expressions,ApplicationEventPublisher publisher) {
-        this.households=households;this.members=members;this.pets=pets;this.dependents=dependents;this.invitations=invitations;this.pantry=pantry;this.changes=changes;this.events=events;this.expressions=expressions;this.publisher=publisher;
+    HomeService(Households households,Members members,Pets pets,DependentProfiles dependents,Invitations invitations,PantryItems pantry,PantryChanges changes,LifeEvents events,ExpressionStore expressions,SpaceEdits spaceEdits,ApplicationEventPublisher publisher) {
+        this.households=households;this.members=members;this.pets=pets;this.dependents=dependents;this.invitations=invitations;this.pantry=pantry;this.changes=changes;this.events=events;this.expressions=expressions;this.spaceEdits=spaceEdits;this.publisher=publisher;
     }
     Member requireMember(String householdId,String userId) {
         return members.findByHouseholdIdAndUserIdAndActiveTrue(householdId,userId).orElseThrow(ApiException::forbidden);
@@ -67,10 +68,17 @@ class HomeService {
     Api.World world(String householdId,String userId) { Household household=readLock(householdId,userId); return snapshot(household,requireMember(householdId,userId).id); }
     SpaceView design(String id,String user){return Spaces.view(readLock(id,user));}
     Api.World design(String id,String user,SpaceInput input){
-        Household h=lock(id,user);owner(h,user);Spaces.validate(input.presetId(),input.variants());
+        Household h=lock(id,user);
+        owner(h,user);
+        if(spaceEdits.findFirstByHouseholdIdAndEndedAtIsNullAndLeaseUntilAfter(id,Instant.now()).isPresent())
+            throw SpaceEditing.busy();
+        return saveDesign(h,requireMember(id,user).id,input);
+    }
+    Api.World saveDesign(Household h,String memberId,SpaceInput input){
+        Spaces.validate(input.presetId(),input.variants());
         if(h.designVersion!=input.version())throw ApiException.conflict("다른 기기에서 집 분위기를 바꿨어요. 최신 설정을 확인해 주세요.");
         h.presetId=input.presetId();try{h.objectVariants=Spaces.JSON.writeValueAsString(new TreeMap<>(input.variants()));}catch(Exception e){throw ApiException.invalid("가구 외형을 확인해 주세요.");}
-        h.designVersion++;emit(h,"SPACE_DESIGN_CHANGED",Spaces.view(h));return snapshot(h,requireMember(id,user).id);
+        h.designVersion++;emit(h,"SPACE_DESIGN_CHANGED",Spaces.view(h));return snapshot(h,memberId);
     }
     static String petName(String value) {
         if(value==null||value.strip().isBlank()||value.length()>40||value.codePoints().anyMatch(Character::isISOControl))throw ApiException.invalid("반려동물 이름은 줄바꿈 없이 1~40자로 입력해 주세요.");

@@ -22,6 +22,7 @@ class HouseholdDeletionIntegrationTest {
     @Autowired RepeatCareService care;
     @Autowired DependentService dependents;
     @Autowired OwnershipService ownership;
+    @Autowired SpaceEditing editing;
     @Autowired JdbcTemplate sql;
 
     @Autowired javax.sql.DataSource source;
@@ -84,7 +85,11 @@ class HouseholdDeletionIntegrationTest {
         var export=exports.start(house,family,new ExportInput("export"));
         exports.generate(export.id());
         homes.archivePet(house,owner,pet.id(),pet.version());
+        var session=editing.start(house,owner,new SpaceEditStart("edit",null));
         var pending=deletion.request(house,owner,new RequestHouseDeletion("delete",0L));
+        assertEquals("ENDED",editing.current(house,owner).session().status());
+        assertEquals(409,assertThrows(ApiException.class,()->editing.commit(house,owner,session.id(),
+            new SpaceEditCommit("blocked",0L,0L))).status.value());
         deletion.purge(house,pending.pendingDeleteUntil().minusSeconds(1));
         assertEquals(house,homes.world(house,owner).household().id());
 
@@ -92,7 +97,7 @@ class HouseholdDeletionIntegrationTest {
         deletion.purge(house,pending.pendingDeleteUntil());
         assertThrows(ApiException.class,()->homes.world(house,owner));
         assertEquals(other,homes.world(other,family).household().id());
-        for(String table:List.of("membership","pet","dependent_profile","household_export","ownership_transfer",
+        for(String table:List.of("membership","pet","dependent_profile","household_export","ownership_transfer","space_edit_session",
             "repeat_care_rule","care_photo","household_request","object_note","household_calendar_event","guestbook_entry","life_event"))
             assertEquals(0,sql.queryForObject("SELECT COUNT(*) FROM "+table+" WHERE household_id=?",Integer.class,house),table);
         assertEquals(1,sql.queryForObject("SELECT COUNT(*) FROM household_deletion_log WHERE household_id=?",Integer.class,house));

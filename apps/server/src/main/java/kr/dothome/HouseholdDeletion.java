@@ -31,12 +31,14 @@ class HouseholdDeletionService {
     private final HousewarmingInvitations visits;
     private final JdbcTemplate sql;
     private final ApplicationEventPublisher publisher;
+    private final SpaceEditing spaceEditing;
     private final boolean enabled;
 
     HouseholdDeletionService(HomeService homes,Households households,Members members,HousewarmingInvitations visits,
-        JdbcTemplate sql,ApplicationEventPublisher publisher,@Value("${app.household-deletion-enabled:false}") boolean enabled){
+        JdbcTemplate sql,ApplicationEventPublisher publisher,SpaceEditing spaceEditing,
+        @Value("${app.household-deletion-enabled:false}") boolean enabled){
         this.homes=homes;this.households=households;this.members=members;this.visits=visits;
-        this.sql=sql;this.publisher=publisher;this.enabled=enabled;
+        this.sql=sql;this.publisher=publisher;this.spaceEditing=spaceEditing;this.enabled=enabled;
     }
 
     HouseDeletionView request(String id,String user,RequestHouseDeletion input){
@@ -50,6 +52,7 @@ class HouseholdDeletionService {
         house.pendingDeleteUntil=now.plus(Duration.ofDays(7));
         house.deletionRequestId=input.requestId();
         house.deletionVersion++;
+        spaceEditing.endForHouse(id,now);
         for(var visit:visits.findByHouseholdIdOrderByCreatedAtDesc(id)){
             if(visit.revokedAt==null)visit.revokedAt=now;
         }
