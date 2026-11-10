@@ -69,4 +69,4 @@ python3 scripts/generate-push-keys.py mailto:운영자메일주소 .tools/push.e
 - Mac의 `server.sh google`과 비공개 미리보기는 `.tools/push.env`를 읽는다. 환경을 바꾼 경우 미리보기를 다시 시작한다. 배포 서버에서는 `PUSH_PUBLIC_KEY`, `PUSH_PRIVATE_KEY`, `PUSH_SUBJECT`를 서버 변수에 저장한다. 개인키 파일은 비밀값 보관 절차에 포함한다. 키가 바뀌면 각 브라우저에서 알림을 다시 연결한다.
 - iPhone과 iPad에서는 Safari 공유 메뉴의 ‘홈 화면에 추가’를 사용한다. 홈 화면의 도트홈을 연 뒤 ‘알림함 → 알림 설정 → 이 기기 알림 켜기’를 누른다. [WebKit Web Push](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)
 - 대상 환경에서 두 계정으로 가족 공지를 만들어 실제 OS 알림을 확인한다. 조용한 시간, 알림 종류 OFF, 로그아웃, 기기에서 끈 경우, 종료된 가족 참여도 각각 확인한다. 앱 안 알림함은 계속 사용할 수 있다.
-- 발송 대기열은 DB에 저장한다. 운영은 단일 앱 인스턴스를 유지한다. 재시도는 같은 이벤트로 최대 세 번, 전달 수명은 5분이다. 만료된 구독은 공급자의 404·410 응답 후 정리한다. 공급자의 수락과 단말의 표시 성공은 별도로 판단한다. [HTTP Web Push](https://www.rfc-editor.org/rfc/rfc8030.html)
+- 발송 대기열은 DB에 저장한다. 운영은 단일 앱 인스턴스를 유지한다. 재시도는 같은 이벤트로 최대 세 번, 전달 수명은 5분이다. 만료된 구독은 공급자의 404·410 응답 후 정리한다. 공급자의 수락과 단말의 표시 성공은 별도로 판단한다. 잠금 화면에는 기본 문구가 표시된다. 집별로 상세 표시를 켜면 가족 이름과 알림 종류만 브라우저가 복호화한다. [HTTP Web Push](https://www.rfc-editor.org/rfc/rfc8030.html)

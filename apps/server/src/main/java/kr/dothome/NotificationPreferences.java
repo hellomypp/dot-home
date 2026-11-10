@@ -25,6 +25,7 @@ class NotificationPreference {
     Integer quietStartMinute=1320;
     Integer quietEndMinute=480;
     @Column(nullable=false,length=64) String quietZone="Asia/Seoul";
+    boolean lockscreenPreview;
     long version;
 
     boolean enabled(NotificationGroup group){return (allowedMask & group.bit)!=0;}
@@ -46,10 +47,13 @@ record PushQuietHours(Integer startMinute,Integer endMinute,@NotBlank @Size(max=
             throw ApiException.invalid("조용한 시간의 시작·종료와 시간대를 확인해 주세요.");
     }
 }
-record NotificationSettingsView(Map<NotificationGroup,Boolean> enabled,long version,PushQuietHours quietHours) {}
+record NotificationSettingsView(Map<NotificationGroup,Boolean> enabled,long version,PushQuietHours quietHours,boolean lockscreenPreview) {}
 record ChangeNotificationSettings(@Size(min=1) Map<NotificationGroup,@NotNull Boolean> enabled,
-    @NotNull @PositiveOrZero Long version,@Valid PushQuietHours quietHours) {
-    ChangeNotificationSettings(Map<NotificationGroup,Boolean> enabled,Long version){this(enabled,version,null);}
+    @NotNull @PositiveOrZero Long version,@Valid PushQuietHours quietHours,Boolean lockscreenPreview) {
+    ChangeNotificationSettings(Map<NotificationGroup,Boolean> enabled,Long version){this(enabled,version,null,null);}
+    ChangeNotificationSettings(Map<NotificationGroup,Boolean> enabled,Long version,PushQuietHours quietHours){
+        this(enabled,version,quietHours,null);
+    }
 }
 
 @Service @Transactional(isolation=Isolation.READ_COMMITTED)
@@ -70,7 +74,7 @@ class NotificationPreferenceService {
         homes.lock(h,user);
         var row=current(homes.requireMember(h,user).id);
         if(row.version!=input.version())throw ApiException.conflict("다른 기기에서 알림 설정을 바꿨어요. 다시 불러와 주세요.");
-        if(input.enabled()==null&&input.quietHours()==null)throw ApiException.invalid("수정할 알림 설정을 선택해 주세요.");
+        if(input.enabled()==null&&input.quietHours()==null&&input.lockscreenPreview()==null)throw ApiException.invalid("수정할 알림 설정을 선택해 주세요.");
         int mask=row.allowedMask;
         for(var entry:Objects.requireNonNullElse(input.enabled(),Map.<NotificationGroup,Boolean>of()).entrySet()){
             int bit=entry.getKey().bit;
@@ -78,8 +82,10 @@ class NotificationPreferenceService {
         }
         var hours=input.quietHours();
         if(hours!=null)hours.validate();
-        if(mask!=row.allowedMask||hours!=null&&!hours.equals(quietHours(row))){
+        boolean preview=Objects.requireNonNullElse(input.lockscreenPreview(),row.lockscreenPreview);
+        if(mask!=row.allowedMask||preview!=row.lockscreenPreview||hours!=null&&!hours.equals(quietHours(row))){
             row.allowedMask=mask;
+            row.lockscreenPreview=preview;
             if(hours!=null){
                 row.quietStartMinute=hours.startMinute();
                 row.quietEndMinute=hours.endMinute();
@@ -98,6 +104,8 @@ class NotificationPreferenceService {
         return row.enabled(group)&&!quietHours(row).includes(now);
     }
 
+    boolean lockscreenPreview(String memberId){return current(memberId).lockscreenPreview;}
+
     private static PushQuietHours quietHours(NotificationPreference row){
         return new PushQuietHours(row.quietStartMinute,row.quietEndMinute,row.quietZone);
     }
@@ -113,7 +121,7 @@ class NotificationPreferenceService {
     private static NotificationSettingsView view(NotificationPreference row){
         var enabled=new EnumMap<NotificationGroup,Boolean>(NotificationGroup.class);
         for(var group:NotificationGroup.values())enabled.put(group,row.enabled(group));
-        return new NotificationSettingsView(enabled,row.version,quietHours(row));
+        return new NotificationSettingsView(enabled,row.version,quietHours(row),row.lockscreenPreview);
     }
 }
 

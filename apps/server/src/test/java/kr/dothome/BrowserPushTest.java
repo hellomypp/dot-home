@@ -2,6 +2,8 @@ package kr.dothome;
 
 import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.math.BigInteger;
+import java.security.spec.ECPrivateKeySpec;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.time.*;
@@ -49,6 +51,24 @@ class BrowserPushTest {
             "https://fcm.googleapis.com/wp/../x","https://fcm.googleapis.com/wp/test?token=secret")){
             assertThrows(ApiException.class,()->PushTransport.endpoint(endpoint),endpoint);
         }
+    }
+
+    @Test void encryptedBodyMatchesRfc8291VectorAndRejectsInvalidCurvePoints() throws Exception {
+        var decoder=Base64.getUrlDecoder();
+        byte[] receiver=decoder.decode("BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4");
+        byte[] sender=decoder.decode("BP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A8");
+        var scalar=new BigInteger(1,decoder.decode("yfWPiYE-n46HLnH0KqZOF1fJJU3MYrct3AELtAQ-oRw"));
+        var privateKey=KeyFactory.getInstance("EC").generatePrivate(new ECPrivateKeySpec(scalar,WebPushEncryption.curve()));
+        byte[] result=WebPushEncryption.encrypt(decoder.decode("V2hlbiBJIGdyb3cgdXAsIEkgd2FudCB0byBiZSBhIHdhdGVybWVsb24"),
+            receiver,decoder.decode("BTBZMqHH6r4Tts7J_aSIgg"),new KeyPair(WebPushEncryption.publicKey(sender),privateKey),
+            decoder.decode("DGv6ra1nlYgDCS1FRnbzlw"));
+        assertArrayEquals(decoder.decode(
+            "DGv6ra1nlYgDCS1FRnbzlwAAEABBBP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27ml"
+            +"mlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A_yl95bQpu6cVPT"
+            +"pK4Mqgkf1CXztLVBSt2Ks3oZwbuwXPXLWyouBWLVWGNWQexSgSxsj_Qulcy4a-fN"),result);
+        byte[] invalid=new byte[65];
+        invalid[0]=4;
+        assertThrows(InvalidKeyException.class,()->WebPushEncryption.publicKey(invalid));
     }
 
     @Test void quietHoursUseRecipientsZoneAcrossMidnightAndDst(){

@@ -17,6 +17,12 @@ async function currentSubscription() {
   return (await navigator.serviceWorker.getRegistration("/push-worker.js"))?.pushManager.getSubscription();
 }
 
+function registerSubscription(subscription: PushSubscription) {
+  const keys = subscription.toJSON().keys;
+  if (!keys?.p256dh || !keys.auth) throw new Error("이 브라우저에서 암호화된 알림 구독을 준비할 수 없어요.");
+  return api(browserPushPath, "PUT", { endpoint: subscription.endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } });
+}
+
 function iosNeedsHomeScreen() {
   const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
   const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -49,7 +55,8 @@ export function BrowserPushControl({ configuration }: { configuration: BrowserPu
     queryFn: async () => {
       const subscription = await currentSubscription();
       if (!subscription) return false;
-      const result = await api<{ enabled: boolean }>(browserPushPath + "/status", "POST", { endpoint: subscription.endpoint });
+      const result = await api<{ enabled: boolean; payloadReady?: boolean }>(browserPushPath + "/status", "POST", { endpoint: subscription.endpoint });
+      if (result.enabled && result.payloadReady === false) await registerSubscription(subscription);
       return result.enabled;
     },
   });
@@ -75,12 +82,12 @@ export function BrowserPushControl({ configuration }: { configuration: BrowserPu
         const subscribe = () => registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: publicKey });
         subscription ??= await subscribe();
         try {
-          await api(browserPushPath, "PUT", { endpoint: subscription.endpoint });
+          await registerSubscription(subscription);
         } catch (error) {
           if (!(error instanceof ApiError) || error.code !== "PUSH_SUBSCRIPTION_OWNED") throw error;
           await subscription.unsubscribe();
           subscription = await subscribe();
-          await api(browserPushPath, "PUT", { endpoint: subscription.endpoint });
+          await registerSubscription(subscription);
         }
       } else {
         const subscription = await currentSubscription();
@@ -103,7 +110,7 @@ export function BrowserPushControl({ configuration }: { configuration: BrowserPu
   return (
     <section className="notification-device">
       <h3>이 기기의 브라우저 알림</h3>
-      <p className="muted">참여 중인 집에서 켠 알림을 받아요. 잠금 화면에는 ‘가족의 새 소식이 있어요.’라고 표시돼요.</p>
+      <p className="muted">참여 중인 집에서 켠 알림을 받아요. 잠금 화면에는 집별 설정에 따라 알림이 표시돼요.</p>
       {!installed ? <p>iPhone이나 iPad에서는 Safari의 공유 메뉴에서 ‘홈 화면에 추가’를 선택한 뒤, 홈 화면의 도트홈에서 알림을 켜 주세요.</p>
         : !supported ? <p>이 브라우저에서는 앱 안의 알림함을 이용할 수 있어요.</p> : (
           <>

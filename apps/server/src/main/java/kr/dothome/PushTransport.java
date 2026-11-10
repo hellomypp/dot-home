@@ -1,7 +1,6 @@
 package kr.dothome;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.net.URI;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;
@@ -38,10 +37,7 @@ class PushTransport {
             var decoder=Base64.getUrlDecoder();
             var point=decoder.decode(publicKey);
             if(point.length!=65||point[0]!=4||!BASE64.encodeToString(point).equals(publicKey))throw new GeneralSecurityException();
-            var params=AlgorithmParameters.getInstance("EC");
-            params.init(new ECGenParameterSpec("secp256r1"));
-            var coordinates=new ECPoint(new BigInteger(1,point,1,32),new BigInteger(1,point,33,32));
-            var published=factory.generatePublic(new ECPublicKeySpec(coordinates,params.getParameterSpec(ECParameterSpec.class)));
+            var published=WebPushEncryption.publicKey(point);
             this.privateKey=factory.generatePrivate(new PKCS8EncodedKeySpec(decoder.decode(privateKey)));
             var verifier=Signature.getInstance("SHA256withECDSAinP1363Format");
             byte[] sample="dot-home-push".getBytes(StandardCharsets.UTF_8);
@@ -97,14 +93,20 @@ class PushTransport {
         return signature.sign();
     }
 
-    PushResponse send(String target,String topic,int ttl,Instant now) throws IOException,InterruptedException,GeneralSecurityException {
-        var uri=endpoint(target);
+    PushResponse send(PreparedPush push,Instant now) throws IOException,InterruptedException,GeneralSecurityException {
+        var uri=endpoint(push.endpoint());
         if(uri.getHost().equals("fcm.googleapis.com")&&uri.getPath().startsWith("/fcm/send/"))
             uri=URI.create("https://fcm.googleapis.com/wp/"+uri.getPath().substring("/fcm/send/".length()));
         var request=HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(3))
-            .header("Authorization",authorization(uri,now)).header("TTL",Integer.toString(ttl))
-            .header("Topic",topic).header("Urgency","low").POST(HttpRequest.BodyPublishers.noBody()).build();
-        var response=http.send(request,HttpResponse.BodyHandlers.discarding());
+            .header("Authorization",authorization(uri,now)).header("TTL",Integer.toString(push.ttl()))
+            .header("Topic",push.topic()).header("Urgency","low");
+        var body=HttpRequest.BodyPublishers.noBody();
+        if(push.keys()!=null){
+            var encrypted=WebPushEncryption.encrypt(json.writeValueAsBytes(push.payload()),push.keys());
+            body=HttpRequest.BodyPublishers.ofByteArray(encrypted);
+            request.header("Content-Encoding","aes128gcm").header("Content-Type","application/octet-stream");
+        }
+        var response=http.send(request.POST(body).build(),HttpResponse.BodyHandlers.discarding());
         var retry=response.headers().firstValue("Retry-After").map(value->retryAfter(value,now)).orElse(Duration.ZERO);
         return new PushResponse(response.statusCode(),retry);
     }

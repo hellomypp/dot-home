@@ -31,6 +31,16 @@ class PushSubscription extends Row {
     @Column(nullable=false,length=2048) String endpoint;
     @Column(nullable=false,length=64) String keyFingerprint;
     @Column(nullable=false,length=64) String sessionHash;
+    @Column(length=88) String clientPublicKey;
+    @Column(length=24) String clientAuthSecret;
+
+    void updateKeys(PushKeyInput keys){
+        if(keys==null)return;
+        clientPublicKey=keys.p256dh();
+        clientAuthSecret=keys.auth();
+    }
+
+    PushKeyInput keys(){return clientPublicKey==null?null:new PushKeyInput(clientPublicKey,clientAuthSecret);}
 }
 
 @Entity @Table(name="browser_push_delivery")
@@ -65,8 +75,21 @@ interface PushDeliveries extends JpaRepository<PushDelivery,String> {
 
 record PushSettings(boolean available,String publicKey) {}
 record PushEndpoint(@NotBlank @Size(max=2048) String endpoint) {}
-record PushStatus(boolean enabled) {}
-record PreparedPush(String deliveryId,String endpoint,String topic,int ttl) {}
+record PushStatus(boolean enabled,boolean payloadReady) {}
+record PushKeyInput(@NotBlank @Size(max=88) String p256dh,@NotBlank @Size(max=24) String auth) {
+    void validate(){
+        try {
+            var decoder=Base64.getUrlDecoder();
+            if(decoder.decode(auth).length!=16)throw new java.security.InvalidKeyException();
+            WebPushEncryption.publicKey(decoder.decode(p256dh));
+        } catch(GeneralSecurityException|IllegalArgumentException ex){
+            throw ApiException.invalid("브라우저 알림 구독 키를 확인해 주세요.");
+        }
+    }
+}
+record PushSubscriptionInput(@NotBlank @Size(max=2048) String endpoint,@Valid PushKeyInput keys) {}
+record PushPayload(String householdId,String preview) {}
+record PreparedPush(String deliveryId,String endpoint,String topic,int ttl,PushKeyInput keys,PushPayload payload) {}
 
 @Service @Transactional(isolation=Isolation.READ_COMMITTED)
 class PushRegistration {
@@ -85,12 +108,13 @@ class PushRegistration {
         var existing=transport.enabled()?subscriptions.findByEndpointHash(HomeService.hash(endpoint))
             .filter(row->row.userId.equals(user)&&row.keyFingerprint.equals(transport.fingerprint())).orElse(null):null;
         if(existing!=null)existing.sessionHash=HomeService.hash(sessionId);
-        return new PushStatus(existing!=null);
+        return new PushStatus(existing!=null,existing!=null&&existing.keys()!=null);
     }
 
-    void register(String user,String endpoint,String sessionId){
+    void register(String user,String endpoint,String sessionId,PushKeyInput keys){
         if(!transport.enabled())throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,"PUSH_UNAVAILABLE","이 서버에서는 웹 푸시를 준비 중이에요.");
         String target=PushTransport.endpoint(endpoint).toString();
+        if(keys!=null)keys.validate();
         accounts.locked(user).orElseThrow(ApiException::forbidden);
         String hash=HomeService.hash(target);
         var existing=subscriptions.findByEndpointHash(hash).orElse(null);
@@ -98,6 +122,7 @@ class PushRegistration {
             if(!existing.userId.equals(user))throw owned();
             if(existing.keyFingerprint.equals(transport.fingerprint())){
                 existing.sessionHash=HomeService.hash(sessionId);
+                existing.updateKeys(keys);
                 return;
             }
             throw ApiException.conflict("이 브라우저의 기존 알림을 해제한 뒤 다시 연결해 주세요.");
@@ -107,6 +132,7 @@ class PushRegistration {
         var row=new PushSubscription();
         row.userId=user;row.endpointHash=hash;row.endpoint=target;row.keyFingerprint=transport.fingerprint();
         row.sessionHash=HomeService.hash(sessionId);
+        row.updateKeys(keys);
         try{subscriptions.saveAndFlush(row);}
         catch(DataIntegrityViolationException ex){throw owned();}
     }
@@ -139,8 +165,8 @@ class BrowserPushController {
     }
 
     @PutMapping @ResponseStatus(HttpStatus.NO_CONTENT)
-    void register(Principal user,@Valid @RequestBody PushEndpoint input,HttpServletRequest request){
-        registration.register(user.getName(),input.endpoint(),sessionId(request));
+    void register(Principal user,@Valid @RequestBody PushSubscriptionInput input,HttpServletRequest request){
+        registration.register(user.getName(),input.endpoint(),sessionId(request),input.keys());
     }
 
     private static String sessionId(HttpServletRequest request){
@@ -215,7 +241,9 @@ class BrowserPushOutbox {
             deliveries.delete(job);
             return null;
         }
-        return new PreparedPush(job.id,subscription.endpoint,notice.id.replace("-",""),ttl);
+        var keys=subscription.keys();
+        var payload=keys==null?null:new PushPayload(house.id,preview(notice));
+        return new PreparedPush(job.id,subscription.endpoint,notice.id.replace("-",""),ttl,keys,payload);
     }
 
     void finish(String id,PushResponse response,Instant now){
@@ -235,6 +263,24 @@ class BrowserPushOutbox {
             }
         }
         deliveries.delete(job);
+    }
+
+    private String preview(HouseholdNotification notice){
+        if(!preferences.lockscreenPreview(notice.recipientMemberId))return null;
+        var actor=active(notice.actorMemberId,notice.householdId);
+        if(actor==null)return null;
+        String name=actor.name.replaceAll("\\p{C}","").strip();
+        if(name.isEmpty())name="가족";
+        String category=switch(notice.kind){
+            case EDIT_REQUESTED -> "집 편집 요청";
+            case EDIT_APPROVED -> "집 편집 승인";
+            case EDIT_REJECTED -> "집 편집 거절";
+            case EDIT_REVOKED -> "집 편집 권한 종료";
+            case FAMILY_TASK -> "가족 부탁";
+            case FAMILY_NOTICE -> "가족 공지";
+            case ARRIVED_HOME -> "귀가 소식";
+        };
+        return name+" · "+category;
     }
 
     private boolean eligible(Household house,HouseholdNotification notice,PushSubscription subscription,Instant now){
@@ -292,7 +338,7 @@ class BrowserPushWorker {
             var push=outbox.prepare(id,now());
             if(push==null)continue;
             PushResponse response;
-            try{response=transport.send(push.endpoint(),push.topic(),push.ttl(),now());}
+            try{response=transport.send(push,now());}
             catch(InterruptedException ex){Thread.currentThread().interrupt();return;}
             catch(IOException ex){response=new PushResponse(0,Duration.ZERO);}
             catch(GeneralSecurityException|ApiException ex){response=new PushResponse(400,Duration.ZERO);}

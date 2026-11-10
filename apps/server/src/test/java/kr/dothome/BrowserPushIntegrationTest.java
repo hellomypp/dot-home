@@ -41,7 +41,7 @@ class BrowserPushIntegrationTest {
         homes.accept(homes.invite(h,owner).token(),family,new Api.Accept("가족","sage"));
         preferences.patch(h,family,new ChangeNotificationSettings(null,0L,new PushQuietHours(null,null,"Asia/Seoul")));
         var endpoint="https://fcm.googleapis.com/fcm/send/"+UUID.randomUUID();
-        registration.register(family,endpoint,"test-session");
+        registration.register(family,endpoint,"test-session",null);
         return new Family(h,owner,family,endpoint);
     }
 
@@ -56,10 +56,10 @@ class BrowserPushIntegrationTest {
 
     @Test void subscriptionOwnershipReadAndSettingsAreRecheckedBeforeSend(){
         var f=family();
-        registration.register(f.family(),f.endpoint(),"test-session");
+        registration.register(f.family(),f.endpoint(),"test-session",null);
         assertTrue(registration.status(f.family(),f.endpoint(),"test-session").enabled());
         assertFalse(registration.status(f.owner(),f.endpoint(),"other-session").enabled());
-        assertEquals("PUSH_SUBSCRIPTION_OWNED",assertThrows(ApiException.class,()->registration.register(f.owner(),f.endpoint(),"other-session")).code);
+        assertEquals("PUSH_SUBSCRIPTION_OWNED",assertThrows(ApiException.class,()->registration.register(f.owner(),f.endpoint(),"other-session",null)).code);
         notice(f,"first");notice(f,"first");
         String id=delivery(f);
         assertNotNull(outbox.prepare(id,Instant.now()));
@@ -76,6 +76,25 @@ class BrowserPushIntegrationTest {
         assertTrue(registration.status(f.family(),f.endpoint(),"test-session").enabled());
         registration.disable(f.family(),f.endpoint());
         assertFalse(registration.status(f.family(),f.endpoint(),"test-session").enabled());
+    }
+
+    @Test void lockScreenDetailsAreOffByDefaultAndRecheckedPerHouse() {
+        var f=family();
+        var keys=new PushKeyInput(
+            "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4",
+            "BTBZMqHH6r4Tts7J_aSIgg");
+        registration.register(f.family(),f.endpoint(),"test-session",keys);
+        assertTrue(registration.status(f.family(),f.endpoint(),"test-session").payloadReady());
+        notice(f,"preview");
+        String id=delivery(f);
+        var generic=outbox.prepare(id,Instant.now());
+        assertEquals(f.house(),generic.payload().householdId());
+        assertNull(generic.payload().preview());
+        var version=preferences.get(f.house(),f.family()).version();
+        preferences.patch(f.house(),f.family(),new ChangeNotificationSettings(null,version,null,true));
+        assertEquals("대표 · 가족 공지",outbox.prepare(id,Instant.now()).payload().preview());
+        preferences.patch(f.house(),f.family(),new ChangeNotificationSettings(null,version+1,null,false));
+        assertNull(outbox.prepare(id,Instant.now()).payload().preview());
     }
 
     @Test void quietTimeDoesNotQueueOrDelayOldAlertsAndMembershipRevokesPendingSend(){
@@ -97,7 +116,7 @@ class BrowserPushIntegrationTest {
 
     @Test void expiredApprovalIsNeverSentAndTransientFailureKeepsSameDelivery(){
         var f=family();
-        registration.register(f.owner(),"https://web.push.apple.com/"+UUID.randomUUID(),"owner-session");
+        registration.register(f.owner(),"https://web.push.apple.com/"+UUID.randomUUID(),"owner-session",null);
         preferences.patch(f.house(),f.owner(),new ChangeNotificationSettings(null,0L,new PushQuietHours(null,null,"Asia/Seoul")));
         var requested=edits.ask(f.house(),f.family(),new AskSpaceEdit("ask",Set.of(SpaceEditScope.PRESET)));
         var approved=edits.decide(f.house(),f.owner(),requested.id(),new DecideSpaceEdit("approve",requested.version()),true);

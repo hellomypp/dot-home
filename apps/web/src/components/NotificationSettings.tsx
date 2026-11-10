@@ -19,6 +19,7 @@ interface Settings {
   enabled: Record<NotificationGroup, boolean>;
   version: number;
   quietHours?: QuietHours;
+  lockscreenPreview?: boolean;
 }
 
 export function NotificationSettings({ house, readOnly, back }: {
@@ -91,6 +92,19 @@ export function NotificationSettings({ house, readOnly, back }: {
       {push.data?.available && (
         <>
           <BrowserPushControl configuration={push.data} />
+          {current?.lockscreenPreview !== undefined && (
+            <fieldset disabled={busy || readOnly}>
+              <legend>잠금 화면 표시</legend>
+              <label className="checkbox-label">
+                <input type="checkbox" checked={current.lockscreenPreview} onChange={event => {
+                  setSaved(false);
+                  setDraft({ ...current, lockscreenPreview: event.target.checked });
+                }} />
+                <span><strong>이 집 알림의 자세한 내용 표시</strong>
+                  <small>켜면 가족 이름과 알림 종류가 잠금 화면에 보여요.</small></span>
+              </label>
+            </fieldset>
+          )}
           {quiet && <fieldset disabled={busy || readOnly}>
             <legend>조용한 시간</legend>
             <p className="muted">이 집의 브라우저 알림을 쉬는 시간이에요. 소식은 알림함에서 볼 수 있어요.</p>

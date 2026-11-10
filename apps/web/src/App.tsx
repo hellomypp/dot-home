@@ -574,6 +574,7 @@ function HouseholdRoute() {
 }
 
 function GamePage({ studio = false }: { studio?: boolean }) {
+  const { search } = useLocation();
   const { id } = useParams(),
     nav = useNavigate(),
     qc = useQueryClient();
@@ -596,7 +597,8 @@ function GamePage({ studio = false }: { studio?: boolean }) {
   });
   const [sample, setSample] = useState(fixture),
     [observed, setObserved] = useState(""),
-    [panel, setPanel] = useState<Panel>(null),
+    [panel, setPanel] = useState<Panel>(() =>
+      !studio && new URLSearchParams(search).get("notifications") === "1" ? "notifications" : null),
     [connection, setConnection] = useState<ConnectionState>("connecting"),
     [activity, setActivity] = useState("잠깐 쉬어가도 좋은 오후예요."),
     [error, setError] = useState(""),
