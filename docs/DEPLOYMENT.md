@@ -98,6 +98,16 @@ GitHub Actions `Verify`는 web 테스트/빌드 → server의 test+mysqlTest+boo
 1. GitHub 저장소 Settings → Rules → Rulesets 또는 Branches에서 main 보호 규칙을 만들고 PR을 요구한다. Required status checks는 실제 실행 이름 **web, server, container**를 선택한다. 우회 허용 범위를 검토한다. 보호 규칙 적용 여부는 최종 보고와 구분한다.
 2. Railway 앱 Settings → Source/Deploy의 **Wait for CI**를 켠다. 필요 시 Railway GitHub App 권한 갱신을 직접 승인한다. main 연결 및 자동 배포 활성화를 확인한다. [Wait for CI](https://docs.railway.com/deployments/github-autodeploys).
 3. PR의 세 검사를 통과한 변경만 main에 병합한다. main에서 재실행한 Actions 성공 후 Railway가 배포하고 healthcheck 성공 시 동일 URL의 트래픽을 전환하는지 확인한다.
+
+## 공개 주소 사전 점검
+
+배포 후 저장소 루트에서 `https://beta.example.org`를 실제 공개 주소로 바꿔 실행한다.
+
+```bash
+python3 scripts/beta-preflight.py https://beta.example.org
+```
+
+HTTPS 인증서 검증, DB 준비 응답, 집 선택·계정 설정·초대·방문 경로의 직접 접속, 푸시 파일과 캐시, Google 콜백, 세션 쿠키, 미인증 API 차단을 확인한다. 로그인 세션이나 비밀번호를 입력할 필요가 없다. Google 리디렉션은 따라가지 않고 검사 실패 시 경로와 실패 항목만 출력한다. GitHub Actions의 컨테이너 검사도 같은 명령을 로컬 이미지에 실행한다. 실제 Google 계정과 단말 검증은 아래 베타 인수 절차에서 수행한다.
 4. 배포 실패는 Deployments에서 원인을 확인한다. 이전 정상 배포가 계속 제공되는지 확인하고 필요하면 해당 배포의 메뉴 → Rollback을 사용한다. DB/볼륨을 삭제하지 않는다. 최초 배포 실패에는 이전 정상 배포가 없다.
 5. Flyway 적용은 앱 rollback과 별개다. V1~V6를 변경하지 않고 V7을 추가했으며 향후 schema 변경은 이전 앱과 호환되는 추가 방식으로 먼저 배포한다. 파괴적인 migration을 앱 rollback으로 되돌릴 수 없다.
 
