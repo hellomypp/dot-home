@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Paintbrush } from "lucide-react";
+import { Bell, ChevronRight, Home, Paintbrush } from "lucide-react";
 import { useRef, useState } from "react";
 import { api, type Member } from "../lib/api";
 
@@ -9,6 +9,7 @@ const messages = {
   EDIT_REVOKED: "집 편집 권한을 종료했어요.",
   FAMILY_TASK: "새로운 가족 부탁을 남겼어요.",
   FAMILY_NOTICE: "가족 공지를 남겼어요.",
+  ARRIVED_HOME: "집에 도착했어요.",
 } as const;
 type NotificationKind = keyof typeof messages;
 interface NotificationItem {
@@ -36,7 +37,7 @@ export function NotificationInbox({ items, members, loading, failed, more, loadM
   more: boolean;
   loadMore: () => Promise<unknown>;
   reload: () => Promise<unknown>;
-  open: (target: "design" | "requests") => void;
+  open: (target: "design" | "requests" | "records") => void;
   settings: () => void;
 }) {
   const opening = useRef(false);
@@ -53,7 +54,7 @@ export function NotificationInbox({ items, members, loading, failed, more, loadM
         await api(`/api/notifications/${item.id}/read`, "POST");
         void reload();
       }
-      open(item.kind.startsWith("EDIT_") ? "design" : "requests");
+      open(item.kind === "ARRIVED_HOME" ? "records" : item.kind.startsWith("EDIT_") ? "design" : "requests");
     } catch (failure) {
       setError((failure as Error).message);
     } finally {
@@ -79,7 +80,7 @@ export function NotificationInbox({ items, members, loading, failed, more, loadM
         <ul className="notification-list">
           {items.map(item => {
             const name = members.find(member => member.id === item.actorMemberId)?.name ?? "가족";
-            const Icon = item.kind.startsWith("EDIT_") ? Paintbrush : Bell;
+            const Icon = item.kind === "ARRIVED_HOME" ? Home : item.kind.startsWith("EDIT_") ? Paintbrush : Bell;
             return (
               <li key={item.id}>
                 <button className="notification-row" data-unread={!item.readAt || undefined}

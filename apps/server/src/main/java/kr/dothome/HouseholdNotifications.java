@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 enum NotificationKind {
     EDIT_REQUESTED(NotificationGroup.EDIT), EDIT_APPROVED(NotificationGroup.EDIT),
     EDIT_REJECTED(NotificationGroup.EDIT), EDIT_REVOKED(NotificationGroup.EDIT),
-    FAMILY_TASK(NotificationGroup.TASK), FAMILY_NOTICE(NotificationGroup.NOTICE);
+    FAMILY_TASK(NotificationGroup.TASK), FAMILY_NOTICE(NotificationGroup.NOTICE), ARRIVED_HOME(NotificationGroup.ARRIVAL);
 
     final NotificationGroup group;
     NotificationKind(NotificationGroup group){this.group=group;}
@@ -66,9 +66,10 @@ class HouseholdNotificationService {
     private final HomeService homes;
     private final HouseholdNotifications notifications;
     private final NotificationPreferenceService preferences;
+    private final Members members;
 
-    HouseholdNotificationService(HomeService homes,HouseholdNotifications notifications,NotificationPreferenceService preferences){
-        this.homes=homes;this.notifications=notifications;this.preferences=preferences;
+    HouseholdNotificationService(HomeService homes,HouseholdNotifications notifications,NotificationPreferenceService preferences,Members members){
+        this.homes=homes;this.notifications=notifications;this.preferences=preferences;this.members=members;
     }
 
     void add(Household house,String recipient,String actor,NotificationKind kind,String source,Instant now){
@@ -81,6 +82,11 @@ class HouseholdNotificationService {
         row.sourceId=source;
         row.createdAt=now;
         notifications.save(row);
+    }
+
+    void arrival(Household house,Member actor,String eventId,Instant now){
+        for(var recipient:members.findByHouseholdIdAndActiveTrueOrderById(house.id))
+            add(house,recipient.id,actor.id,NotificationKind.ARRIVED_HOME,eventId,now);
     }
 
     NotificationPage list(String h,String user,String cursor,int limit){

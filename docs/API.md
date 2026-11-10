@@ -276,3 +276,6 @@ home 좌표는 448×320 map의 발 중앙이며 서버와 웹이 같은 collisio
 - `POST /api/households/{id}/me/location-observations`에는 `{requestId,deviceId,generation,version,sequence,observedAt,physicalState,fixAgeSeconds,accuracyMeters,homeConfigId}`만 전송한다. `HOME`, `OUTSIDE`, `UNKNOWN`을 받고, 잘못된 세대·집·설정과 역순·오래된 관측을 거절한다. `homeConfigId`는 브라우저의 집 기준 위치를 바꿀 때 바뀌는 임의 식별자다.
 - 실제 집 좌표는 브라우저에만 저장한다. `world`에는 공개가 유효한 경우에만 `sharedPlace.status=AUTO`와 장소·서버 접수 및 만료 시각이 들어간다. 5분 후에는 마지막 자동 장소도 표시하지 않는다. 위치 확인은 화면이 보이는 동안만 수행한다. [W3C Geolocation](https://www.w3.org/TR/geolocation/#request-a-position)
 - 같은 설정에서 12시간 이내의 확정 밖 → 집 전환만 귀가 이력으로 남기며 10분 내 중복을 막는다. 자동 판정은 기존 수동 장소나 직장·학교 활동보다 우선하지 않는다. 생활 기록과 공동 내보내기는 `source=MANUAL|AUTO`를 제공한다.
+
+- 생활 기록의 귀가는 `POST /api/households/{id}/me/arrivals`로 `{requestId,message}`를 보낸다. 위치 공유에 동의한 사용자는 수동 HOME과 귀가 기록을 함께 남기며, 이미 HOME이면 `{event:null,alreadyHome:true}`가 반환된다. 미공유 시 사용자가 직접 작성한 생활 기록만 남긴다. 기존 `/events`는 호환을 위해 유지한다.
+- `notification-settings.enabled.ARRIVAL`은 집별 개인 수신 동의이며 기본값은 OFF다. 공유 동의가 있는 사람의 수동·자동 귀가를 수신에 동의한 활성 가족에게만 개인 알림으로 남긴다. 기존 알림 설정과 읽음 상태는 유지된다.

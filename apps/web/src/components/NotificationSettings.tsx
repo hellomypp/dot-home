@@ -6,6 +6,7 @@ const categories = {
   EDIT: { label: "집 편집", detail: "편집 요청과 승인, 권한 종료" },
   TASK: { label: "가족 부탁", detail: "내가 받는 새 부탁" },
   NOTICE: { label: "가족 공지", detail: "내가 받는 새 공지" },
+  ARRIVAL: { label: "가족 귀가", detail: "위치를 공유한 가족의 귀가 소식" },
 } as const;
 type NotificationGroup = keyof typeof categories;
 interface Settings {
@@ -56,9 +57,9 @@ export function NotificationSettings({ house, readOnly, back }: {
       {current && (
         <fieldset disabled={busy || readOnly}>
           <legend>받을 알림</legend>
-          {(Object.keys(categories) as NotificationGroup[]).map(category => (
+          {(Object.keys(categories) as NotificationGroup[]).filter(category => Object.hasOwn(current.enabled, category)).map(category => (
             <label className="checkbox-label" key={category}>
-              <input type="checkbox" checked={current.enabled[category]}
+              <input type="checkbox" checked={current.enabled[category] ?? false}
                 onChange={event => {
                   setSaved(false);
                   setDraft({ ...current, enabled: { ...current.enabled, [category]: event.target.checked } });

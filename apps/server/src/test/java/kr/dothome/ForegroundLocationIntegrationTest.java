@@ -19,6 +19,9 @@ class ForegroundLocationIntegrationTest {
     @Autowired IdentityService identity;
     @Autowired ForegroundLocation location;
     @Autowired LocationDevices devices;
+    @Autowired ManualArrival manualArrival;
+    @Autowired NotificationPreferenceService preferences;
+    @Autowired HouseholdNotificationService notifications;
     @Autowired ObjectMapper json;
 
     record Family(String owner,String member,String first,String second) {}
@@ -128,6 +131,55 @@ class ForegroundLocationIntegrationTest {
         assertEquals("UNKNOWN",visible(h,f).status());
         assertThrows(ApiException.class,()->location.observe(h,user,observation(phone,config,settings,7,
             now.plusSeconds(6),PhysicalState.HOME)));
+    }
+
+    @Test void manualArrivalIsReplayableAndNotifiesOnlyOptedInFamily() {
+        var f=family();var h=f.first();var user=f.owner();
+        assertFalse(preferences.get(h,f.member()).enabled().get(NotificationGroup.ARRIVAL));
+        preferences.patch(h,f.member(),new ChangeNotificationSettings(Map.of(NotificationGroup.ARRIVAL,true),0L));
+        var privateRecord=manualArrival.record(h,user,new RecordArrival(UUID.randomUUID(),"귀가 기록만"));
+        assertFalse(privateRecord.alreadyHome());
+        assertEquals("MANUAL",privateRecord.event().source());
+        assertEquals("UNSHARED",visible(h,f).status());
+        assertTrue(notifications.list(h,f.member(),null,10).items().isEmpty());
+        assertThrows(ApiException.class,()->manualArrival.record(h,user(),new RecordArrival(UUID.randomUUID(),"권한 없음")));
+
+        consent(h,user,true,0);
+        var original=new RecordArrival(UUID.randomUUID(),"다녀왔어요");
+        var recorded=manualArrival.record(h,user,original);
+        assertNotNull(recorded.event());
+        assertEquals(recorded,manualArrival.record(h,user,original));
+        assertThrows(ApiException.class,()->manualArrival.record(h,user,new RecordArrival(original.requestId(),"다른 내용")));
+        var ignored=new RecordArrival(UUID.randomUUID(),"다시 도착");
+        assertTrue(manualArrival.record(h,user,ignored).alreadyHome());
+        assertTrue(manualArrival.record(h,user,ignored).alreadyHome());
+        assertEquals("MANUAL",visible(h,f).status());
+        assertEquals("HOME",visible(h,f).place());
+        assertEquals(120,java.time.Duration.between(visible(h,f).sharedAt(),visible(h,f).expiresAt()).toMinutes());
+        assertEquals(2,homes.events(h,user).size());
+        assertEquals(NotificationKind.ARRIVED_HOME,notifications.list(h,f.member(),null,10).items().getFirst().kind());
+        assertEquals(1,notifications.list(h,f.member(),null,10).unreadCount());
+        assertTrue(notifications.list(f.second(),f.member(),null,10).items().isEmpty());
+        assertTrue(notifications.list(h,user,null,10).items().isEmpty());
+    }
+
+    @Test void automaticAndManualArrivalRacingProduceOneEventAndOneAlert() throws Exception {
+        var f=family();var h=f.first();var user=f.owner();var phone=UUID.randomUUID();var config=UUID.randomUUID();
+        register(user,phone,false,0);
+        consent(h,user,true,0);
+        var settings=share(h,user,phone,config);
+        preferences.patch(h,f.member(),new ChangeNotificationSettings(Map.of(NotificationGroup.ARRIVAL,true),0L));
+        location.observe(h,user,observation(phone,config,settings,1,Instant.now().minusSeconds(5),PhysicalState.OUTSIDE));
+        var start=new CountDownLatch(1);
+        try(var threads=Executors.newVirtualThreadPerTaskExecutor()){
+            var a=threads.submit(()->{start.await();location.observe(h,user,observation(phone,config,settings,2,Instant.now(),PhysicalState.HOME));return null;});
+            var b=threads.submit(()->{start.await();return manualArrival.record(h,user,new RecordArrival(UUID.randomUUID(),"다녀왔어요"));});
+            start.countDown();
+            a.get(10,TimeUnit.SECONDS);
+            b.get(10,TimeUnit.SECONDS);
+        }
+        assertEquals(1,homes.events(h,user).size());
+        assertEquals(1,notifications.list(h,f.member(),null,10).unreadCount());
     }
 
     @Test void simultaneousInitialRegistrationHasOneProvider() throws Exception {

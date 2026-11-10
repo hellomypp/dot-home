@@ -380,10 +380,11 @@ class HomeService {
             var automatic=device.shared(now);
             if(automatic!=null)shared=automatic;
         }
-        boolean automaticView=!own&&"AUTO".equals(shared.status());
+        boolean locationView=!own&&!sharedActivity&&("AUTO".equals(shared.status())||
+            "MANUAL".equals(shared.status())&&"HOME".equals(shared.place()));
         boolean mask=!own&&!"MANUAL".equals(shared.status())&&!"home".equals(m.place)&&!sharedActivity;
-        String place=automaticView?shared.place().toLowerCase(Locale.ROOT):mask?"outside":m.place;
-        boolean useAvatar=(!mask||automaticView)&&place.equals(m.place);
+        String place=locationView?shared.place().toLowerCase(Locale.ROOT):mask?"outside":m.place;
+        boolean useAvatar=(!mask||locationView)&&place.equals(m.place);
         double[] point=useAvatar&&"home".equals(place)?Spaces.position(m,room)
             :useAvatar?new double[]{m.x,m.y}:"home".equals(place)?new double[]{room.spawns().getFirst().x(),room.spawns().getFirst().y()}:new double[]{320,288};
         var current=expressions.state(m,saved,now,false);

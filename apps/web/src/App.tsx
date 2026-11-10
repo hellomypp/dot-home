@@ -1328,8 +1328,8 @@ function GamePage({ studio = false }: { studio?: boolean }) {
               reload={() => notificationQuery.refetch()}
               settings={() => setPanel("notification-settings")}
               open={target => {
-                if (target === "requests") setActivityTab("requests");
-                setPanel(target === "requests" ? "event" : "design");
+                if (target !== "design") setActivityTab(target);
+                setPanel(target === "design" ? "design" : "event");
               }}
             />
           ) : panel === "notification-settings" ? (
@@ -1828,10 +1828,15 @@ function EventForm({
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const request = useRef<{ body: string; id: string } | null>(null);
+  const pending = useRef(false);
+  const [notice, setNotice] = useState("");
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (pending.current) return;
+    pending.current = true;
     setBusy(true);
     setError("");
+    setNotice("");
     const body = JSON.stringify({ type, message });
     if (request.current?.body !== body)
       request.current = { body, id: crypto.randomUUID() };
@@ -1853,16 +1858,28 @@ function EventForm({
           ],
         });
       } else {
-        await api(`/api/households/${snapshot.household.id}/events`, "POST", {
-          requestId: request.current.id,
-          type,
-          message,
-        });
+        const path = `/api/households/${snapshot.household.id}`;
+        const input = { requestId: request.current.id, type, message };
+        if (type === "ARRIVED_HOME") {
+          try {
+            const result = await api<{ alreadyHome: boolean }>(path + "/me/arrivals", "POST", {
+              requestId: input.requestId, message,
+            });
+            if (result.alreadyHome) {
+              setNotice("이미 집에 있는 상태예요. 귀가 소식을 다시 남기지 않았어요.");
+              return;
+            }
+          } catch (error) {
+            if (!(error instanceof ApiError) || error.status !== 404) throw error;
+            await api(path + "/events", "POST", input);
+          }
+        } else await api(path + "/events", "POST", input);
         onSaved(snapshot);
       }
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      pending.current = false;
       setBusy(false);
     }
   }
@@ -1881,6 +1898,7 @@ function EventForm({
             onClick={() => {
               setType(key);
               setMessage(value.message);
+              setNotice("");
             }}
           >
             {value.icon}
@@ -1897,6 +1915,10 @@ function EventForm({
           onChange={(e) => setMessage(e.target.value)}
         />
       </label>
+      {!studio && type === "ARRIVED_HOME" && <p className="muted">
+        위치를 공유 중이라면 귀가 소식을 남길 때 가족에게 집에 있는 상태도 보여요.
+      </p>}
+      {notice && <p role="status">{notice}</p>}
       <ErrorMessage message={error} />
       <button className="button primary" disabled={busy}>
         <Send size={16} />

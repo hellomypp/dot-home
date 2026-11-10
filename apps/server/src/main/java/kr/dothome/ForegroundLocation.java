@@ -86,11 +86,12 @@ class ForegroundLocation {
     private final Households households;
     private final Members members;
     private final ExpressionStore expressions;
+    private final HouseholdNotificationService notifications;
 
     ForegroundLocation(Accounts accounts,LocationDevices devices,HomeService homes,Households households,
-        Members members,ExpressionStore expressions){
+        Members members,ExpressionStore expressions,HouseholdNotificationService notifications){
         this.accounts=accounts;this.devices=devices;this.homes=homes;
-        this.households=households;this.members=members;this.expressions=expressions;
+        this.households=households;this.members=members;this.expressions=expressions;this.notifications=notifications;
     }
 
     LocationDeviceView device(String user,UUID browser){
@@ -181,8 +182,9 @@ class ForegroundLocation {
                 &&!"MANUAL".equals(expressions.publicPlace(member,saved,now).status());
             if(arrived){
                 row.lastArrivalAt=now;
-                homes.recordEvent(house,member,"auto:"+UUID.randomUUID(),
+                var event=homes.recordEvent(house,member,"auto:"+UUID.randomUUID(),
                     "ARRIVED_HOME","집에 도착했어요","AUTO",now);
+                notifications.arrival(house,member,event.id(),now);
             }
             row.lastConfirmed=row.physicalState;
         }

@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 enum NotificationGroup {
-    EDIT(1), TASK(2), NOTICE(4);
+    EDIT(1), TASK(2), NOTICE(4), ARRIVAL(8);
     final int bit;
     NotificationGroup(int bit){this.bit=bit;}
 }
