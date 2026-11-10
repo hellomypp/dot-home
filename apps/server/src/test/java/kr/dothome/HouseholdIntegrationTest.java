@@ -173,6 +173,32 @@ class HouseholdIntegrationTest {
         assertEquals(legacyExpiry,homes.preview(existing.token()).expiresAt());
     }
     @Test void cancelledAndExpiredInvitationsDoNotJoin(){String owner=user(),guest=user();String id=house(owner).household().id();var invite=homes.invite(id,owner);homes.cancel(id,owner,invite.id());assertThrows(ApiException.class,()->homes.accept(invite.token(),guest,new Api.Accept("회원","blue")));var expired=homes.invite(id,owner);var row=invitations.findById(expired.id()).orElseThrow();row.expiresAt=Instant.now().minusSeconds(1);invitations.saveAndFlush(row);assertThrows(ApiException.class,()->homes.preview(expired.token()));assertEquals(1,homes.world(id,owner).members().size());}
+    @Test void invitationIssuanceLimitIsAtomicAndDoesNotBlockAcceptingExistingLinks()throws Exception{
+        String owner=user(),family=user(),h=house(owner).household().id();
+        var cancelled=homes.invite(h,owner);
+        homes.cancel(h,owner,cancelled.id());
+        var valid=homes.invite(h,owner);
+        for(int i=2;i<HomeService.INVITE_ISSUANCE_LIMIT-1;i++)homes.invite(h,owner);
+        var gate=new CountDownLatch(1);
+        try(var pool=Executors.newFixedThreadPool(2)){
+            Callable<Boolean> issue=()->{
+                gate.await();
+                try{homes.invite(h,owner);return true;}
+                catch(InviteRateLimited e){assertTrue(e.retryAfter>0 && e.retryAfter<=600);return false;}
+            };
+            var first=pool.submit(issue);
+            var second=pool.submit(issue);
+            gate.countDown();
+            assertNotEquals(first.get(10,TimeUnit.SECONDS),second.get(10,TimeUnit.SECONDS));
+        }
+        assertThrows(InviteRateLimited.class,()->homes.invite(h,owner));
+        assertEquals(2,homes.accept(valid.token(),family,new Api.Accept("새 가족","sage")).members().size());
+        assertNotNull(homes.invite(house(owner).household().id(),owner));
+        var aged=invitations.findById(cancelled.id()).orElseThrow();
+        aged.createdAt=Instant.now().minus(Duration.ofMinutes(11));
+        invitations.saveAndFlush(aged);
+        assertNotNull(homes.invite(h,owner));
+    }
     @Test void differentInvitationsCanBothBeAcceptedConcurrently()throws Exception{String owner=user(),a=user(),b=user();String id=house(owner).household().id();var first=homes.invite(id,owner);var second=homes.invite(id,owner);try(var pool=Executors.newFixedThreadPool(2)){var start=new CountDownLatch(1);var one=pool.submit(()->{start.await();try{homes.accept(first.token(),a,new Api.Accept("A","sage"));return true;}catch(ApiException e){return false;}});var two=pool.submit(()->{start.await();try{homes.accept(second.token(),b,new Api.Accept("B","rose"));return true;}catch(ApiException e){return false;}});start.countDown();assertTrue(one.get(10,TimeUnit.SECONDS));assertTrue(two.get(10,TimeUnit.SECONDS));}assertEquals(3,homes.world(id,owner).members().size());}
     @Test void pantryPreventsLostUpdatesAndNegativeInventory(){String owner=user();String id=house(owner).household().id();var item=homes.addPantry(id,owner,new Api.CreatePantry("달걀","냉장",2,"개",null));var saved=homes.updatePantry(id,owner,item.id(),new Api.UpdatePantry(1,item.version()));assertEquals(1,saved.quantity());assertTrue(saved.version()>item.version());assertThrows(ApiException.class,()->homes.updatePantry(id,owner,item.id(),new Api.UpdatePantry(0,item.version())));assertThrows(ApiException.class,()->homes.updatePantry(id,owner,item.id(),new Api.UpdatePantry(-1,saved.version())));}
     @Test void simultaneousUseOfSameInvitationIsSingleUse()throws Exception{String owner=user(),a=user(),b=user();String id=house(owner).household().id();var invite=homes.invite(id,owner);try(var pool=Executors.newFixedThreadPool(2)){var start=new CountDownLatch(1);var one=pool.submit(()->{start.await();try{homes.accept(invite.token(),a,new Api.Accept("A","sage"));return true;}catch(ApiException e){return false;}});var two=pool.submit(()->{start.await();try{homes.accept(invite.token(),b,new Api.Accept("B","blue"));return true;}catch(ApiException e){return false;}});start.countDown();assertNotEquals(one.get(10,TimeUnit.SECONDS),two.get(10,TimeUnit.SECONDS));}assertEquals(2,homes.world(id,owner).members().size());}
@@ -200,6 +226,14 @@ class HouseholdIntegrationTest {
             var restored=a.send(HttpRequest.newBuilder(URI.create(base+"/api/households/"+householdId+"/world")).GET().build(),HttpResponse.BodyHandlers.ofString());
             assertEquals(200,restored.statusCode());assertEquals("v1:3212",json.readTree(restored.body()).get("members").get(0).get("appearance").asText());
             assertEquals(401,b.send(HttpRequest.newBuilder(URI.create(base+"/api/households/"+householdId+"/world")).GET().build(),HttpResponse.BodyHandlers.ofString()).statusCode());
+            var invite=HttpRequest.newBuilder(URI.create(base+"/api/households/"+householdId+"/invitations"))
+                .header("X-CSRF-TOKEN",authenticatedToken).POST(HttpRequest.BodyPublishers.noBody()).build();
+            for(int i=0;i<HomeService.INVITE_ISSUANCE_LIMIT;i++)
+                assertEquals(200,a.send(invite,HttpResponse.BodyHandlers.ofString()).statusCode());
+            var limited=a.send(invite,HttpResponse.BodyHandlers.ofString());
+            assertEquals(429,limited.statusCode());
+            assertEquals("INVITE_RATE_LIMITED",json.readTree(limited.body()).get("code").asText());
+            assertTrue(Long.parseLong(limited.headers().firstValue("Retry-After").orElseThrow())>0);
 
         }
     }

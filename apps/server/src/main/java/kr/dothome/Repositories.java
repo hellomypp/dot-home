@@ -29,6 +29,9 @@ interface Pets extends JpaRepository<Pet,String> {
 }
 interface Invitations extends JpaRepository<Invitation,String> {
     Optional<Invitation> findByTokenHash(String hash);
+    @Query("select i.createdAt from Invitation i where i.householdId=:householdId and i.createdAt>:since order by i.createdAt desc")
+    List<java.time.Instant> recentlyIssued(
+        String householdId,java.time.Instant since,org.springframework.data.domain.Pageable page);
     @Lock(LockModeType.PESSIMISTIC_WRITE) @Query("select i from Invitation i where i.id=:id")
     Optional<Invitation> locked(@Param("id") String id);
 }

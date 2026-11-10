@@ -15,6 +15,8 @@ record CommittedSignal(String householdId,Api.Signal signal) {}
 @Service
 @Transactional(isolation=Isolation.READ_COMMITTED)
 class HomeService {
+    static final int INVITE_ISSUANCE_LIMIT=12;
+    private static final Duration INVITE_ISSUANCE_WINDOW=Duration.ofMinutes(10);
     @jakarta.persistence.PersistenceContext jakarta.persistence.EntityManager entityManager;
     @org.springframework.beans.factory.annotation.Value("${app.household-deletion-enabled:false}") boolean deletionAvailable;
     final Households households;
@@ -177,8 +179,15 @@ class HomeService {
     }
     Api.InvitationView invite(String householdId,String userId) {
         Household household=lock(householdId,userId);owner(household,userId);
+        var now=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        var recent=invitations.recentlyIssued(
+            householdId,now.minus(INVITE_ISSUANCE_WINDOW),org.springframework.data.domain.Pageable.ofSize(INVITE_ISSUANCE_LIMIT));
+        if(recent.size()==INVITE_ISSUANCE_LIMIT){
+            var next=recent.getLast().plus(INVITE_ISSUANCE_WINDOW);
+            throw new InviteRateLimited(Math.max(1,(Duration.between(now,next).toMillis()+999)/1000));
+        }
         byte[] bytes=new byte[32];new SecureRandom().nextBytes(bytes);String token=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        Invitation invitation=new Invitation();invitation.householdId=householdId;invitation.tokenHash=hash(token);invitation.createdAt=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);invitation.expiresAt=invitation.createdAt.plus(Duration.ofDays(7));invitations.save(invitation);
+        Invitation invitation=new Invitation();invitation.householdId=householdId;invitation.tokenHash=hash(token);invitation.createdAt=now;invitation.expiresAt=now.plus(Duration.ofDays(7));invitations.save(invitation);
         return new Api.InvitationView(invitation.id,token,invitation.expiresAt,"/invite/"+token);
     }
     void cancel(String householdId,String userId,String invitationId) {

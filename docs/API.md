@@ -22,6 +22,7 @@
 - `POST /api/households` body `{name:"우리의 작은 집",memberName:"다은",appearance:"rose"}` → world. 대표 1명·반려동물 0마리로 시작하며 가족/반려동물 사전 설정을 받지 않는다.
 - `GET /api/households/{id}/world` → 아래 스냅샷.
 - `POST /api/households/{id}/invitations` → `{id,token,expiresAt,url:"/invite/{token}"}`. 대표만; 토큰은 생성 응답에서만 제공, DB에는 해시만 저장. 신규 발급은 7일 일회성 초대. 이미 발급된 초대는 저장된 만료 시각을 유지한다.
+- 집마다 최근 10분에 최대 12개를 새로 발급한다. 초과하면 429 `INVITE_RATE_LIMITED`와 `Retry-After`(초)를 반환한다. 취소·수락된 링크도 발급 시각 기준으로 계산하며 기존 링크 수락과 가족 수에는 제한을 적용하지 않는다.
 - `DELETE /api/households/{id}/invitations/{invitationId}` → 204. 대표만 취소.
 - `GET /api/invitations/{token}` → `{householdName,expiresAt,available:true}`. 공개 미리보기이며 가입하지 않는다. 만료/취소/사용됨 410.
 - `POST /api/invitations/{token}/accept` body `{memberName:"민준",appearance:"blue"}` → world. 인증 필수. 같은 계정 반복 수락은 동일 가구 반환, 다른 계정 사용 완료/만료 토큰 410. 가족 인원에 따른 제한은 없다.
