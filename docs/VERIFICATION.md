@@ -1,5 +1,10 @@
 # 2026-11-01 구현·검증 기록
 
+## MySQL 8.4 실제 트랜잭션과 백업 복원 (2026-11-10)
+
+- Docker 대신 [MySQL Community Server 8.4.7의 macOS ARM 아카이브](https://downloads.mysql.com/archives/community/)를 검증 디렉터리에서 실행했다. 로컬 전용 임시 서버와 별도 스키마에서 기존 통합 테스트를 그대로 상속한 64건이 통과했다. 서로 다른 초대의 동시 성공, 같은 링크의 단일 성공, 쪽지 경합, 편집 잠금과 승인, 가족 격리, 알림 읽음·설정, 집 삭제 복원 로그 재적용이 포함된다.
+- `mysqldump --single-transaction --no-tablespaces --set-gtid-purged=OFF`로 만든 테스트 덤프를 빈 검증 스키마에 가져왔다. 계정·집·구성원·알림·설정과 Flyway 성공 행 개수를 비교하고 복원 DB를 사용하는 앱의 `/healthz`가 UP임을 확인했다. 실제 운영 DB, Railway 복원, Docker 이미지 재검증은 수행하지 않았다.
+
 ## 집별 알림 설정 (2026-11-10)
 
 - 웹 85건, 서버 129건, Vite build·bootJar 성공. V32는 편집·부탁·공지의 수신 여부를 구성원별로 저장한다. 서버에서 집별 격리, 버전 충돌, 과거 기록 유지, 종류별 새 알림 차단과 재활성화를 확인했다.
